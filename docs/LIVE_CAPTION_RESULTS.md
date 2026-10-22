@@ -58,3 +58,14 @@ The middle failure exposed a previously unrecognized TikTok delivery hostname `v
 A passing workflow now **requires** at least one nonempty, parsed TikTok caption track; a mere status report containing a failure is not counted as success. The two successes are on **the same video and same date**, not independent samples. These observations cannot establish coverage or durability of arbitrary public TikToks.
 
 No direct browser capture, consumer computer test or permission audit has been completed.
+
+## Second independently sourced public TikTok example
+GitHub Actions run: https://github.com/GSGrimoire/gs-pen/actions/runs/39856616103
+
+- Public `@hankgreen1/video/7047596209028074758` (listed as an auto-caption test example in yt-dlp's public TikTok extractor): **12 valid WebVTT cues retrieved**.
+- The same run also retrieved the Scrub Daddy video's **15 valid cues** and returned YouTube `RequestBlocked`.
+- This yields **two different public videos**, each with a nonempty TikTok platform caption track. Both were tested on 22 October 2026.
+- No caption text or signed asset URL was retained.
+- The workflow is being strengthened to require **both** examples to pass. Two success cases do not measure TikTok-wide reliability, handle Danish-language captions, or establish permission for production scraping.
+
+Source of second test case: https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/tiktok.py
