@@ -17,14 +17,20 @@ function transcriptResult(value, origin) {
 
 // All adapters are supplied by the caller. They are NOT implemented here.
 // Returning unavailable from one pipeline must never replace the other output.
-export async function runDualTranscript({ url, fetchCaptions, fetchAudio, transcribeAudio, fetchPostData }) {
+export async function runDualTranscript({ url, fetchCaptions, fetchAudio, transcribeAudio, fetchPostData, onResult }) {
   if (!classifyPublicVideoUrl(url).ok) throw new TypeError('A supported, validated public video URL is required');
   if ([fetchCaptions, fetchAudio, transcribeAudio].some(fn => typeof fn !== 'function')) throw new TypeError('Missing pipeline adapter');
 
+  const report = (kind, result) => {
+    if (typeof onResult === 'function') {
+      try { onResult(kind, result); } catch { /* Consumer errors do not change results. */ }
+    }
+    return result;
+  };
   const captionsTask = (async () => {
     try { return transcriptResult(await fetchCaptions(url), 'platform'); }
     catch { return failure('captions'); }
-  })();
+  })().then(value => report('platformCaptions', value));
   const whisperTask = (async () => {
     let audio;
     try {
@@ -37,14 +43,14 @@ export async function runDualTranscript({ url, fetchCaptions, fetchAudio, transc
         try { await audio.dispose(); } catch { /* Must not discard a completed transcript. */ }
       }
     }
-  })();
+  })().then(value => report('whisperTranscript', value));
   const postTask = (async () => {
     if (typeof fetchPostData !== 'function') return unavailable('not_configured');
     try {
       const value = await fetchPostData(url);
       return value == null ? unavailable('not_provided') : { status: 'available', data: value };
     } catch { return failure('post_data'); }
-  })();
+  })().then(value => report('postData', value));
   const [platformCaptions, whisperTranscript, postData] = await Promise.all([captionsTask, whisperTask, postTask]);
   return { platformCaptions, whisperTranscript, postData };
 }
