@@ -22,11 +22,13 @@ class CaptionProbeTests(unittest.TestCase):
         for link in [
             "https://tiktokcdn.com/caption.vtt",
             "https://a.tiktokcdn.com/caption.vtt",
+            "https://v16m-webapp.tiktokcdn-us.com/caption.vtt",
         ]:
             self.assertTrue(is_approved_track_url(link))
         for link in [
             "http://tiktokcdn.com/caption.vtt",
             "https://tiktokcdn.com.evil.test/caption.vtt",
+            "https://tiktokcdn-us.com.evil.test/caption.vtt",
             "https://127.0.0.1/caption.vtt",
             "https://user@tiktokcdn.com/caption.vtt",
             "https://tiktokcdn.com:8080/caption.vtt"
