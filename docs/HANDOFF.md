@@ -26,3 +26,6 @@ Next: repeat on multiple rights-cleared TikTok videos, verify cross-origin behav
 
 ## Second live TikTok caption example (22 October 2026)
 GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/39856616103 confirms two public TikTok captions: Scrub Daddy (15 WebVTT cues) and Hank Green (12 WebVTT cues). YouTube remains RequestBlocked from cloud runner, while Instagram and Facebook have no verified caption path. Research branch now requires both live TikTok samples to pass. This is not a multi-day reliability assessment, permission signoff, deployed app, or production-compatible browser demonstration.
+
+## Merged caption live-test milestone
+PR #4 merged to main at `4605f20338e79be85802086a63c690e41a9e51ea` on 22 October 2026. Final required-live-tests run: https://github.com/GSGrimoire/gs-pen/actions/runs/39856854166 . It passed 39 JavaScript and 4 Python offline tests and retrieved 15 WebVTT cues from the Scrub Daddy TikTok and 12 from the Hank Green TikTok. YouTube from cloud runner returned `RequestBlocked`. Facebook/Instagram remain untested. No production Site has been deployed. Continue with multi-day/multi-video access sampling, platform permissions, and private browser cross-origin proof before proceeding to product build.
