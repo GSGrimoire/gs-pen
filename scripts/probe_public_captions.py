@@ -140,4 +140,10 @@ def run():
 
 
 if __name__ == "__main__":
-    print(json.dumps(run(), sort_keys=True))
+    results = run()
+    print(json.dumps(results, sort_keys=True))
+    # Workflow green should establish a live TikTok caption track, not merely
+    # a probe that completed and printed "blocked" statuses.
+    if "--require-tiktok" in sys.argv and not results["tiktok"]["track_verified"]:
+        sys.exit(1)
+
