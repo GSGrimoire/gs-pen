@@ -42,3 +42,19 @@ YouTube test used `youtube-transcript-api==1.2.4`, which uses an undocumented in
 ## Privacy
 
 Only status categories, date, language/track cues and per-platform success are retained. Do not add full brand transcripts, signed caption URLs, account cookies, or private videos to Git history. A public brand example was examined transiently for a feasibility test and is not an authorization to republish its captions.
+
+## Repeat-run evidence and domain variation (same date)
+
+Three GitHub-hosted executions were performed on 22 October 2026 for the same public TikTok example:
+
+| Workflow run | TikTok outcome | YouTube outcome |
+| --- | --- | --- |
+| [39855712437](https://github.com/GSGrimoire/gs-pen/actions/runs/39855712437) | 15 valid cues, PASS | RequestBlocked |
+| [39856097359](https://github.com/GSGrimoire/gs-pen/actions/runs/39856097359) | One caption URL, but domain not yet allowlisted, FAIL | RequestBlocked |
+| [39856401022](https://github.com/GSGrimoire/gs-pen/actions/runs/39856401022) | 15 valid cues, PASS after allowlist correction | RequestBlocked |
+
+The middle failure exposed a previously unrecognized TikTok delivery hostname `v16m-webapp.tiktokcdn-us.com`. No signed URL or caption text was disclosed. The TikTok-associated `tiktokcdn-us.com` suffix was then added narrowly to the host allowlist and its deceptive-subdomain rejection tests were extended. A peer-reviewed 2026 study of TikTok delivery identifies the suffix as a TikTok CDN: https://aqualab.cs.northwestern.edu/publication/2026/yzhang-conext26/YZhang-CoNEXT26.pdf
+
+A passing workflow now **requires** at least one nonempty, parsed TikTok caption track; a mere status report containing a failure is not counted as success. The two successes are on **the same video and same date**, not independent samples. These observations cannot establish coverage or durability of arbitrary public TikToks.
+
+No direct browser capture, consumer computer test or permission audit has been completed.
