@@ -135,7 +135,7 @@ def probe_youtube():
 def run():
     return {
         "date": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
-        "probe": "single-public-video-caption-track-per-provider",
+        "probe": "public-caption-track-samples-without-storage",
         "youtube": probe_youtube(),
         "tiktok": probe_tiktok(),
         "tiktok_second_public_video": probe_tiktok(TIKTOK_SECOND_EXAMPLE),
@@ -149,6 +149,6 @@ if __name__ == "__main__":
     print(json.dumps(results, sort_keys=True))
     # Workflow green should establish a live TikTok caption track, not merely
     # a probe that completed and printed "blocked" statuses.
-    if "--require-tiktok" in sys.argv and not results["tiktok"]["track_verified"]:
+    if "--require-tiktok" in sys.argv and not all(results[k]["track_verified"] for k in ("tiktok", "tiktok_second_public_video")):
         sys.exit(1)
 
