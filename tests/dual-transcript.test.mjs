@@ -78,3 +78,26 @@ test('rejects missing adapters and unvalidated URL', async () => {
   await assert.rejects(runDualTranscript({ url: 'https://evil.test' }), TypeError);
   await assert.rejects(runDualTranscript({ url }), TypeError);
 });
+
+
+test('reports platform captions before slow Whisper completes', async () => {
+  let releaseAudio;
+  const audio = new Promise(resolve => { releaseAudio = resolve; });
+  let captionsReported;
+  const gotCaptions = new Promise(resolve => { captionsReported = resolve; });
+  const updates = [];
+  const pending = runDualTranscript({ url, fetchCaptions: availableCaptions,
+    fetchAudio: () => audio, transcribeAudio: whisper,
+    onResult: (kind, result) => {
+      updates.push(kind);
+      if (kind === 'platformCaptions') captionsReported(result);
+    }
+  });
+  const early = await gotCaptions;
+  assert.equal(early.status, 'available');
+  assert.equal(updates.includes('whisperTranscript'), false);
+  releaseAudio({ id: 'synthetic-audio' });
+  const completed = await pending;
+  assert.equal(completed.whisperTranscript.status, 'available');
+  assert.equal(updates.includes('whisperTranscript'), true);
+});
