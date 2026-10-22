@@ -100,7 +100,10 @@ def probe_tiktok():
             return {"status": "no_track_url_in_public_page", "track_verified": False}
         valid = [url for url in tracks if is_approved_track_url(url)]
         if not valid:
-            return {"status": "caption_urls_unsupported_host", "track_verified": False, "track_count": len(tracks)}
+            # Only output the hostname to diagnose provider CDN changes; signed paths and query parameters are sensitive.
+            host = urllib.parse.urlsplit(tracks[0]).hostname
+            return {"status": "caption_urls_unsupported_host", "track_verified": False, "track_count": len(tracks),
+                    "caption_host": host or "unknown"}
         # First approved track only. No recording of the track's words or URL.
         data, error = get_small_public_resource(valid[0], LIMIT_CAPTION, "text/vtt, text/plain")
         if error:
