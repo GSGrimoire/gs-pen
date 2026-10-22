@@ -75,5 +75,6 @@ test('starts caption and audio adapters concurrently', async () => {
 
 test('rejects missing adapters and unvalidated URL', async () => {
   await assert.rejects(runDualTranscript({ url: 'http://invalid.test' }), TypeError);
+  await assert.rejects(runDualTranscript({ url: 'https://evil.test' }), TypeError);
   await assert.rejects(runDualTranscript({ url }), TypeError);
 });
