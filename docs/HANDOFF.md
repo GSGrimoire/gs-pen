@@ -1,21 +1,19 @@
 # GS Pen handoff
-Updated 22 October 2026 after merging pull request #2.
+Updated 22 October 2026 after merging pull request #3.
 
 ## Current state
-Repository: GSGrimoire/gs-pen (private). Main contains the specification, backlog, research findings, URL-classifier source and offline unit tests. PR #2 (feasibility foundation) was self-reviewed and squashed to main at commit `9ddfbb54cf7c688e2fdddaa62383bac2ffedf958`. This was not an independent approval. The PR contained no completed transcriber or deployed website.
+Repository: GSGrimoire/gs-pen (private). Main contains the feasibility research, specifications, backlog, URL classifier, and now a small parallel caption/Whisper orchestration prototype. Pull request #2 merged as `9ddfbb54cf7c688e2fdddaa62383bac2ffedf958`. Pull request #3 merged as `b91526924c88880fe1587cf08b9ddfd22264b68a`.
 
-## Verified
-- Local Node.js 22 test run: 29 of 29 URL-format unit tests pass. These are synthetic, offline tests.
-- Documentation review of official YouTube/TikTok/Meta and hosting references completed, with caveats and links in docs/PLATFORM_ACCESS_RESEARCH.md.
+## Validated locally
+- URL classifier: 29/29 synthetic tests in previous validation.
+- Parallel transcript orchestration: 10/10 synthetic tests passed locally using Node.js and a local copy of the source URL classifier. This includes caption-only, Whisper-only, both available, error isolation, audio disposal and reporting captions before the independent Whisper task finishes.
+- Source-based research: TokScript publicly states it retrieves existing auto-generated platform captions when available. Research is in docs/DUAL_TRANSCRIPTION_RESEARCH.md.
 
 ## Unverified
-No successful platform audio retrieval, Danish/English model execution, account login, private ChatGPT Site creation, database isolation, synchronized history or real platform integration. No website published. No private media stored in GitHub.
+No real YouTube, TikTok, Facebook or Instagram caption track was retrieved. No platform audio stream was acquired. No speech recognition model executed. No Site deployed, and no login or synchronized storage validated. No third-party transcript service was integrated.
 
-## Blocker
-The published platform interfaces reviewed do not provide a verified, general-purpose method to obtain reusable audio for independent transcription from arbitrary public videos. Embeds are not local audio access. To proceed, obtain a rights-cleared test sample and an acceptable input access approach, or seek a user-approved scope change (explicit browser tab capture, creator-authorized media, or permissioned retrieval service). Do not silently substitute captions for transcription.
+## Release blocker and next action
+Validate rights-cleared access to existing platform transcripts independently of audio download. The caption retrieval path may succeed even when Whisper is blocked. Test documented official interfaces and consent-based browser methods on real public examples, logging only non-personal results. Test live browser capture or a permissioned hosted extraction route separately. Do not claim TokScript's proprietary method is openly available, or that platform captions are ground truth for GS Scribe model evaluation.
 
-## Review practice
-Self-review and local tests are sufficient as a reported quality check for research notes and non-sensitive URL recognition, where GitHub allows merging. This is not a formal approval. Require additional independent security review for authentication, media retrieval and private storage features. See issue #1 for F0/F1 outstanding work.
-
-## Next action
-Evaluate the tradeoffs of a user-invoked browser capture extension versus compliant hosted retrieval with the user; verify private ChatGPT Site hosting in a real Work/Sites preview when that workflow is available.
+## Review and deployment
+Both merges were self-reviewed and locally tested, not independently approved. Future authentication, media retrieval and storage integrations warrant independent security review. No website has been published; deployment record remains empty.
