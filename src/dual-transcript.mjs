@@ -1,4 +1,5 @@
 // GS Pen dual transcript orchestration v1. No platform access or media retrieval.
+import { classifyPublicVideoUrl } from "./url-classifier.mjs";
 const unavailable = (reason) => ({ status: 'unavailable', reason });
 const failure = (step) => ({ status: 'error', reason: `${step}_failed` });
 
@@ -17,7 +18,7 @@ function transcriptResult(value, origin) {
 // All adapters are supplied by the caller. They are NOT implemented here.
 // Returning unavailable from one pipeline must never replace the other output.
 export async function runDualTranscript({ url, fetchCaptions, fetchAudio, transcribeAudio, fetchPostData }) {
-  if (typeof url !== 'string' || !url.startsWith('https://')) throw new TypeError('A validated HTTPS video URL is required');
+  if (!classifyPublicVideoUrl(url).ok) throw new TypeError('A supported, validated public video URL is required');
   if ([fetchCaptions, fetchAudio, transcribeAudio].some(fn => typeof fn !== 'function')) throw new TypeError('Missing pipeline adapter');
 
   const captionsTask = (async () => {
