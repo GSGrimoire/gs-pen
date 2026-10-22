@@ -4,7 +4,7 @@ Status: feasibility only; no completed social-video transcription or deployed Si
 ## Priority 0: validation gates
 - PEN-001 [research complete; runtime validation pending] Host on owner-private ChatGPT Sites if available. Static GitHub Pages alone is not acceptable for private access. Confirm deployed access, storage, quotas and cost.
 - PEN-002 [research completed; audiovisual retrieval BLOCKED] Official interfaces provide selected metadata/embed capabilities, not a verified general audio path for arbitrary public URLs. See docs/PLATFORM_ACCESS_RESEARCH.md.
-- PEN-002A [synthetic prototype passed; real platform access unverified] Try permitted extraction of existing platform-generated captions independently of Whisper. Compare TokScript's published mechanism without assuming access to its proprietary implementation. See docs/DUAL_TRANSCRIPTION_RESEARCH.md; 9 offline pipeline tests passed.
+- PEN-002A [synthetic prototype passed; real platform access unverified] Try permitted extraction of existing platform-generated captions independently of Whisper. Compare TokScript's published mechanism without assuming access to its proprietary implementation. See docs/DUAL_TRANSCRIPTION_RESEARCH.md; 10 offline pipeline tests passed.
 - PEN-003 [planned] Benchmark Danish/English recognition on 1, 5 and 30 minute rights-cleared clips with verified reference transcripts.
 - PEN-004 [planned] Validate Sites owner-only authentication, synchronized history, 50-entry cap and deletion.
 - PEN-005 [partial] Provider policy/rights, privacy, retention and data processing assessment.
