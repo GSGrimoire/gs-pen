@@ -20,7 +20,7 @@ TIKTOK_EXAMPLE = "https://www.tiktok.com/@scrubdaddy/video/7538539956029902111"
 YOUTUBE_EXAMPLE_ID = "jNQXAC9IVRw"
 # Require a known social platform's caption asset host before fetching URLs
 # embedded in page content. Additional hosts require separate code review.
-TRACK_SUFFIXES = ("tiktokcdn.com", "tiktok.com", "tiktokv.com", "byteoversea.com", "ibytedtos.com")
+TRACK_SUFFIXES = ("tiktokcdn.com", "tiktokcdn-us.com", "tiktok.com", "tiktokv.com", "byteoversea.com", "ibytedtos.com")
 
 
 def is_approved_track_url(url):
