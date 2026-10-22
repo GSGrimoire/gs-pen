@@ -1,29 +1,29 @@
 # GS Pen backlog
-Status: feasibility only. No transcription pipeline or deployment is implemented.
+Status: feasibility only; no completed social-video transcription or deployed Site.
 
 ## Priority 0: validation gates
-- PEN-001 [in progress] Select hosting. Verify owner-only access, site deployment path, quotas and cost.
-- PEN-002 [blocked: permitted retrieval] Investigate rights-cleared audiovisual access for YouTube, TikTok, Instagram Reels and Facebook videos/Reels. Test 10 representative videos per platform on two dates. Record origin, permitted method, metadata, captions and playable audio independently. Do not use cookies, account harvesting or circumvention.
-- PEN-003 [planned] Measure real Danish and English local recognition. Compare with manually verified references and record duration, memory, accuracy and processing time on 1, 5 and 30 minute media.
-- PEN-004 [planned] Prove owner-only Site authentication and storage, 50-entry limit, account isolation and deletion.
-- PEN-005 [planned] Review privacy, retention, permissions and platform terms. No personal audio committed.
-- PEN-006 [planned] Sign off go / revised scope / stop only after PEN-001 through PEN-005.
+- PEN-001 [research complete; runtime validation pending] Host on owner-private ChatGPT Sites if available. Static GitHub Pages alone is not acceptable for private access. Confirm deployed access, storage, quotas and cost.
+- PEN-002 [research complete; audiovisual retrieval BLOCKED] Official APIs provide selected metadata/embed capabilities, not a verified general audio path for arbitrary public URLs. See docs/PLATFORM_ACCESS_RESEARCH.md. Need rights-cleared live samples and possibly a user-approved workflow change.
+- PEN-003 [planned] Benchmark Danish/English recognition on 1, 5 and 30 minute rights-cleared clips with verified reference transcripts.
+- PEN-004 [planned] Validate Sites owner-only authentication, synchronized history, 50-entry cap and deletion.
+- PEN-005 [partial] Provider policy/rights, privacy, retention and data processing assessment.
+- PEN-006 [blocked] Go / changed scope / stop decision once audiovisual input feasibility is resolved.
 
-## Priority 1: implementation after release gate
-- PEN-100 Owner-private Site, strict URL handling and truthful failure states
-- PEN-101 Provider adapters with typed metadata and caption provenance
-- PEN-102 Browser worker transcription in Danish and English
-- PEN-103 Four independent result tabs and transcript exports
-- PEN-104 Local cache plus account-scoped synchronized history, maximum 50
-- PEN-105 Security, accessibility, real-platform regression, release receipt
+## Priority 1: implementation after gates
+- PEN-100 Private Site, link input and truthful failure states
+- PEN-101 Provider metadata and subtitles adapters with clearly labeled provenance
+- PEN-102 Independent browser-worker Danish/English speech transcription
+- PEN-103 Four output tabs and text/structured exports
+- PEN-104 IndexedDB cache plus owner-only 50-item synchronized history
+- PEN-105 Integration tests, security and accessibility review, verified deployment receipt
 
-## Future features
-- PEN-200 Verified GS Scribe benchmark exports and opt-in manually corrected reference corpus
-- PEN-201 Comparison of models, processing time, Danish technical vocabulary and word-error rates
-- PEN-210 Explicit-consent GS VoiceStudio audio clip exports and optional voice reference research
+## Priority 2: future proposals
+- PEN-200 Manually verified GS Scribe reference transcripts and export-only benchmark format
+- PEN-201 GS Scribe model comparisons, word error rates and terminology evaluations
+- PEN-210 Rights-cleared voice snippets for GS VoiceStudio with explicit speaker consent
 - PEN-220 On-screen text extraction
-- PEN-221 Search, highlighting, summaries and translation
-- PEN-222 Timed captions and batch processing
-- PEN-223 Browser extension only after compliance review
+- PEN-221 Translation, summaries and search
+- PEN-222 Timed subtitles and batch jobs
+- PEN-223 Optional browser extension for consent-based tab audio capture, only if user agrees to interaction change
 
-No implementation claims are allowed without tests and a recorded receipt. Public video access does not imply voice-cloning consent.
+All functionality must pass real-data acceptance tests before being marked complete. Never commit personal media, tokens, cookies or private transcripts.
