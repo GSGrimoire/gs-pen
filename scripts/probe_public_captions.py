@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 LIMIT_HTML = 2_000_000
 LIMIT_CAPTION = 256_000
 TIKTOK_EXAMPLE = "https://www.tiktok.com/@scrubdaddy/video/7538539956029902111"
+TIKTOK_SECOND_EXAMPLE = "https://www.tiktok.com/@hankgreen1/video/7047596209028074758"
 YOUTUBE_EXAMPLE_ID = "jNQXAC9IVRw"
 # Require a known social platform's caption asset host before fetching URLs
 # embedded in page content. Additional hosts require separate code review.
@@ -88,9 +89,9 @@ def get_small_public_resource(url, limit, accept):
         return data, None
 
 
-def probe_tiktok():
+def probe_tiktok(video_url=TIKTOK_EXAMPLE):
     try:
-        page, error = get_small_public_resource(TIKTOK_EXAMPLE, LIMIT_HTML, "text/html")
+        page, error = get_small_public_resource(video_url, LIMIT_HTML, "text/html")
         if error:
             return {"status": "blocked_or_error", "reason": error}
         if b"__UNIVERSAL_DATA_FOR_REHYDRATION__" not in page:
@@ -137,6 +138,7 @@ def run():
         "probe": "single-public-video-caption-track-per-provider",
         "youtube": probe_youtube(),
         "tiktok": probe_tiktok(),
+        "tiktok_second_public_video": probe_tiktok(TIKTOK_SECOND_EXAMPLE),
         "instagram": {"status": "no_verified_caption_endpoint", "track_verified": False},
         "facebook": {"status": "no_verified_caption_endpoint", "track_verified": False}
     }
