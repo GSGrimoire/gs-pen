@@ -21,7 +21,7 @@ Run caption retrieval, audio acquisition/Whisper, and post metadata acquisition 
 ## Offline validation prototype
 `src/dual-transcript.mjs` accepts injected caption, audio, independent transcription and post-data adapters. It makes no network requests, and includes no extractor or model inference. It starts independent tasks concurrently, labels provenance, and exposes partial success or failure. Synthetic tests cover successes, missing audio, missing captions, independent errors, emptiness, post-data separation, concurrency and adapter validation.
 
-Executed with Node.js test runner: 9/9 offline synthetic tests passed. This demonstrates orchestration and status behavior ONLY.
+Executed with Node.js test runner: 10/10 offline synthetic tests passed. This demonstrates orchestration and status behavior ONLY.
 
 ## Still unverified
 A practical, terms-compliant method of obtaining existing transcript tracks from arbitrary public TikTok, Instagram, YouTube and Facebook URLs; independent audio retrieval; actual Whisper model processing and access permissions. We must not assume that because TokScript offers this behavior, all platform captions are available via a public documented interface.
