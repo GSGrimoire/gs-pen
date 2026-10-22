@@ -17,3 +17,12 @@ Validate rights-cleared access to existing platform transcripts independently of
 
 ## Review and deployment
 Both merges were self-reviewed and locally tested, not independently approved. Future authentication, media retrieval and storage integrations warrant independent security review. No website has been published; deployment record remains empty.
+
+
+## 22 October 2026 caption access breakthrough
+On branch `chatgpt/pen-002b-live-caption-probes`, GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/39855712437 confirmed a TikTok WebVTT caption track with **15 timed cues** for the public @scrubdaddy video `7538539956029902111`. The workflow printed only status and counts, not captions. YouTube `jNQXAC9IVRw` returned `RequestBlocked`; no Instagram or Facebook samples were used. See docs/LIVE_CAPTION_RESULTS.md. This supersedes the earlier blanket description of all platform caption access as unverified: *one TikTok sample is now verified*, but platform-wide access and production permissions remain unproven. No browser Site or independent Whisper audio processing has been tested.
+
+Next: repeat on multiple rights-cleared TikTok videos, verify cross-origin behavior in the actual browser environment, and investigate the other three platforms without circumvention.
+
+## Second live TikTok caption example (22 October 2026)
+GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/39856616103 confirms two public TikTok captions: Scrub Daddy (15 WebVTT cues) and Hank Green (12 WebVTT cues). YouTube remains RequestBlocked from cloud runner, while Instagram and Facebook have no verified caption path. Research branch now requires both live TikTok samples to pass. This is not a multi-day reliability assessment, permission signoff, deployed app, or production-compatible browser demonstration.
