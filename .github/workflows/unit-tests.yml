@@ -1,0 +1,22 @@
+name: GS Pen unit tests
+on:
+  pull_request:
+    paths:
+      - 'src/**'
+      - 'tests/*.test.mjs'
+      - 'package.json'
+      - '.github/workflows/unit-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Run offline JavaScript unit tests
+        run: npm test
