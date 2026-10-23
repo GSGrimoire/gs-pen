@@ -29,3 +29,10 @@ GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/39856616103
 
 ## Merged caption live-test milestone
 PR #4 merged to main at `4605f20338e79be85802086a63c690e41a9e51ea` on 22 October 2026. Final required-live-tests run: https://github.com/GSGrimoire/gs-pen/actions/runs/39856854166 . It passed 39 JavaScript and 4 Python offline tests and retrieved 15 WebVTT cues from the Scrub Daddy TikTok and 12 from the Hank Green TikTok. YouTube from cloud runner returned `RequestBlocked`. Facebook/Instagram remain untested. No production Site has been deployed. Continue with multi-day/multi-video access sampling, platform permissions, and private browser cross-origin proof before proceeding to product build.
+
+## Architecture decision for diagnostic Test Lab, 23 October 2026
+Plan approved for research (not deployed): choose a private ChatGPT Site for the frontend, owner-only test data and diagnostics if runtime capabilities verify. Use GitHub for versioning and scheduled research tests, not interactive jobs. Start with narrow server-side caption retrieval and browser-side future Whisper. If Site outbound caption requests prove unavailable, investigate a separate small permissioned retrieval service. See docs/ARCHITECTURE_DECISION.md.
+
+Branch chatgpt/pen-007-diagnostics-plan adds diagnostic event sanitization code and tests, test-site runbook and a private-data minimization design. No Site, backend logging endpoint, persistent database or actual server-side caption adapter exists yet. The test Site must never claim these have passed before live verification.
+
+Next task: review/test/merge the plan and sanitizer; open Work -> Sites to create a private Test Lab from this repository design, explicitly validate browser and backend access, deploy only after owner-audience and storage tests are complete, record evidence in docs/DEPLOYMENT.md.
