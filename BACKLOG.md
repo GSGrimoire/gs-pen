@@ -16,6 +16,7 @@ Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 - PEN-007A [local proof complete] Strict v2 diagnostic allowlist including domain and video type, sanitization tests, local browser and loopback backend diagnostics storage with 30-day read/write expiry.
 - PEN-007B [not started] Owner-only Sites preview, authenticated backend port, Site database storage, authentication/retention test, real Site caption access and deployment receipt.
 - PEN-007C [planned] Human visual and accessibility pass; browser/network telemetry verification.
+- PEN-007D [prepared, actual Codespaces run pending] Temporary owner-private GitHub Codespaces preview with private port 4173 and ephemeral development access key. Docs: docs/CODESPACES_TEST.md. No Codespace provisioned yet.
 - PEN-100 [pending] Private Site production readiness, release labels and error safety.
 
 ## Priority 2: actual product and future GS features
