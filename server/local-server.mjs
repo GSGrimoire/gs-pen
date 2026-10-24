@@ -16,10 +16,10 @@ const CODE_DOMAIN=process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN||"app.git
 const CODE_PORT=Number(process.env.PORT||4173);
 const CODESPACE_HOST=CODESPACE_MODE && /^[a-z0-9-]+$/i.test(CODE_NAME) ? (CODE_NAME+"-"+CODE_PORT+"."+CODE_DOMAIN) : null;
 const DEVELOPMENT_KEY=CODESPACE_MODE ? randomBytes(24).toString("hex") : null;
-function authorizedKey(value) {
-  if(!DEVELOPMENT_KEY) return true;
+function authorizedKey(value,expected=DEVELOPMENT_KEY) {
+  if(!expected) return true;
   if(typeof value!=="string" || !/^[a-f0-9]{48}$/.test(value))return false;
-  return timingSafeEqual(Buffer.from(value),Buffer.from(DEVELOPMENT_KEY));
+  return timingSafeEqual(Buffer.from(value),Buffer.from(expected));
 }
 const files=new Map([
   ["/","dist/index.html"],["/index.html","dist/index.html"],
@@ -62,7 +62,7 @@ async function readJson(req){
   return JSON.parse(Buffer.concat(chunks).toString("utf8"));
 }
 let windowStart=now(), used=0;
-export function createLocalTestServer(){
+export function createLocalTestServer({developmentKey=DEVELOPMENT_KEY}={}){
   return createServer(async(req,res)=>{
     // Loopback binding is intentional, not a general security system.
     const remote=req.socket.remoteAddress;
@@ -76,9 +76,9 @@ export function createLocalTestServer(){
     if(origin && origin!==((trustedForward?"https://":"http://")+host)){reply(res,403,{code:"AUTH_DENIED"});return;}
     const route=new URL(req.url||"/","http://"+host).pathname;
     if(req.method==="GET" && route==="/api/health"){
-      reply(res,200,{build:"testlab_v1",backend:CODESPACE_MODE?"codespaces_private":"local_only",ownerAuth:CODESPACE_MODE?"github_private_forward_plus_development_key":"not_available",authRequired:!!DEVELOPMENT_KEY,diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false});return;
+      reply(res,200,{build:"testlab_v1",backend:CODESPACE_MODE?"codespaces_private":"local_only",ownerAuth:CODESPACE_MODE?"github_private_forward_plus_development_key":"not_available",authRequired:!!developmentKey,diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false});return;
     }
-    if(route.startsWith("/api/") && !authorizedKey(req.headers["x-gs-pen-dev-key"])) {reply(res,401,{code:"AUTH_DENIED"});return;}
+    if(route.startsWith("/api/") && !authorizedKey(req.headers["x-gs-pen-dev-key"],developmentKey)) {reply(res,401,{code:"AUTH_DENIED"});return;}
     if(req.method==="GET" && route==="/api/diagnostics"){
       try {await queue;reply(res,200,{events:await getEvents(),retentionDays:DAYS,storage:"local_file"});}
       catch {reply(res,503,{code:"STORAGE_FAILED"});}
