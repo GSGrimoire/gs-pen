@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>GS Pen | Test Lab</title><meta name="description" content="Owner-only development interface for researching native video captions.">
+<link rel="stylesheet" href="./styles.css"></head>
+<body>
+<div class="shell">
+  <aside class="rail">
+    <div class="logo"><div class="mark">GS</div><div><strong>GS Pen</strong><small>Test Lab · v0.1</small></div></div>
+    <div class="rail-section">WORKSPACE</div>
+    <a class="nav active" href="#workspace"><span class="dot"></span>Caption research</a>
+    <a class="nav" href="#diagnostics"><span class="dot"></span>Diagnostics</a>
+    <a class="nav" href="#about"><span class="dot"></span>About this build</a>
+    <div class="rail-spacer"></div>
+    <div class="rail-note"><span class="status-dot"></span><strong>Research prototype</strong><p>Local development backend only. Public access is not enabled.</p></div>
+    <div class="foot-note">Private repository · No third-party transcription</div>
+  </aside>
+  <main>
+    <header class="top"><div><span class="eyebrow">GS SUITE / EXPERIMENTAL TOOLS</span><h1>Native captions laboratory</h1><p>Test platform subtitle availability, inspect retrieval stages and collect detailed, depersonalized diagnostics.</p></div><div class="top-right"><span class="pill" id="backend-badge">Checking backend</span><span class="pill muted">Whisper not enabled</span></div></header>
+
+    <section id="workspace" class="work-grid">
+      <div class="primary">
+        <section class="panel input-panel">
+          <div class="panel-head"><div><h2>Video source</h2><p>Paste a public social video URL. Video and creator identifiers are never saved in diagnostic records.</p></div><span class="step">01 / INPUT</span></div>
+          <form id="probe-form">
+            <label for="video-url">Public video URL</label>
+            <div class="input-row"><input id="video-url" name="videoUrl" type="url" inputmode="url" placeholder="https://www.tiktok.com/@creator/video/..." autocomplete="off" spellcheck="false" required maxlength="2048"><button type="submit" id="probe-button">Inspect captions <span aria-hidden="true">→</span></button></div>
+            <div class="hints"><span id="source-summary">Supported: TikTok, YouTube, Instagram, Facebook</span><span>One video per request</span></div>
+          </form>
+          <div class="examples"><span>Known research examples</span><button type="button" data-example="https://www.tiktok.com/@scrubdaddy/video/7538539956029902111">Scrub Daddy</button><button type="button" data-example="https://www.tiktok.com/@hankgreen1/video/7047596209028074758">Hank Green</button></div>
+          <div class="notice"><span class="notice-icon">i</span><div><strong>Current capability</strong><p>The local research backend can attempt native TikTok caption extraction. YouTube, Instagram and Facebook remain diagnostic-only. The browser-only Site version cannot retrieve server-side tracks until its backend has been connected and verified.</p></div></div>
+        </section>
+        <section class="panel results-panel">
+          <div class="panel-head"><div><h2>Extracted information</h2><p>Each output retains its original source and availability state.</p></div><span class="step">02 / RESULTS</span></div>
+          <div class="tabs" role="tablist" aria-label="Output type">
+            <button class="tab selected" type="button" role="tab" aria-selected="true" aria-controls="tab-panel" data-tab="captions">Original captions</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="tab-panel" data-tab="whisper">Whisper transcript</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="tab-panel" data-tab="post">Post text</button>
+            <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="tab-panel" data-tab="metadata">Metadata</button>
+          </div>
+          <div id="tab-panel" role="tabpanel" aria-live="polite"><div class="empty"><span class="empty-icon">▤</span><h3>No caption request yet</h3><p>Use a public TikTok video URL to try the first extraction. Results are only displayed in this tab; they are not included in diagnostics.</p></div></div>
+        </section>
+      </div>
+      <div class="secondary">
+        <section class="panel">
+          <div class="panel-head"><div><h2>Live inspection</h2><p>Sanitized stage timeline</p></div><span class="step">03 / TRACE</span></div>
+          <div class="trace-meta"><div><span>Current trace</span><strong id="trace-id">Not started</strong></div><div><span>Result</span><strong id="trace-status">Idle</strong></div></div>
+          <div id="timeline" class="timeline"><div class="timeline-empty">A new request will show validation, page retrieval, caption discovery, file access and parsing here.</div></div>
+        </section>
+        <section class="panel detail-panel"><div class="panel-head"><div><h2>Diagnostic details</h2><p>Context that helps distinguish systematic failures</p></div></div><dl id="context-details" class="detail-list"><dt>Source domain</dt><dd>Unknown</dd><dt>Link type</dt><dd>Unknown</dd><dt>Transport</dt><dd>Not connected</dd></dl></section>
+      </div>
+    </section>
+
+    <section id="diagnostics" class="panel diagnostics-panel">
+      <div class="panel-head"><div><h2>Diagnostic events</h2><p>Depersonalized records only. Local browser records expire after 30 days; central storage must be explicitly connected and verified.</p></div><div class="actions"><button class="outline" type="button" id="refresh-diagnostics">Refresh</button><button class="outline" type="button" id="export-diagnostics">Export JSON</button><button class="outline danger" type="button" id="clear-diagnostics">Clear logs</button></div></div>
+      <div class="stats"><div><span>Local events</span><strong id="local-event-count">0</strong></div><div><span>Backend events</span><strong id="server-event-count">—</strong></div><div><span>Backend storage</span><strong id="storage-indicator">Checking</strong></div></div>
+      <div class="filters"><label for="filter-platform">Platform <select id="filter-platform"><option value="all">All platforms</option><option value="tiktok">TikTok</option><option value="youtube">YouTube</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option></select></label><label for="filter-status">Status <select id="filter-status"><option value="all">All states</option><option value="failed">Failed</option><option value="unavailable">Unavailable</option><option value="succeeded">Succeeded</option><option value="started">Started</option></select></label></div>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Source</th><th>Stage</th><th>Status</th><th>Code</th><th>Technical context</th><th>Time</th></tr></thead><tbody id="diagnostic-rows"><tr><td colspan="7" class="no-rows">No events recorded.</td></tr></tbody></table></div>
+      <p class="privacy-note"><strong>Not collected:</strong> video IDs, full video or caption URLs, creator names, speech, transcript text, cookies, tokens, raw exception messages, exact IP addresses or full browser user-agent strings.</p>
+    </section>
+    <section id="about" class="about"><strong>About this build</strong><p>Experimental native-caption research. The Test Lab is not a general transcriber. Provider access can fail, and a successful caption request does not establish broad platform support or permission for other uses. A private ChatGPT Site and centralized Site database have not been deployed yet.</p></section>
+  </main>
+</div>
+<script type="module" src="./app.mjs"></script>
+</body></html>
