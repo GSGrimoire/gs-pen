@@ -11,6 +11,10 @@ Updated 24 October 2026. The **code is built and tested**, but a private ChatGPT
 - `scripts/build-site.mjs`: copies static assets and shared source modules into self-contained `dist/`.
 - `.local/diagnostics.json`: local-only 30-day sanitized diagnostic store ignored by Git.
 
+## GitHub Codespaces preview
+
+GitHub Codespaces provides an optional owner-only **temporary interactive test machine**; unlike GitHub Actions, it can forward the development server through a private GitHub-authenticated port. The Codespaces configuration is committed in `.devcontainer/devcontainer.json`. The server uses an ephemeral 48-character access key displayed only in the Codespaces terminal to authorize caption and diagnostic operations. See `docs/CODESPACES_TEST.md`. This mode is not long-lived hosting, does not create a Site, and has not been exercised in an actual Codespace yet.
+
 ## Run on a computer with Node.js 22 or newer
 
 ```bash
