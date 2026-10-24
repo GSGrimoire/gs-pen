@@ -16,7 +16,10 @@
   </aside>
   <main>
     <header class="top"><div><span class="eyebrow">GS SUITE / EXPERIMENTAL TOOLS</span><h1>Native captions laboratory</h1><p>Test platform subtitle availability, inspect retrieval stages and collect detailed, depersonalized diagnostics.</p></div><div class="top-right"><span class="pill" id="backend-badge">Checking backend</span><span class="pill muted">Whisper not enabled</span></div></header>
-
+<section id="dev-access" class="panel access-panel" hidden>
+      <div><strong>Unlock private research backend</strong><p>GitHub Codespaces forwards this test port privately. The backend also requires the temporary development key displayed in the Codespaces terminal after <code>npm start</code>.</p></div>
+      <div class="access-form"><label for="dev-key">Development key</label><input type="password" id="dev-key" autocomplete="off" placeholder="Paste the 48-character development key"><button type="button" id="connect-backend">Connect backend</button><span id="dev-key-status" role="status"></span></div>
+    </section>
     <section id="workspace" class="work-grid">
       <div class="primary">
         <section class="panel input-panel">
