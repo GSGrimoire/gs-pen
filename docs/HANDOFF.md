@@ -24,6 +24,10 @@ Collect maximum useful structured **non-identifying** technical metadata: allowl
 ## Security / review rule
 PR #7 includes local request handling and diagnostic storage and should receive independent security review before merger into main or adaptation to a real private Site. This conversation cannot independently approve its own work. The local Node server listens only on 127.0.0.1 and is **not** a remotely deployable API.
 
+## Optional remote test without a home server
+
+A private GitHub Codespaces development configuration and additional per-start development access key are now included in PR #7. Live endpoint access requires the private Codespaces port and this key; local mode remains loopback-only. Security checks include a unit test for unauthorized log read/caption requests. **A Codespace has not been provisioned or tested for port forwarding**. See docs/CODESPACES_TEST.md. Final unit run: 57/57 passing after auth-key changes on 24 October 2026.
+
 ## Next implementation sequence
 1. Review PR #7 security and Test Lab tests.
 2. In ChatGPT Work/Sites, create **GS Pen Test Lab** from this repo as a *private preview*, keeping `dist/` static frontend; do not expose `server/local-server.mjs` to the internet.
