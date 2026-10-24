@@ -1,5 +1,6 @@
 // GS Pen local-only Test Lab backend. NOT remotely deployable authentication.
 import {createServer} from "node:http";
+import {randomBytes,timingSafeEqual} from "node:crypto";
 import {readFile,writeFile,mkdir,rename} from "node:fs/promises";
 import {fileURLToPath,pathToFileURL} from "node:url";
 import path from "node:path";
@@ -9,6 +10,17 @@ import {retrievePublicCaptions} from "./caption.mjs";
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const STORE=path.join(ROOT,".local","diagnostics.json");
 const MAX_EVENTS=2500, DAYS=30;
+const CODESPACE_MODE=process.env.CODESPACES==="true" || process.env.CODESPACES==="1";
+const CODE_NAME=process.env.CODESPACE_NAME||"";
+const CODE_DOMAIN=process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN||"app.github.dev";
+const CODE_PORT=Number(process.env.PORT||4173);
+const CODESPACE_HOST=CODESPACE_MODE && /^[a-z0-9-]+$/i.test(CODE_NAME) ? (CODE_NAME+"-"+CODE_PORT+"."+CODE_DOMAIN) : null;
+const DEVELOPMENT_KEY=CODESPACE_MODE ? randomBytes(24).toString("hex") : null;
+function authorizedKey(value) {
+  if(!DEVELOPMENT_KEY) return true;
+  if(typeof value!=="string" || !/^[a-f0-9]{48}$/.test(value))return false;
+  return timingSafeEqual(Buffer.from(value),Buffer.from(DEVELOPMENT_KEY));
+}
 const files=new Map([
   ["/","dist/index.html"],["/index.html","dist/index.html"],
   ["/app.mjs","dist/app.mjs"],["/styles.css","dist/styles.css"],
@@ -55,15 +67,18 @@ export function createLocalTestServer(){
     // Loopback binding is intentional, not a general security system.
     const remote=req.socket.remoteAddress;
     const host=req.headers.host||"";
-    if(!["127.0.0.1","::1","::ffff:127.0.0.1"].includes(remote) || !/^((127\.0\.0\.1)|(localhost)):\d{2,5}$/.test(host)){
+    const localHost=/^((127\.0\.0\.1)|(localhost)):\d{2,5}$/.test(host);
+    const trustedForward=!!CODESPACE_HOST && host===CODESPACE_HOST;
+    if(!["127.0.0.1","::1","::ffff:127.0.0.1"].includes(remote) || !(localHost||trustedForward)){
       reply(res,403,{code:"AUTH_DENIED"});return;
     }
     const origin=req.headers.origin;
-    if(origin && origin!==("http://"+host)){reply(res,403,{code:"AUTH_DENIED"});return;}
+    if(origin && origin!==((trustedForward?"https://":"http://")+host)){reply(res,403,{code:"AUTH_DENIED"});return;}
     const route=new URL(req.url||"/","http://"+host).pathname;
     if(req.method==="GET" && route==="/api/health"){
-      reply(res,200,{build:"testlab_v1",backend:"local_only",ownerAuth:"not_available",diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false});return;
+      reply(res,200,{build:"testlab_v1",backend:CODESPACE_MODE?"codespaces_private":"local_only",ownerAuth:CODESPACE_MODE?"github_private_forward_plus_development_key":"not_available",authRequired:!!DEVELOPMENT_KEY,diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false});return;
     }
+    if(route.startsWith("/api/") && !authorizedKey(req.headers["x-gs-pen-dev-key"])) {reply(res,401,{code:"AUTH_DENIED"});return;}
     if(req.method==="GET" && route==="/api/diagnostics"){
       try {await queue;reply(res,200,{events:await getEvents(),retentionDays:DAYS,storage:"local_file"});}
       catch {reply(res,503,{code:"STORAGE_FAILED"});}
@@ -105,5 +120,8 @@ export function createLocalTestServer(){
 }
 if(process.argv[1] && import.meta.url===pathToFileURL(path.resolve(process.argv[1])).href){
   const port=Number(process.env.PORT||4173);
-  createLocalTestServer().listen(port,"127.0.0.1",()=>process.stdout.write("GS Pen local Test Lab at http://127.0.0.1:"+port+"\n"));
+  createLocalTestServer().listen(port,"127.0.0.1",()=>{
+    process.stdout.write("GS Pen local Test Lab at http://127.0.0.1:"+port+"\n");
+    if(CODESPACE_MODE)process.stdout.write("Codespaces development access key (paste into Test Lab): "+DEVELOPMENT_KEY+"\n");
+  });
 }
