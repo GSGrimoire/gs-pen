@@ -1,21 +1,43 @@
 # GS Pen
 
-Private social-video transcription research project for GS Suite.
+**Status: a functioning local Test Lab exists on the `chatgpt/pen-007-diagnostics-plan` branch. No private ChatGPT Site has been deployed.**
 
-**Status:** Feasibility validation only. No platform has been verified, no transcription is implemented, and no website is deployed.
+GS Pen researches public-video caption retrieval for GS Suite. It keeps original platform captions separate from independently generated speech transcriptions. The first experimental native-caption adapter supports canonical public TikTok links in a **loopback-only development server**. Other platform adapters and Whisper speech recognition are not implemented in the Test Lab.
 
-**Target:** Public Facebook videos and Reels, TikTok videos, Instagram Reels, YouTube videos and Shorts; Danish and English; generated speech transcript independent from platform captions; post text and metadata in separate tabs; owner-private access; a maximum of 50 saved results; exports suitable for later GS Scribe benchmarking.
+## Start the private-computer test
 
-A public video's visibility does not confer permission to download or process it. GS Pen must use documented, authorized retrieval paths. No credentials, cookie collection, proxy evasion, or third-party paid transcription services.
+Requires Node.js 22 or newer.
 
-## Current milestone
+```bash
+npm run check
+npm start
+```
 
-Validate hosting, allowed video retrieval, local recognition performance, and owner-private storage before promising a finished tool. The prototype interface, if present, is not a functioning transcriber. The full requirements and future-feature ideas are tracked in `docs/SPEC.md`, `docs/FEASIBILITY.md`, and `BACKLOG.md`.
+Open `http://127.0.0.1:4173` on that computer. This research server only listens to the local computer and must **not** be exposed on the internet. Existing public TikTok caption retrieval requires a working network connection and may fail as TikTok changes access or imposes restrictions.
 
-## Hosting
+## What's implemented
 
-Source code is stored in this private GitHub repository. GitHub Pages is not the owner-login solution. ChatGPT Sites is the preferred prospective owner-private host, but provisioning and deployment must be performed using the Sites workflow and recorded in `docs/DEPLOYMENT.md`. A GitHub commit by itself does not publish the website.
+- Self-contained responsive Site frontend in `dist/`, generated from `web/` with `npm run build`.
+- Four output tabs, caption extraction results, trace timeline, video URL format recognition, explicit unavailable states for other providers and Whisper.
+- Local bounded caption-page and WebVTT retrieval with no redirects, credential bypass, paid transcription service or audiovisual media download.
+- Automatic depersonalized diagnostics: allowlisted source domain, video-link category, coarse CDN family, request stage, HTTP status, processing time, response-size bucket, cue count, coarse browser/device category and error classification.
+- Automatic browser-local history of sanitized diagnostic events and loopback-server JSON diagnostic persistence with filtering, export and clear. 30-day expiry on read/write. No caption or transcript text in diagnostic storage.
+- Automated unit tests and a separate non-content-logging live caption research workflow.
 
-## Security
+## Verified
 
-Never commit audio, transcriptions, personal data, tokens, social account cookies, model weights, or private evaluation fixtures. Do not turn on public hosting or social-media access until security and policy gates pass.
+The Node.js live GitHub Actions check on 24 October 2026 retrieved 15 WebVTT cues from one public TikTok video and 12 from a second, separately. These are two samples, not evidence of platform-wide reliability or production authorization.
+
+## Not implemented or verified
+
+- No ChatGPT Site deployment or verified owner-only remote authentication and database.
+- No remotely hosted caption endpoint. The local server is **not safe to expose** beyond loopback.
+- No production-quality extraction for TikTok, and no working YouTube, Instagram or Facebook native-caption adapters.
+- No Whisper model transcription, metadata provider integration or synced transcript history.
+- No complete private Site security review or cross-origin runtime test.
+
+## Project documentation
+
+Read `docs/HANDOFF.md`, `BACKLOG.md`, `docs/ARCHITECTURE_DECISION.md`, `docs/DIAGNOSTICS.md`, and `docs/TEST_SITE_PLAN.md`.
+
+GitHub Actions is a testing environment, not a persistent server. ChatGPT Sites is the preferred eventual owner-private host; first verify private preview, a supported authenticated backend runtime and Site database. Do not publish the raw local Node server. Saving in GitHub is not deployment to Sites.
