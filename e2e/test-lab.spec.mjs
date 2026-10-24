@@ -130,3 +130,59 @@ test('mobile or desktop layout avoids page-level horizontal overflow', async ({ 
   }));
   expect(dimensions.documentWidth).toBeLessThanOrEqual(dimensions.visibleWidth + 2);
 });
+
+
+test('Codespaces mode requires a development key before diagnostic access', async ({ page }) => {
+  const secret = 'a'.repeat(48); // synthetic test credential, never a real secret
+  await page.route('**/api/health', route => route.fulfill({
+    contentType: 'application/json',
+    body: JSON.stringify({backend:'codespaces_private',authRequired:true,diagnosticStorage:'local_file'})
+  }));
+  await page.route('**/api/diagnostics', route => {
+    const authorized = route.request().headers()['x-gs-pen-dev-key'] === secret;
+    return route.fulfill({
+      status: authorized ? 200 : 401,
+      contentType: 'application/json',
+      body: JSON.stringify(authorized ? {events:[]} : {code:'AUTH_DENIED'})
+    });
+  });
+  await page.goto('/');
+  await expect(page.locator('#dev-access')).toBeVisible();
+  await expect(page.locator('#backend-badge')).toContainText('Development key required');
+  await page.locator('#dev-key').fill('b'.repeat(48));
+  await page.locator('#connect-backend').click();
+  await expect(page.locator('#dev-key-status')).toContainText('Invalid key');
+  await page.locator('#dev-key').fill(secret);
+  await page.locator('#connect-backend').click();
+  await expect(page.locator('#backend-badge')).toContainText('Private Codespaces probe connected');
+  await expect(page.locator('#dev-access')).toBeHidden();
+});
+
+test('automatically removes locally stored diagnostic records older than 30 days', async ({ page }) => {
+  await page.addInitScript(() => {
+    const event = timestamp => ({
+      schema:'gs-pen.diagnostic.v2',timestamp,traceId:'synthetic_123',
+      platform:'tiktok',stage:'finished',status:'succeeded',
+      code:'OK',source:'browser',build:'testlab_v1'
+    });
+    const old = new Date(Date.now() - 32*86400000).toISOString();
+    localStorage.setItem('gs-pen-testlab-diag-v2',JSON.stringify([event(old),event(new Date().toISOString())]));
+  });
+  await openConnected(page);
+  await expect(page.locator('#local-event-count')).toHaveText('1');
+});
+
+test('caption output treats HTML-like text as text and never executes it', async ({ page }) => {
+  const attack = '<img src=x onerror="window.__injected=true">';
+  await stubCaptionResult(page, traceId => ({
+    ok:true,status:'succeeded',code:'OK',captionTrackCount:1,
+    cues:[{start:'00:00:01.000',end:'00:00:02.000',text:attack}],
+    events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true
+  }));
+  await openConnected(page);
+  await page.locator('#video-url').fill(example);
+  await page.locator('#probe-button').click();
+  await expect(page.locator('#tab-panel')).toContainText(attack);
+  await expect(page.locator('#tab-panel img')).toHaveCount(0);
+  expect(await page.evaluate(() => window.__injected)).toBeUndefined();
+});
