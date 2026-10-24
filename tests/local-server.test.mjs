@@ -45,3 +45,19 @@ test("local Test Lab serves UI, rejects arbitrary content, persists only sanitiz
   const clear=await fetch(root+"/api/diagnostics",{method:"DELETE"});
   assert.equal(clear.status,200);
 });
+
+
+test("development access key protects all diagnostic reads and caption requests", async t => {
+  const key="a".repeat(48);
+  const server=createLocalTestServer({developmentKey:key});
+  await new Promise(resolve=>server.listen(0,"127.0.0.1",resolve));
+  t.after(()=>new Promise(resolve=>server.close(resolve)));
+  const root="http://127.0.0.1:"+server.address().port;
+  const health=await (await fetch(root+"/api/health")).json();
+  assert.equal(health.authRequired,true);
+  assert.equal((await fetch(root+"/api/diagnostics")).status,401);
+  assert.equal((await fetch(root+"/api/diagnostics",{headers:{"X-GS-Pen-Dev-Key":"b".repeat(48)}})).status,401);
+  assert.equal((await fetch(root+"/api/diagnostics",{headers:{"X-GS-Pen-Dev-Key":key}})).status,200);
+  const blocked=await fetch(root+"/api/captions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:"https://www.tiktok.com/@example/video/7538539956029902111",traceId:"short"})});
+  assert.equal(blocked.status,401);
+});
