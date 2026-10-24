@@ -1,3 +1,18 @@
+# PEN-010 current work: 24 October 2026
+
+Orange workspace and owner-private history replace the laboratory-first interface. Three destinations: Extract, Recent, Diagnostics. Native captions, post text, metadata and future Whisper remain separate. Source and provider limits unchanged.
+
+- Branch `chatgpt/pen-010-workspace-history`, stacked on pull request #9, issue #10. Keep unmerged pending independent review.
+- New schema migration `0001_mighty_captain_britain.sql` adds `extractions`, separate from diagnostic records. Rows are scoped by the trusted Sites user identifier. No client result-write endpoint. Successful and partial extractions auto-save, newest 50 per owner, expire after 30 days. History failure never blocks retrieval.
+- History contains canonical source links and extracted captions/post/metadata; tracking queries, raw provider pages, signed resource URLs, logs, cookies and credentials are not stored. Diagnostics continue to exclude output content.
+- Read/list/delete enforce owner authorization and row ownership. Individual permanent deletion has a confirmation dialog. Deleted content can remain in the currently open in-memory result until navigation/reload. Copy/export are explicit user actions.
+- Exports: current-tab copy, plain text and structured data. Provenance and platform-caption/Whisper separation preserved, including shortened Facebook preview warning.
+- Housekeeping deletes expired diagnostic and extraction rows; storage self-check verifies history write, isolation, delete and expiry with isolated disposable fixture rows.
+- Unit verification currently 80 passing. Browser acceptance tests cover navigation, searching, reopening, deletion confirmation, export provenance, failed saves and mobile overflow. Hosted/automation results go in docs/DEPLOYMENT.md.
+- Self-review only. New database migration, owner isolation and retention require independent review before merge. No changes to other GS projects.
+
+---
+
 # Current handoff: PEN-009 (24 October 2026)
 
 The historical handoff below predates the private Sites deployment and is superseded by this section.

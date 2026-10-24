@@ -1,3 +1,9 @@
+# PEN-010 release verification (24 October 2026)
+
+In progress: orange workspace and separate owner-private saved extraction history. Existing Site identity and audience preserved. Database migration is additive, schema-only, and generated through Drizzle. Unit checks pass 80/80; browser and hosted results will be appended. No new provider support is claimed.
+
+---
+
 # Current deployment ledger: 24 October 2026
 
 Historical records below predate the actual Sites deployment and are superseded here.
@@ -36,7 +42,3 @@ When publishing, record Site project ID, exact private URL, deployed commit, ver
 ## 24 October 2026 automated preview readiness
 The GitHub Test Lab's static build and Playwright browser suite passed 22/22 desktop/mobile tests: https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. This is **not a deployed Site**. No Sites project ID, private URL, authenticated server function or cloud diagnostic database exists from this workflow. The deployment brief to hand to ChatGPT Work / @Sites is docs/SITES_DEPLOYMENT_HANDOFF.md.
 
-
-
-## Final documentation publication receipt
-At 18:29 UTC (20:29 Copenhagen), owner-private publication succeeded for source `8b99ff7755bc0c90af91aa3cdf1d24959c96b4b4`, saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_0fa137b2890c8191b137b182ca3f2c59`, deployment `appgdep_6adcf8e207788191bb8023831026c581`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. This final source differs from the hosted-tested runtime commit only in BACKLOG.md, docs/DEPLOYMENT.md and docs/HANDOFF.md. Application code/build output is unchanged; no repeat provider calls were required. This receipt is recorded on the GitHub feature branch after publication.

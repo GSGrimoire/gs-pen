@@ -25,7 +25,7 @@ const files=new Map([
   ["/","local-dist/index.html"],["/index.html","local-dist/index.html"],
   ["/app.mjs","local-dist/app.mjs"],["/styles.css","local-dist/styles.css"],
   ["/modules/url-classifier.mjs","local-dist/modules/url-classifier.mjs"],
-  ["/modules/diagnostics.mjs","local-dist/modules/diagnostics.mjs"]
+  ["/modules/diagnostics.mjs","local-dist/modules/diagnostics.mjs"],["/modules/extraction-export.mjs","local-dist/modules/extraction-export.mjs"]
 ]);
 let queue=Promise.resolve();
 const now=()=>Date.now();

@@ -1,6 +1,7 @@
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
-export const BUILD = 'testlab_v01_sites_2';
+import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
+export const BUILD = 'workspace_v02_sites_1';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -48,16 +49,29 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
   if(path==='/api/retention' && request.method==='POST') {
     if(request.headers.get('oai-authenticated-user-id') && !ownerAuthorized(request,env))return json({code:'AUTH_DENIED'},403);
     if(request.headers.get('origin') && request.headers.get('origin')!==new URL(request.url).origin)return json({code:'AUTH_DENIED'},403);
-    try{await expireEvents(env.DB,now);return json({expiredDeleted:true,retentionDays:30});}catch{return json({code:'STORAGE_FAILED'},503);}
+    try{await expireEvents(env.DB,now);await expireHistory(env.DB,now);return json({expiredDeleted:true,retentionDays:30});}catch{return json({code:'STORAGE_FAILED'},503);}
   }
   if(!ownerAuthorized(request,env))return json({code:'AUTH_DENIED'},403);
   if(!['GET','POST','DELETE'].includes(request.method))return json({code:'NOT_IMPLEMENTED'},405);
   const origin=request.headers.get('origin');
   if(request.method!=='GET' && ((origin && origin!==new URL(request.url).origin) || request.headers.get('sec-fetch-site')==='cross-site'))return json({code:'AUTH_DENIED'},403);
   try {
+    const ownerId=request.headers.get('oai-authenticated-user-id');
+    if(path==='/api/history' && request.method==='GET')return json({items:await listExtractions(env.DB,ownerId,now),retentionDays:30,limit:50});
+    if(path.startsWith('/api/history/')){
+      const id=path.slice('/api/history/'.length);
+      if(!UUID.test(id))return json({code:'NOT_FOUND'},404);
+      if(request.method==='GET'){
+        const item=await readExtraction(env.DB,ownerId,id,now);
+        return item?json({item}):json({code:'NOT_FOUND'},404);
+      }
+      if(request.method==='DELETE')return await deleteExtraction(env.DB,ownerId,id)?json({deleted:true}):json({code:'NOT_FOUND'},404);
+      return json({code:'NOT_IMPLEMENTED'},405);
+    }
     if(path==='/api/health' && request.method==='GET') {
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
-      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:30});
+      let history=false;try{await expireHistory(env.DB,now);history=true;}catch{}
+      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:30});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);
@@ -81,7 +95,18 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
         await env.DB.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)').bind(id,now-RETENTION_MS,now,payload).run();
         await expireEvents(env.DB,now);
         const expiryPassed=!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
-        return json({writePassed,privacyPassed,deletePassed,expiryPassed,storage:'site_database'});
+        const historyOwner='self-check:'+crypto.randomUUID();
+        let historyId;
+        try{
+          historyId=await saveExtraction(env.DB,historyOwner,'https://www.facebook.com/reel/123456789012345',{ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text:'Disposable storage-check fixture'},metadata:{status:'unavailable'}},now);
+          const historyWritePassed=!!(await readExtraction(env.DB,historyOwner,historyId,now));
+          const historyIsolationPassed=!(await readExtraction(env.DB,ownerId,historyId,now));
+          const historyDeletePassed=await deleteExtraction(env.DB,historyOwner,historyId);
+          historyId=await saveExtraction(env.DB,historyOwner,'https://www.facebook.com/reel/123456789012345',{ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text:'Disposable expiry fixture'},metadata:{status:'unavailable'}},now-RETENTION_MS);
+          await expireHistory(env.DB,now);
+          const historyExpiryPassed=!(await readExtraction(env.DB,historyOwner,historyId,now));
+          return json({writePassed,privacyPassed,deletePassed,expiryPassed,historyWritePassed,historyIsolationPassed,historyDeletePassed,historyExpiryPassed,storage:'site_database'});
+        }finally{if(historyId)await deleteExtraction(env.DB,historyOwner,historyId);}
       } finally {await env.DB.prepare('DELETE FROM diagnostic_events WHERE id=?').bind(id).run();}
     }
     if(request.method!=='POST' || !['/api/diagnostics','/api/captions'].includes(path))return json({code:'NOT_IMPLEMENTED'},404);
@@ -102,6 +127,8 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     try{result=await retrievePublicCaptions(data.url,{traceId,build:BUILD,fetchImpl,onEvent:e=>events.push(sanitizedSiteEvent(e,{traceId,now:Date.now()}))});}
     catch{result={ok:false,status:'failed',code:'INTERNAL_ERROR',cues:[]};events.push(sanitizedSiteEvent({stage:'finished',status:'failed',code:'INTERNAL_ERROR'},{traceId,now}));}
     let stored=false;try{await storeEvents(env.DB,events,now);stored=true;}catch{}
-    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable'});
+    let historyId=null,historyStatus='not_saved';
+    try{historyId=await saveExtraction(env.DB,ownerId,data.url,result,now);historyStatus=historyId?'saved':'empty';}catch{historyStatus='failed';}
+    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus});
   } catch {return json({code:'STORAGE_FAILED'},503);}
 }

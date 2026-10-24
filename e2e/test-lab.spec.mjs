@@ -24,7 +24,7 @@ async function stubCaptionResult(page, resultFor) {
 
 test('home page exposes private research status, actual backend and four separate tabs', async ({ page }) => {
   await openConnected(page);
-  await expect(page.getByRole('heading', { name: 'Native captions laboratory' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: /Good ideas/ })).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(4);
   await page.getByRole('tab', {name: 'Whisper transcript'}).click();
   await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
@@ -112,6 +112,7 @@ test('diagnostics JSON export includes only sanitized technical events', async (
   await openConnected(page);
   await page.locator('#video-url').fill('https://example.org/private/1234');
   await page.locator('#probe-button').click();
+  await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('#export-diagnostics').click()
@@ -202,6 +203,7 @@ test('Search and error filters inspect backend diagnostics and select processing
  await page.route('**/api/health',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
  await page.route('**/api/diagnostics',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({events:mockEvents(trace,'failed','TIMEOUT')})}));
  await page.goto('/');await expect(page.locator('#server-event-count')).toHaveText('1');
+ await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
  await page.locator('#filter-search').fill('TIMEOUT');await expect(page.locator('#diagnostic-rows tr')).toHaveCount(1);
  await page.locator('#filter-status').selectOption('succeeded');await expect(page.locator('#diagnostic-rows')).toContainText('No diagnostic records');
  await page.locator('#filter-status').selectOption('failed');await page.locator('#diagnostic-rows tr').click();
@@ -227,4 +229,30 @@ test('Facebook reaches the backend and displays partial post information without
  await expect(page.locator('#trace-status')).toHaveText('Post information retrieved; captions unavailable');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
  await page.getByRole('tab',{name:'Original captions',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Native captions unavailable');
  await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
+});
+
+async function stubHistory(page,{failedSave=false}={}){
+ let items=[{id:'00000000-0000-4000-8000-000000000010',sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+30*86400000,title:'Fixture saved video',creator:'Fixture creator',captionCueCount:1,postAvailable:true,metadataAvailable:true}];
+ const savedResult={ok:true,code:'OK',cues:[{start:'00:00:01.000',text:'Saved fixture caption'}],post:{status:'succeeded',text:'Saved fixture post',hashtags:[],provenance:'Synthetic fixture'},metadata:{status:'succeeded',fields:{creator:'Fixture creator'},provenance:'Synthetic fixture'}};
+ await page.route('**/api/health',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true,historyAvailable:true})}));
+ await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items})}));
+ await page.route('**/api/history/*',r=>{const id=r.request().url().split('/').at(-1);if(r.request().method()==='DELETE'){items=items.filter(x=>x.id!==id);return r.fulfill({contentType:'application/json',body:'{"deleted":true}'});}const item=items.find(x=>x.id===id);return r.fulfill({status:item?200:404,contentType:'application/json',body:JSON.stringify(item?{item:{...item,result:savedResult}}:{code:'NOT_FOUND'})});});
+ await stubCaptionResult(page,traceId=>({...savedResult,events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true,historyStatus:failedSave?'failed':'saved'}));
+}
+test('Workspace separates Extract, Recent and Diagnostics with working history search, reopen and delete',async({page})=>{
+ await stubHistory(page);await page.goto('/');await expect(page.locator('#backend-badge')).toHaveText('Owner-private Site backend');
+ await expect(page.locator('#diagnostics-view')).toBeHidden();await expect(page.locator('#recent-view')).toBeHidden();
+ await page.getByRole('link',{name:/^Recent/}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
+ await page.locator('#history-search').fill('no such creator');await expect(page.locator('#history-items')).toContainText('No matching');await page.locator('#history-search').fill('Fixture creator');
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();await expect(page.locator('#extract-view')).toBeVisible();await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
+ await page.reload();await page.getByRole('link',{name:/^Recent/}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
+ await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Keep extraction',exact:true}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
+ await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await page.getByRole('button',{name:'Delete extraction',exact:true}).click();await expect(page.locator('#history-items')).not.toContainText('Fixture saved video');await expect(page.locator('#history-status')).toHaveText('Extraction deleted.');
+});
+test('Output exports contain content and provenance while failed history saves remain visible',async({page})=>{
+ await stubHistory(page,{failedSave:true});await page.goto('/');await expect(page.locator('#backend-badge')).toHaveText('Owner-private Site backend');await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();
+ await expect(page.locator('#history-save-status')).toContainText('Could not save to Recent');await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
+ const dlPromise=page.waitForEvent('download');await page.locator('#export-json').click();const dl=await dlPromise;const content=JSON.parse(await(await import('node:fs/promises')).readFile(await dl.path(),'utf8'));expect(content.result.cues[0].text).toBe('Saved fixture caption');expect(content.independentTranscript.status).toBe('not_implemented');expect(content.result.events).toBeUndefined();
+ await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await expect(page.locator('#copy-output')).toBeDisabled();await expect(page.locator('#tab-panel')).not.toContainText('Saved fixture caption');
+ const dims=await page.evaluate(()=>({width:document.documentElement.clientWidth,page:document.documentElement.scrollWidth}));expect(dims.page).toBeLessThanOrEqual(dims.width+2);
 });

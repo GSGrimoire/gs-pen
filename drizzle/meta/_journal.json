@@ -8,6 +8,13 @@
       "when": 1792861458129,
       "tag": "0000_curvy_cargill",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1792868978900,
+      "tag": "0001_mighty_captain_britain",
+      "breakpoints": true
     }
   ]
 }
