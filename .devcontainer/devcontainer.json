@@ -1,0 +1,13 @@
+{
+  "name": "GS Pen Test Lab",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [4173],
+  "portsAttributes": {
+    "4173": {
+      "label": "GS Pen Test Lab",
+      "onAutoForward": "openBrowser",
+      "visibility": "private"
+    }
+  },
+  "postCreateCommand": "npm run check"
+}
