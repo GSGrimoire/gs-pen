@@ -4,6 +4,10 @@
 
 GS Pen researches public-video caption retrieval for GS Suite. It keeps original platform captions separate from independently generated speech transcriptions. The first experimental native-caption adapter supports canonical public TikTok links in a **loopback-only development server**. Other platform adapters and Whisper speech recognition are not implemented in the Test Lab.
 
+## Try it in a private GitHub Codespace (no home server)
+
+The repository includes `.devcontainer/devcontainer.json` for a temporary GitHub Codespaces preview with a **private** forwarded port and an additional randomly generated development key. See [Codespaces Test Guide](docs/CODESPACES_TEST.md). You must start the Codespace from GitHub yourself; this conversation did not provision or deploy one. Codespaces usage is metered and the feature may be limited by account settings.
+
 ## Start the private-computer test
 
 Requires Node.js 22 or newer.
