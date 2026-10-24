@@ -73,7 +73,7 @@ async function fetchBounded(url, limit, fetchImpl) {
   const controller = new AbortController();
   const timeout=setTimeout(()=>controller.abort(),12000);
   try {
-    const result=await fetchImpl(url,{method:"GET",redirect:"manual",signal:controller.signal,headers:{"Accept":"text/html, text/vtt, text/plain"}});
+    const result=await fetchImpl(url,{method:"GET",redirect:"manual",signal:controller.signal,headers:{"Accept":"text/html, text/vtt, text/plain","User-Agent":"GS-Pen-Feasibility/0.1"}});
     if(result.status!==200) return {status:result.status,body:null};
     const response=await limitedResponse(result,limit);
     return {status:200,body:response};
