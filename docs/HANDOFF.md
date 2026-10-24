@@ -1,3 +1,14 @@
+# PEN-011 assistant handoff, 24 October 2026
+
+- Issue #12; branch `chatgpt/pen-011-assistant-handoff`, stacked on pull request #11. Preserve owner-private Sites access and independent review before merge.
+- Both new buttons copy a complete structured extraction, including timed caption cues, track count, original post text/hashtags, metadata, source/provenance and completeness warning, even when viewing another tab or reopening Recent. The prompt explicitly separates platform captions from unavailable independent Whisper and treats extracted content as quoted data. Diagnostic events are excluded.
+- Opens a blank tab synchronously, copies first, then navigates to a fixed assistant website without embedding source data in a web query. Clipboard failure closes the blank tab and offers existing exports; popup failure preserves clipboard with an explicit website fallback. No auto-submission.
+- Optional Claude desktop link uses its documented `claude://claude.ai/new?q=` scheme. It appears only on desktop and only below conservative 12,000-character prompt and 24,000-character encoded bounds. Longer content remains fully copied. Native app handling cannot be verified in this Linux browser and must not be claimed as tested. ChatGPT and mobile ordinary-chat prefill are not promised.
+- Automatic diagnostic storage, history, authentication and retention are unchanged. No new external service, cost or backend endpoint.
+- Current verification and publication receipt: docs/DEPLOYMENT.md. Current actionable backlog: BACKLOG.md.
+
+---
+
 # PEN-010 current work: 24 October 2026
 
 Orange workspace and owner-private history replace the laboratory-first interface. Three destinations: Extract, Recent, Diagnostics. Native captions, post text, metadata and future Whisper remain separate. Source and provider limits unchanged.

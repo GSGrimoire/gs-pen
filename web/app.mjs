@@ -1,9 +1,9 @@
 // GS Pen Test Lab user interface v1. No telemetry endpoint other than same-origin local research backend.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
-import {exportRecord,exportText,tabText} from "./modules/extraction-export.mjs";
+import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v02_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
+const BUILD="workspace_v02_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
@@ -88,6 +88,9 @@ function renderTab(){
   const hasContent=!!result&&(result.cues?.length||result.post?.text||result.metadata?.status==='succeeded');
   $("copy-output").disabled=!result||!tabText(result,state.tab);
   $("export-text").disabled=!hasContent;$("export-json").disabled=!hasContent;
+  for(const id of ['open-claude','open-chatgpt'])$(id).disabled=!hasContent;
+  $('assistant-action-status').textContent='';$('assistant-fallbacks').hidden=true;
+  $('claude-desktop-link').removeAttribute('href');$('claude-desktop-link').hidden=true;
   const summary=$("result-summary");summary.replaceChildren();
   if(result){
     const rows=[['Original captions',result.ok?result.cues.length+' timed cues':'Not available'],['Post text',result.post?.text?'Available':'Unavailable'],['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable'],['Whisper','Not implemented']];
@@ -292,6 +295,26 @@ function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Bl
 window.addEventListener('hashchange',navigate);
 $('history-search').addEventListener('input',drawHistory);$('history-platform').addEventListener('change',drawHistory);$('refresh-history').addEventListener('click',refreshHistory);
 $('copy-output').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(tabText(state.result,state.tab));$('output-action-status').textContent='Copied to clipboard.';}catch{$('output-action-status').textContent='Clipboard unavailable. Use Export text instead.';}});
+async function openAssistant(provider){
+  if(!state.result)return;
+  const originalResult=state.result;
+  const handoff=assistantHandoff(state.result,state.sourceUrl,provider);
+  const name=provider==='claude'?'Claude':'ChatGPT';
+  // Reserve a blank tab during the click, before awaiting clipboard permission.
+  let destination=null;try{destination=window.open('about:blank','_blank');if(destination)destination.opener=null;}catch{}
+  const status=$('assistant-action-status');
+  $('assistant-fallbacks').hidden=true;$('claude-desktop-link').hidden=true;$('claude-desktop-link').removeAttribute('href');
+  try{await navigator.clipboard.writeText(handoff.prompt);}
+  catch{try{destination?.close();}catch{}status.textContent='Could not copy. Use Export text or Export structured data, then attach or paste it in '+name+'.';return;}
+  // A new extraction may have started while clipboard permission was pending.
+  if(state.busy||state.result!==originalResult){try{destination?.close();}catch{}status.textContent='Previous extraction copied. Select the handoff button again for the current result.';return;}
+  const web=$('assistant-web-link');web.href=handoff.url;web.textContent='Open '+name+' website ↗';$('assistant-fallbacks').hidden=false;
+  const desktop=$('claude-desktop-link');desktop.hidden=true;desktop.removeAttribute('href');
+  if(handoff.desktopUrl&&deviceClass()==='desktop'){desktop.href=handoff.desktopUrl;desktop.hidden=false;}
+  let opened=false;try{if(destination&&!destination.closed){destination.location.replace(handoff.url);opened=true;}}catch{try{destination?.close();}catch{}}
+  status.textContent='All extracted content copied. '+(opened?'Paste into your new '+name+' conversation.':'Opening was blocked. Use the link below, then paste.')+(provider==='claude'&&deviceClass()==='desktop'?(handoff.desktopUrl?' Or use the Claude desktop link to try prefilling; if the app does not open, use the website and paste.':' This package is too long for app prefilling; the complete content is on your clipboard.'):'');
+}
+for(const provider of ['claude','chatgpt'])$('open-'+provider).addEventListener('click',()=>void openAssistant(provider));
 $('export-text').addEventListener('click',()=>{if(state.result)downloadOutput('gs-pen-extraction.txt',exportText(state.result,state.sourceUrl),'text/plain;charset=utf-8');});
 $('export-json').addEventListener('click',()=>{if(state.result)downloadOutput('gs-pen-extraction.json',JSON.stringify(exportRecord(state.result,state.sourceUrl),null,2),'application/json');});
 $('delete-dialog').addEventListener('close',async()=>{
