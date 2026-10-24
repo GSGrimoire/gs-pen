@@ -1,6 +1,6 @@
 # Current release work: PEN-010
 
-- Orange Extract/Recent/Diagnostics workspace, owner-private latest-50 history with 30-day expiry, individual deletion, copy/text/structured export: implemented; verification and private publication in progress. Issue #10.
+- Orange Extract/Recent/Diagnostics workspace, owner-private latest-50 history with 30-day expiry, individual deletion, copy/text/structured export: deployed privately and verified with 80 unit and 34 browser checks plus live hosted save/reopen/export tests. Issue #10, pull request #11 awaiting independent review.
 - Next provider milestone: Facebook shared/short-link reliability, followed by verified hosted YouTube feasibility.
 - Independent speech recognition and frame text recognition remain unimplemented.
 

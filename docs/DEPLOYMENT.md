@@ -1,6 +1,19 @@
 # PEN-010 release verification (24 October 2026)
 
-In progress: orange workspace and separate owner-private saved extraction history. Existing Site identity and audience preserved. Database migration is additive, schema-only, and generated through Drizzle. Unit checks pass 80/80; browser and hosted results will be appended. No new provider support is claimed.
+Orange workspace and separate owner-private saved extraction history are deployed and verified. Site identity and owner-only audience are preserved. Migration `0001_mighty_captain_britain.sql` was generated through Drizzle, inspected, applied to the local preview database and applied by Sites during deployment.
+
+Hosted-tested source: `36694bf049339b93f9d8a4fa0c4c70f38016c1fe`. Private deployment: `appgdep_6add0498c4c481919bf60c5172b187e2`. Saved version: `appgprj_6adce46e22dc81918dab627af382c76a~appgver_53c878f914c48191860cb25fda9a5156`. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site. GitHub implementation: `75751063a983f1b63538014abbcbe9aca703ec10` plus state fixes `053810cdc42bb5de04646c8a8f4c01c8e7600bf6`; pull request #11 stacked on #9, unmerged.
+
+Verification:
+- 80 unit checks passed locally and in GitHub. Final functional-head browser run passed 34/34 desktop/mobile Chromium checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40124648711. Includes navigation, filtering, reopening after reload, deletion/cancel confirmation, output safety, export structure, save failures and mobile layout. Those provider responses are synthetic.
+- Separate real hosted TikTok request returned 62 caption cues, post text and metadata; saved automatically, survived reload and reopened without another provider request. Current-tab clipboard copy reported success.
+- Real hosted Facebook request returned 1,528 post characters, five hashtags and metadata, saved as a partial result without native captions. Structured export downloaded and was inspected: platform captions empty, independent transcript not implemented, preview warning preserved, diagnostic events excluded.
+- Actual database has two owner extraction rows with exactly 30-day expiry. Hosted disposable-record self-check passed diagnostics/history write, owner isolation, physical delete and expiry. No user extraction was deleted during hosted testing; individual deletion/cancel was verified through synthetic browser acceptance tests and real SQL unit checks.
+- Service retention request returned 200 with expiredDeleted true. Service history read and forged-identity history read returned 403; anonymous history read returned 401. No second signed-in account was available; row isolation is covered by actual database self-check and unit tests, with missing/alternate identity rejection.
+- Existing hourly cleanup automation `6adcf46e17b481919332f80387ddacfb` was retained and extended to saved history. Its schedule and enabled state were preserved; successful runs are silent. Cleanup deletes expired rows on access and through the hourly unattended endpoint, so physical removal while closed can lag expiry by up to the next successful hourly run.
+- Desktop visual review completed. A final logo alignment correction and documentation publication follow this functional release; no retrieval, storage or authorization changes are included in that correction.
+
+This is self-review only, with independent review still required before merge. Facebook captions, YouTube, independent Whisper and frame text recognition remain unimplemented. No new provider support is claimed.
 
 ---
 

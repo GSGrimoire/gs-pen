@@ -8,7 +8,7 @@ Orange workspace and owner-private history replace the laboratory-first interfac
 - Read/list/delete enforce owner authorization and row ownership. Individual permanent deletion has a confirmation dialog. Deleted content can remain in the currently open in-memory result until navigation/reload. Copy/export are explicit user actions.
 - Exports: current-tab copy, plain text and structured data. Provenance and platform-caption/Whisper separation preserved, including shortened Facebook preview warning.
 - Housekeeping deletes expired diagnostic and extraction rows; storage self-check verifies history write, isolation, delete and expiry with isolated disposable fixture rows.
-- Unit verification currently 80 passing. Browser acceptance tests cover navigation, searching, reopening, deletion confirmation, export provenance, failed saves and mobile overflow. Hosted/automation results go in docs/DEPLOYMENT.md.
+- 80 unit checks and 34 desktop/mobile browser checks pass. Hosted TikTok/Facebook save/reopen/export, actual database isolation/deletion/expiry self-check and service/anonymous access checks passed. Existing hourly cleanup task was extended to history. Full source/version/verification receipts are in docs/DEPLOYMENT.md. Pull request #11 remains unmerged.
 - Self-review only. New database migration, owner isolation and retention require independent review before merge. No changes to other GS projects.
 
 ---
