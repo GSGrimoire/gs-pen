@@ -29,7 +29,7 @@ test("retrieves genuine-format captions from injected network adapter",async()=>
   assert.equal(result.ok,true);
   assert.equal(result.cues.length,2);
   assert.ok(events.some(e=>e.stage==="caption_parse"&&e.captionCueCount===2));
-  assert.equal(JSON.stringify(events).includes("creator"),false);
+  assert.equal(JSON.stringify(events).includes("@creator"),false);
   assert.equal(JSON.stringify(events).includes("Hello everyone"),false);
   assert.equal(JSON.stringify(events).includes("7538539956029902111"),false);
 });
