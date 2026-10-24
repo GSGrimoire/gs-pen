@@ -55,3 +55,7 @@ When publishing, record Site project ID, exact private URL, deployed commit, ver
 ## 24 October 2026 automated preview readiness
 The GitHub Test Lab's static build and Playwright browser suite passed 22/22 desktop/mobile tests: https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. This is **not a deployed Site**. No Sites project ID, private URL, authenticated server function or cloud diagnostic database exists from this workflow. The deployment brief to hand to ChatGPT Work / @Sites is docs/SITES_DEPLOYMENT_HANDOFF.md.
 
+
+
+## PEN-010 final publication receipt
+Final owner-private publication succeeded at 19:23 UTC (21:23 Copenhagen) on 24 October 2026. Source `26c26aab24534f1ae0f6a5f3d1774947641c03ed`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_fa5d1a1e246c8191969e78ecc83ff255`; deployment `appgdep_6add059c7afc81919fd8dab681d0c86c`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. Final source adds only wordmark alignment and verification documentation to the hosted-tested functional version. The final GitHub implementation head `153e06507573a3d7f32f9aeb249e9b5358b136dd` also passed the 80-unit and 34-browser checks, browser run https://github.com/GSGrimoire/gs-pen/actions/runs/40124975851. Final desktop visual review confirmed aligned wordmark, owner backend connected, separate hidden Diagnostics view and no horizontal overflow at 1,348 pixels. This receipt is committed to GitHub after publication; no application code changes are included in it.
