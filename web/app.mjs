@@ -3,7 +3,8 @@ import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 const $=id=>document.getElementById(id);
 const BUILD="testlab_v1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
-const state={backend:false,serverCount:null,events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false};
+const state={backend:false,serverCount:null,events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:""};
+function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
 function node(type,text,cls){const e=document.createElement(type);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e;}
@@ -18,7 +19,7 @@ function displayStatus(message,type="muted"){$("trace-status").textContent=messa
 async function syncEvent(event){
   if(!state.backend)return false;
   try{
-    const resp=await fetch("/api/diagnostics",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(event)});
+    const resp=await fetch("/api/diagnostics",{method:"POST",headers:authHeaders(true),body:JSON.stringify(event)});
     const data=await resp.json();
     if(!resp.ok||!data.saved)return false;
     return true;
@@ -120,7 +121,7 @@ async function doProbe(event){
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
-    const response=await fetch("/api/captions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:input,traceId:state.currentTrace}),signal:controller.signal});
+    const response=await fetch("/api/captions",{method:"POST",headers:authHeaders(true),body:JSON.stringify({url:input,traceId:state.currentTrace}),signal:controller.signal});
     if(!response.ok)throw Error("backend_response");
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
@@ -137,16 +138,44 @@ async function doProbe(event){
 }
 async function refreshServerCount(){
   if(!state.backend){state.serverCount=null;drawEvents();return;}
-  try{const response=await fetch("/api/diagnostics",{cache:"no-store"});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverCount=Array.isArray(data.events)?data.events.length:null;}
+  try{const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverCount=Array.isArray(data.events)?data.events.length:null;}
   catch{state.serverCount=null;$("storage-indicator").textContent="Unable to read backend logs";}
   drawEvents();
 }
-async function checkBackend(){
+async function connectBackend() {
+  const key=$("dev-key").value.trim();
+  if(!/^[a-f0-9]{48}$/.test(key)){$("dev-key-status").textContent="A 48-character key from the terminal is required.";return;}
+  state.accessKey=key;
   try {
+    const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});
+    if(!response.ok)throw Error("not_authenticated");
+    state.backend=true;
+    try{sessionStorage.setItem("gs-pen-dev-key",key);}catch{}
+    $("dev-key").value="";$("dev-key-status").textContent="";
+    $("dev-access").hidden=true;
+    $("backend-badge").textContent="Private Codespaces probe connected";$("backend-badge").className="pill";
+    $("storage-indicator").textContent="Codespaces local file";
+    await refreshServerCount();
+  } catch {
+    state.backend=false;state.accessKey="";
+    $("dev-key-status").textContent="Invalid key or backend unavailable. Check the terminal and port visibility.";
+    $("backend-badge").textContent="Access key required";$("backend-badge").className="pill error";
+  }
+}
+async function checkBackend(){
+  try{
     const response=await fetch("/api/health",{cache:"no-store"});
     if(!response.ok)throw Error("bad_status");
     const data=await response.json();
-    if(data.backend!=="local_only")throw Error("unrecognized_backend");
+    if(!["local_only","codespaces_private"].includes(data.backend))throw Error("unrecognized_backend");
+    state.authRequired=!!data.authRequired;
+    if(state.authRequired){
+      $("dev-access").hidden=false;
+      try{state.accessKey=sessionStorage.getItem("gs-pen-dev-key")||"";}catch{}
+      if(state.accessKey){$("dev-key").value=state.accessKey;await connectBackend();}
+      else{$("backend-badge").textContent="Development key required";$("backend-badge").className="pill error";$("storage-indicator").textContent="Access key needed";}
+      return;
+    }
     state.backend=true;$("backend-badge").textContent="Local probe connected";$("backend-badge").className="pill";
     $("storage-indicator").textContent="Local file connected";await refreshServerCount();
   }catch{
@@ -163,13 +192,14 @@ async function clearDiagnostics(){
   if(!confirm("Clear local diagnostic records and attempt to clear the local backend log?"))return;
   state.events=[];state.trace=[];state.serverCount=null;
   try{localStorage.removeItem(KEY);}catch{}
-  if(state.backend)try{const response=await fetch("/api/diagnostics",{method:"DELETE"});if(!response.ok)throw Error("not_cleared");}catch{$("storage-indicator").textContent="Backend clear failed";}
+  if(state.backend)try{const response=await fetch("/api/diagnostics",{method:"DELETE",headers:authHeaders()});if(!response.ok)throw Error("not_cleared");}catch{$("storage-indicator").textContent="Backend clear failed";}
   drawTrace();drawEvents();await refreshServerCount();
 }
 document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{state.tab=button.dataset.tab;renderTab();}));
 document.querySelectorAll("[data-example]").forEach(button=>button.addEventListener("click",()=>{$("video-url").value=button.dataset.example;$("source-summary").textContent="Example ready";$("video-url").focus();}));
 $("video-url").addEventListener("input",()=>{const c=diagnosticLinkContext($("video-url").value);$("source-summary").textContent=c.platform==="unknown"?"Paste a supported public video link":c.platform+" · "+c.linkType+" · "+c.sourceDomain;});
 $("probe-form").addEventListener("submit",doProbe);
+$("connect-backend").addEventListener("click",connectBackend);
 $("filter-platform").addEventListener("change",drawEvents);
 $("filter-status").addEventListener("change",drawEvents);
 $("refresh-diagnostics").addEventListener("click",refreshServerCount);
