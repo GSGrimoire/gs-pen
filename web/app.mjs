@@ -212,5 +212,12 @@ $("filter-status").addEventListener("change",drawEvents);
 $("refresh-diagnostics").addEventListener("click",refreshServerCount);
 $("export-diagnostics").addEventListener("click",exportDiagnostics);
 $("clear-diagnostics").addEventListener("click",clearDiagnostics);
+$("storage-check").addEventListener("click",async()=>{
+  $("storage-check").disabled=true;
+  try{const response=await fetch('/api/storage-check',{method:'POST',headers:authHeaders(true),body:'{}'});const data=await response.json();
+    $("storage-check-result").textContent=response.ok&&['writePassed','privacyPassed','deletePassed','expiryPassed'].every(k=>data[k])?'Passed: write, privacy, expiry and deletion.':'Storage checks failed. Check backend storage status.';
+  }catch{$("storage-check-result").textContent='Storage checks could not reach the authenticated backend.';}
+  finally{$("storage-check").disabled=false;}
+});
 restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkContext(""));void checkBackend();
 

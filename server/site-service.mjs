@@ -67,6 +67,23 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     if(path==='/api/diagnostics' && request.method==='DELETE') {
       await env.DB.prepare('DELETE FROM diagnostic_events').run();return json({cleared:true});
     }
+    if(path==='/api/storage-check' && request.method==='POST') {
+      // Disposable, server-authored records only. Exercise the actual bound database.
+      const id=crypto.randomUUID(),traceId=crypto.randomUUID();
+      const event=sanitizedSiteEvent({stage:'diagnostics_write',status:'succeeded',code:'OK',url:'privacy_sentinel',message:'privacy_sentinel'},{traceId,now});
+      const payload=JSON.stringify(event);
+      try {
+        await env.DB.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)').bind(id,now,now+RETENTION_MS,payload).run();
+        const row=await env.DB.prepare('SELECT payload FROM diagnostic_events WHERE id=?').bind(id).first();
+        const writePassed=row?.payload===payload,privacyPassed=!!row && !row.payload.includes('privacy_sentinel');
+        await env.DB.prepare('DELETE FROM diagnostic_events WHERE id=?').bind(id).run();
+        const deletePassed=!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
+        await env.DB.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)').bind(id,now-RETENTION_MS,now,payload).run();
+        await expireEvents(env.DB,now);
+        const expiryPassed=!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
+        return json({writePassed,privacyPassed,deletePassed,expiryPassed,storage:'site_database'});
+      } finally {await env.DB.prepare('DELETE FROM diagnostic_events WHERE id=?').bind(id).run();}
+    }
     if(request.method!=='POST' || !['/api/diagnostics','/api/captions'].includes(path))return json({code:'NOT_IMPLEMENTED'},404);
     let data;try{data=await boundedJson(request);}catch{return json({code:'INVALID_URL'},400);}
     if(!data || typeof data!=='object' || Array.isArray(data))return json({code:'INVALID_URL'},400);

@@ -46,6 +46,13 @@ test('Owner delete physically clears records',async()=>{
  const {env,sql}=setup();await handleSiteRequest(req('diagnostics','POST',data),env);await handleSiteRequest(req('diagnostics','DELETE'),env);
  assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,0);
 });
+test('Authenticated storage check exercises real SQL without changing existing records',async()=>{
+ const {env,sql}=setup();await handleSiteRequest(req('diagnostics','POST',data),env);
+ assert.equal((await handleSiteRequest(req('storage-check','POST',{},null),env)).status,403);
+ const response=await (await handleSiteRequest(req('storage-check','POST',{}),env)).json();
+ for(const k of ['writePassed','privacyPassed','deletePassed','expiryPassed'])assert.equal(response[k],true);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,1);
+});
 test('Site caption resolver returns native timed cues; stores only technical events',async()=>{
  const {env,sql}=setup();let count=0;
  const fetchImpl=async()=>++count===1?new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=private'}]})+'</script>'):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate synthetic caption\n');
