@@ -300,11 +300,12 @@ async function openAssistant(provider){
   const originalResult=state.result;
   const handoff=assistantHandoff(state.result,state.sourceUrl,provider);
   const name=provider==='claude'?'Claude':'ChatGPT';
-  // Reserve a blank tab during the click, before awaiting clipboard permission.
-  let destination=null;try{destination=window.open('about:blank','_blank');if(destination)destination.opener=null;}catch{}
   const status=$('assistant-action-status');
   $('assistant-fallbacks').hidden=true;$('claude-desktop-link').hidden=true;$('claude-desktop-link').removeAttribute('href');
-  try{await navigator.clipboard.writeText(handoff.prompt);}
+  // Start copying while Pen still has focus, then reserve the tab during the click.
+  let copying;try{copying=navigator.clipboard.writeText(handoff.prompt);}catch{status.textContent='Could not copy. Use Export text or Export structured data, then attach or paste it in '+name+'.';return;}
+  let destination=null;try{destination=window.open('about:blank','_blank');if(destination)destination.opener=null;}catch{}
+  try{await copying;}
   catch{try{destination?.close();}catch{}status.textContent='Could not copy. Use Export text or Export structured data, then attach or paste it in '+name+'.';return;}
   // A new extraction may have started while clipboard permission was pending.
   if(state.busy||state.result!==originalResult){try{destination?.close();}catch{}status.textContent='Previous extraction copied. Select the handoff button again for the current result.';return;}
