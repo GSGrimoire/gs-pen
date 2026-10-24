@@ -14,8 +14,8 @@ Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 ## Priority 1: test laboratory
 - PEN-007 [code built, independent review pending] Responsive Test Lab static frontend, local TikTok caption research adapter, trace timeline, output tabs and automated diagnostics. Implementation in PR #7, requires private Site deployment work.
 - PEN-007A [local proof complete] Strict v2 diagnostic allowlist including domain and video type, sanitization tests, local browser and loopback backend diagnostics storage with 30-day read/write expiry.
-- PEN-007B [not started] Owner-only Sites preview, authenticated backend port, Site database storage, authentication/retention test, real Site caption access and deployment receipt.
-- PEN-007C [planned] Human visual and accessibility pass; browser/network telemetry verification.
+- PEN-007B [Work Sites execution required; deployment not started] Owner-only Sites preview, authenticated backend port, Site database storage, authentication/retention test, real Site caption access and deployment receipt.
+- PEN-007C [browser regression automated; visual/real Site accessibility pending] Playwright headless Chromium desktop and mobile suite is passing 22/22 in GitHub Actions, including diagnostics sanitization, error messages, access-key UI and responsive layout. Real Sites browser/runtime test remains pending.
 - PEN-007D [prepared, actual Codespaces run pending] Temporary owner-private GitHub Codespaces preview with private port 4173 and ephemeral development access key. Docs: docs/CODESPACES_TEST.md. No Codespace provisioned yet.
 - PEN-100 [pending] Private Site production readiness, release labels and error safety.
 
@@ -34,3 +34,5 @@ Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 - PEN-223 Optional browser extension with explicit tab audio capture
 
 Never commit personal media, transcripts, signed asset URLs, credentials or raw diagnostic payloads. A passing synthetic test does not establish rights to process real videos.
+
+- PEN-008 [completed for GitHub test environment] Browser regression automation: 22/22 desktop/mobile Playwright tests on 24 October 2026, run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. Work deployment brief: docs/SITES_DEPLOYMENT_HANDOFF.md.
