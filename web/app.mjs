@@ -143,14 +143,14 @@ async function doProbe(event){
   const base={traceId:state.currentTrace,...context,source:"browser",transport:state.backend?(state.site?"site_backend":"local_backend"):"browser_direct"};
   const result=classifyPublicVideoUrl(input);
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
-  if(!result.ok){state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
-  if(!state.backend){record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
-  if(!['tiktok','facebook'].includes(result.platform)){record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
+  if(!result.ok){$("history-save-status").textContent="No extraction saved. Check the video link.";state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
+  if(!state.backend){$("history-save-status").textContent="No extraction saved. The backend is unavailable.";record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
+  if(!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
     const response=await fetch("/api/captions",{method:"POST",headers:authHeaders(true),body:JSON.stringify({url:input,traceId:state.currentTrace}),signal:controller.signal});
-    if(!response.ok){const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
+    if(!response.ok){$("history-save-status").textContent="No extraction saved. The request was rejected.";const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;
@@ -166,7 +166,7 @@ async function doProbe(event){
     record({...base,stage:"result_render",status:outcome.ok||partial?"succeeded":"failed",code:partial?'PARTIAL_RESULT':outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined,postTextFound:!!outcome.post?.text,metadataFound:outcome.metadata?.status==='succeeded'});
   }catch(e){
     const code=e?.name==="AbortError"?"TIMEOUT":"BACKEND_UNAVAILABLE";
-    state.result={ok:false,code};displayStatus("Connection failed","error");
+    $("history-save-status").textContent="No extraction saved. The request could not finish.";state.result={ok:false,code};displayStatus("Connection failed","error");
     record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});
   }finally{clearTimeout(timer);renderTab();setBusy(false);void refreshServerCount();}
 }
@@ -285,7 +285,7 @@ async function refreshHistory(){
 }
 async function openExtraction(id){
   if(state.busy)return;
-  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Expires '+new Date(item.expiresAt).toLocaleDateString();displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
+  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Expires '+new Date(item.expiresAt).toLocaleDateString();displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
   catch{$('history-status').textContent='This extraction is unavailable or has expired. Refresh Recent.';}
 }
 function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
