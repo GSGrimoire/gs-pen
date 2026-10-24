@@ -27,7 +27,7 @@ Then open `http://127.0.0.1:4173` on that computer. The app never runs Whisper. 
 ## Verified
 GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40090272982 passed 56 synthetic JavaScript tests after producing the static bundle.
 Live JavaScript retrieval check https://github.com/GSGrimoire/gs-pen/actions/runs/40090424854 retrieved TikTok caption tracks: 15 cues (Scrub Daddy) and 12 cues (Hank Green) with no transcript text in logs. That is a cloud runner test, not proof of an ordinary user's computer or a ChatGPT Site.
-The frontend was built in CI but interactive visual browser quality assurance and private Sites access validation have not yet happened.
+The frontend was built and exercised automatically in **desktop and mobile Chromium browsers**, with 22/22 Playwright tests passing on https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. Full human visual assessment and private Sites deployment/access validation have not happened.
 
 ## Private ChatGPT Site next
 
@@ -43,3 +43,7 @@ If Sites cannot perform permitted cross-origin server caption retrieval, evaluat
 - Verify the privacy whitelist in browser and server logs with adversarial URLs.
 - Perform human review of visual accessibility, keyboard operation and responsive layout.
 - Document the real Site URL, commit, build and limitations in `docs/DEPLOYMENT.md`. Do not claim other platform coverage or Whisper.
+
+## Continuous browser tests
+
+`npm run test:e2e` uses Playwright to start the local test backend and inspect the actual interface in desktop and mobile Chromium. `.github/workflows/browser-e2e.yml` installs browsers and runs all tests on relevant pull requests. Tests use **synthetic fixtures** for success/failure UI and never store private captions. Failed runs save short-retention traces for engineering. Tests assert safe rendering of HTML-like caption text, account-key entry UI, 30-day local log expiry, diagnostic privacy, export and mobile overflow. GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641 passed 22/22. This suite does **not** validate private Site infrastructure or provider permission.
