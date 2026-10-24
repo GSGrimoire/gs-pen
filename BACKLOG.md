@@ -2,7 +2,7 @@
 Updated 24 October 2026. The owner-private Site is live. Historical deployment-pending statements have been superseded.
 
 ## Current delivery
-- PEN-011 / issue #12: complete assistant handoffs for Claude and ChatGPT, with clipboard-first web launch, optional bounded Claude desktop prefill, and explicit failure fallbacks. Private deployment verification in progress. Independent review required before merge.
+- PEN-011 / issue #12: complete assistant handoffs for Claude and ChatGPT, with clipboard-first web launch, optional bounded Claude desktop prefill, and explicit failure fallbacks. Deployed privately and verified with 82 unit checks and 42 desktop/mobile browser checks; hosted launch and successful clipboard-write status verified. Pull request #13 awaits independent review before merge.
 - PEN-010 / issue #10 / pull request #11: orange Extract/Recent/Diagnostics workspace, owner-private latest-50 history, 30-day expiry, search/reopen/delete and text/structured exports are deployed.
 - PEN-009 / issue #8 / pull request #9: TikTok captions, post text/hashtags and metadata; initial Facebook public-preview post/creator/metadata retrieval are deployed. Facebook text may be shortened.
 - PEN-007 / pull request #7: authenticated Sites backend, sanitized automatic diagnostics, owner-private database and hourly physical expiration are deployed. Self-review completed; independent review and merges remain pending for the stacked changes.

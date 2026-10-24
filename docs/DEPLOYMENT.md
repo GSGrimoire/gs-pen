@@ -1,3 +1,19 @@
+# PEN-011 release verification, 24 October 2026
+
+Owner-private publication succeeded at 19:36 UTC (21:36 Copenhagen). URL: https://gs-pen-test-lab.goofyspook.chatgpt.site. Project `appgprj_6adce46e22dc81918dab627af382c76a`; runtime source `7675ca656d74160e8d9b668c37f08a3fd2c03ef6`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_9cf19f0af6c8819194c77cbafb31fef2`; deployment `appgdep_6add0899e1d88191b7db64205c24f7a1`. Owner-only access, no external viewers/editors, confirmed before publication. No access/storage/backend changes.
+
+GitHub implementation `90e7deedbf8ff358da9f5fecb8b9f68b6a54eb68`, focus-order fix `192cf237d05f038d22376c1bd9d0f7722cceb75c`; issue #12, pull request #13 stacked on #11 and unmerged. The publication source contains both changes. This documentation receipt is recorded after deployment and does not change runtime behavior.
+
+Verification:
+- 82 unit tests passed locally and in GitHub. Final code browser suite passed 42/42 desktop/mobile Chromium checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40125872572; unit workflow: https://github.com/GSGrimoire/gs-pen/actions/runs/40125872689.
+- New synthetic browser cases cover complete saved-result package from the unavailable Whisper tab, trusted fixed assistant destinations, diagnostic exclusion, clipboard rejection, popup blocking, full long partial results, desktop-link visibility and mobile layout. Unit checks verify full prompt contents, end timestamps, hashtags, metadata, preview provenance and conservative Unicode/length bounds.
+- Hosted signed-in browser reopened existing Facebook and TikTok extractions. Both assistant buttons reported resolved clipboard writes and opened their actual destinations: Claude sign-in at https://claude.ai/login?from=logout&reauth=1&returnTo=%2Fnew%3F and ChatGPT at https://chatgpt.com/. A TikTok handoff also worked while viewing the unavailable Whisper tab, independently of current-tab copy being disabled.
+- The browser automation virtual clipboard could not read back the browser page's clipboard. Exact payload verification therefore comes from unit and synthetic browser checks, not a claimed live paste/readback. Neither destination received an automatically submitted prompt.
+- Claude desktop prefilling is a documented opt-in deep link under conservative limits, not verified in this Linux cloud browser. Physical phone/desktop app delivery is not claimed. Website launches use plain fixed links and require pasting. Long prompts are never silently truncated.
+- Self-review only; independent review remains required before merge. No new provider retrieval is claimed. Diagnostic storage and history behavior retain the existing tested backend.
+
+---
+
 # PEN-010 release verification (24 October 2026)
 
 Orange workspace and separate owner-private saved extraction history are deployed and verified. Site identity and owner-only audience are preserved. Migration `0001_mighty_captain_britain.sql` was generated through Drizzle, inspected, applied to the local preview database and applied by Sites during deployment.
@@ -55,7 +71,3 @@ When publishing, record Site project ID, exact private URL, deployed commit, ver
 ## 24 October 2026 automated preview readiness
 The GitHub Test Lab's static build and Playwright browser suite passed 22/22 desktop/mobile tests: https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. This is **not a deployed Site**. No Sites project ID, private URL, authenticated server function or cloud diagnostic database exists from this workflow. The deployment brief to hand to ChatGPT Work / @Sites is docs/SITES_DEPLOYMENT_HANDOFF.md.
 
-
-
-## PEN-010 final publication receipt
-Final owner-private publication succeeded at 19:23 UTC (21:23 Copenhagen) on 24 October 2026. Source `26c26aab24534f1ae0f6a5f3d1774947641c03ed`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_fa5d1a1e246c8191969e78ecc83ff255`; deployment `appgdep_6add059c7afc81919fd8dab681d0c86c`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. Final source adds only wordmark alignment and verification documentation to the hosted-tested functional version. The final GitHub implementation head `153e06507573a3d7f32f9aeb249e9b5358b136dd` also passed the 80-unit and 34-browser checks, browser run https://github.com/GSGrimoire/gs-pen/actions/runs/40124975851. Final desktop visual review confirmed aligned wordmark, owner backend connected, separate hidden Diagnostics view and no horizontal overflow at 1,348 pixels. This receipt is committed to GitHub after publication; no application code changes are included in it.
