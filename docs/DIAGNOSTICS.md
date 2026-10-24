@@ -1,23 +1,43 @@
-# Privacy-safe diagnostic event contract
-GS Pen Test Lab, draft version 1, 23 October 2026.
+# GS Pen Test Lab diagnostics contract
 
-## Data model
-All event fields are structured and allowlisted. See `src/diagnostics.mjs`. Required: schema, time, traceId, platform, stage, status, code, source, build. Optional: durationMs, httpStatus, captionCueCount, retryable. A backend implementation **must** derive authorized identity from its authenticated session, not from client-supplied owner IDs.
+Version 2, 24 October 2026. Implemented in `src/diagnostics.mjs`. Diagnostics are **data-minimized and pseudonymous, not guaranteed fully anonymous**: timestamp, trace ID and domain categories can still carry some contextual information.
 
-## Prohibited event content
-Do not record the original video URL or query string, username/handle, any caption or transcript text, signed resource URL, cookies, access token, raw user agent, IP address, arbitrary exception.message, stack trace or audio bytes. Never send diagnostics to public GitHub issues automatically. A hash of a video URL can still disclose/link activity and is not part of the initial schema. Logs must not be used as a shadow transcript store.
+## Collect as much safe technical context as practical
 
-## Storage and retention
-Start with owner-private Site database and 30-day retention if supported. The test Site may use an ephemeral local fallback for log submission errors. Do not claim automatic deletion until scheduled/transactional purging is verified. Diagnostic retention is independent of the 50 most recent saved transcript records. Allow exporting a scrubbed JSON report for a support discussion with explicit user action.
+- Provider: TikTok, YouTube, Instagram, Facebook or unknown.
+- **Source hostname** from a strict social-domain allowlist, such as `www.tiktok.com` or `youtu.be`. Never arbitrary hostnames.
+- **Video link pattern**: creator_video, reel, watch, shorts, share, short_link, video or unknown.
+- **Query shape**: none, video_id_only, additional_parameters, unknown. No query contents.
+- Short-link redirect requirement: boolean, not its target URL.
+- Transport: browser_direct, site_backend, local_backend or none.
+- Browser family: Chromium, Safari, Firefox, other, unknown; device class: desktop, mobile, tablet, unknown. No raw user agent.
+- Stage: validation, page request, track discovery, caption hostname validation, caption request, parsing, result display, storage and completion.
+- Status and stable error code: failed/unavailable/succeeded/started/skipped; PROVIDER_BLOCKED, CAPTION_HOST_REJECTED, CAPTIONS_NOT_FOUND and similar.
+- Exact HTTP status, stage timing in milliseconds, download timing, retry and redirect counts if known.
+- Broad caption content delivery network family, e.g. `tiktokcdn_us`, but **not exact individual asset hostname, signed URL, path or query**.
+- Coarse response size category, broad content-type class, caption track count, caption cue count, caption type (automatic/human/unknown) and language family (Danish/English/other/unknown) where actually available.
+- Random trace ID unique to each request and application build identifier.
 
-## Error handling
-The diagnostic write must never cause the primary caption extraction to fail. A failed write produces visible STORAGE_FAILED and local copy/export option. Add a rate cap and server-side validation. All exceptions are mapped to stable safe codes, e.g., NETWORK_ERROR, PROVIDER_BLOCKED, CAPTIONS_NOT_FOUND, CAPTION_HOST_REJECTED, CAPTION_PARSE_FAILED, CORS_DENIED, TIMEOUT, STORAGE_FAILED and INTERNAL_ERROR. Success and failure records must be distinguishable.
+Unknown or unmeasured values must remain unknown, not invented.
 
-## User interface
-Show the complete processing timeline in test mode. Each stage displays status, duration and a short explanation. A trace ID links events across frontend, Site server and optional retrieval service. Provide "Copy sanitized report" and "Clear local diagnostics" operations. Diagnostic delivery status must be visible separately from the user's transcription outcome.
+## Strictly prohibited in automatic diagnostic records
 
-## Future expansion
-Model ID, audio duration, processing speed, recognition error and device performance may be added in a reviewed version, but never raw audio or private speech text by default. Enable any verbose diagnostic bundle with an explicit opt-in for that particular request.
+Full video URLs, video IDs, creator handles, transcript or subtitle text, signed caption-file URLs, referrer, cookies, API keys, OAuth tokens, personal account IDs, IP addresses, precise device identifiers, raw browser agent strings, unrestricted exception messages and stack traces. Server logs must not contain request bodies or full URLs either.
 
-## Runtime caveat
-This repository module does not itself transmit or save events. Actual backend storage, identity checks, error forwarding and retention must be built and tested in a private Site before calling telemetry automatic.
+Events are built by `sanitizeDiagnostic()`, with allowlisted enumerable properties and canonical values. Unrecognized fields are discarded on the browser and **again on the local backend**. Sanitized JSON is all that can enter the diagnostic store. Captions are returned to the browser in the response and not included in diagnostic storage.
+
+## Storage modes actually implemented
+
+- **Browser:** automatic localStorage log capped at 1,000 events; on read/write, events older than 30 days are discarded. Browser diagnostics can be viewed, filtered, exported and cleared.
+- **Loopback backend:** `server/local-server.mjs` listens only on 127.0.0.1 and writes sanitized events to ignored `.local/diagnostics.json`, capped at 2,500 entries. Each read/write enforces the 30-day cutoff. The file has user-only write permissions where the operating system supports them.
+- **Private ChatGPT Site database:** **not implemented**. Owner authentication, cross-account isolation, retention cleanup, rate limits and database storage must be verified as part of the future private Sites build. Never expose the loopback server as an unauthenticated public service.
+
+The interface distinguishes browser-only from locally stored backend diagnostics and reports save failures. In test mode, copy or export produces sanitized JSON. A video transcript never enters the automatically saved events.
+
+## Review conditions before private Sites deployment
+
+Authenticated user context must come from the Sites server, not client-provided IDs; enforce owner-only event read/write/delete on the server. Limit event rate and event JSON size. Perform retention and actual purging checks. Red-team query strings, malicious domains, injected error messages and caption text to ensure no data appears in diagnostic storage or platform logs.
+
+## Limits
+
+Diagnostic data is useful for seeing systematic failure patterns. It cannot prove why a request was blocked, nor establish that a caption track truly does not exist when a provider request fails. The user controls any optional content-rich bug report separately and explicitly.
