@@ -1,0 +1,22 @@
+name: GS Pen Node caption access research
+on:
+  pull_request:
+    paths:
+      - 'server/caption.mjs'
+      - 'scripts/live-caption-check.mjs'
+      - '.github/workflows/node-live-caption-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Try two documented public TikTok caption examples
+        run: node scripts/live-caption-check.mjs
