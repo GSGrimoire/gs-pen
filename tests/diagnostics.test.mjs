@@ -12,7 +12,7 @@ test("allows safe structured stage status", () => {
   assert.equal(out.durationMs, 192);
   assert.equal(out.captionCueCount, 0);
   assert.equal(out.retryable, true);
-  assert.equal(out.schema, "gs-pen.diagnostic.v1");
+  assert.equal(out.schema, "gs-pen.diagnostic.v2");
 });
 
 test("refuses untrusted detail fields and identity metadata", () => {
