@@ -1,3 +1,15 @@
+# Current backlog update: 24 October 2026
+
+Earlier deployment-pending statements below are historical. The owner-private Site is live; see docs/DEPLOYMENT.md.
+
+- PEN-009 / issue #8: TikTok post text/hashtags and public metadata; first Facebook public post adapter implemented, release verification in progress.
+- Facebook captions: unimplemented. Do not infer a transcript from post text.
+- Facebook short/shared links and broader provider formats: pending.
+- Frame text recognition and independent Whisper: pending.
+- Independent security/code review and merge: pending. No unreviewed merge.
+
+---
+
 # GS Pen backlog
 Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 

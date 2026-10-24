@@ -1,3 +1,20 @@
+# Current deployment ledger: 24 October 2026
+
+Historical records below predate the actual Sites deployment and are superseded here.
+
+Existing Site: https://gs-pen-test-lab.goofyspook.chatgpt.site
+Project: `appgprj_6adce46e22dc81918dab627af382c76a`
+Audience: custom access restricted to the owner, no external visitors or editors (confirmed via Sites).
+Baseline: private Site version 4, source `4a99dc9aec629ff2813d9a17a9c48ad834a594e2`.
+
+PEN-009 build: `testlab_v01_sites_2`. Adds TikTok post/metadata and initial Facebook public post retrieval. 75 unit tests pass. Live Node probes returned 62 TikTok caption cues plus post data and 1,528 Facebook post characters plus creator/title. These probes do not substitute for hosted verification. New Site version and hosted receipts will be appended after deployment.
+
+Automatic diagnostic storage uses the existing Sites database with owner authorization and 30-day deletion; new post/metadata outputs are excluded. Hosting infrastructure retains separate request metadata under platform policy. No change to authentication, sharing, credentials, or retention in this increment.
+
+Review is self-review only. GitHub change remains unmerged pending independent review. Facebook native captions, frame text recognition and Whisper are not implemented.
+
+---
+
 # GS Pen deployment ledger
 
 ## 24 October 2026

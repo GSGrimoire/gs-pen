@@ -42,3 +42,7 @@ Authenticated user context must come from the Sites server, not client-provided 
 
 Diagnostic data is useful for seeing systematic failure patterns. It cannot prove why a request was blocked, nor establish that a caption track truly does not exist when a provider request fails. The user controls any optional content-rich bug report separately and explicitly.
 
+
+
+## PEN-009 output availability
+`post_parse` and `metadata_parse` record fixed statuses/codes; `postTextFound` and `metadataFound` are booleans. `PARTIAL_RESULT` identifies a displayed post or metadata result without caption success. Post text, hashtags, creator details, engagement values, dates, and media URLs never enter diagnostic records. Displayed outputs exist in memory only.

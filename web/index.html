@@ -26,14 +26,15 @@
           <div class="panel-head"><div><h2>Video source</h2><p>Paste a public social video URL. Video and creator identifiers are never saved in diagnostic records.</p></div><span class="step">01 / INPUT</span></div>
           <form id="probe-form">
             <label for="video-url">Public video URL</label>
-            <div class="input-row"><input id="video-url" name="videoUrl" type="url" inputmode="url" placeholder="https://www.tiktok.com/@creator/video/..." autocomplete="off" spellcheck="false" required maxlength="2048"><button type="submit" id="probe-button">Inspect captions <span aria-hidden="true">→</span></button></div>
-            <div class="hints"><span id="source-summary">Supported: TikTok, YouTube, Instagram, Facebook</span><span>One video per request</span></div>
+            <div class="input-row"><input id="video-url" name="videoUrl" type="url" inputmode="url" placeholder="https://www.tiktok.com/@creator/video/..." autocomplete="off" spellcheck="false" required maxlength="2048"><button type="submit" id="probe-button">Inspect video <span aria-hidden="true">→</span></button></div>
+            <div class="hints"><span id="source-summary">Retrieval: TikTok captions and post data; Facebook post data</span><span>One video per request</span></div>
           </form>
           <div class="examples"><span>Known research examples</span><button type="button" data-example="https://www.tiktok.com/@scrubdaddy/video/7538539956029902111">Scrub Daddy</button><button type="button" data-example="https://www.tiktok.com/@hankgreen1/video/7047596209028074758">Hank Green</button></div>
-          <div class="notice"><span class="notice-icon">i</span><div><strong>Current capability</strong><p>The authenticated backend attempts existing TikTok captions. Provider access may be blocked. YouTube, Instagram and Facebook retrieval, Whisper, post text and metadata are not implemented. Use only videos you are permitted to process.</p></div></div>
+          <div class="notice"><span class="notice-icon">i</span><div><strong>Current capability</strong><p>TikTok: existing captions, post text, hashtags and public metadata. Facebook: experimental public post text and metadata; native caption retrieval is not implemented yet. Whisper and reading text embedded in video frames are not implemented. YouTube and Instagram retrieval are not implemented. Public page access can fail. Use only videos you are permitted to process.</p></div></div>
         </section>
         <section class="panel results-panel">
           <div class="panel-head"><div><h2>Extracted information</h2><p>Each output retains its original source and availability state.</p></div><span class="step">02 / RESULTS</span></div>
+          <div id="result-summary" class="result-summary" role="status"></div>
           <div class="tabs" role="tablist" aria-label="Output type">
             <button class="tab selected" type="button" role="tab" aria-selected="true" aria-controls="tab-panel" data-tab="captions">Original captions</button>
             <button class="tab" type="button" role="tab" aria-selected="false" aria-controls="tab-panel" data-tab="whisper">Whisper transcript</button>
@@ -61,7 +62,7 @@
       <p class="privacy-note"><strong>Excluded from application records:</strong> video identifiers, full video or caption URLs, creator names, speech, transcript text, cookies, tokens, raw exception messages, network addresses or full browser identifiers. Hosting infrastructure separately retains request metadata under platform policies.</p>
       <p><button class="outline" type="button" id="storage-check">Run storage checks</button> <span id="storage-check-result" role="status">Tests database write, privacy, expiry and deletion using disposable records.</span></p>
     </section>
-    <section id="about" class="about"><strong>About this build</strong><p>Experimental native-caption research. The Test Lab is not a general transcriber. Provider access can fail, and a successful caption request does not establish broad platform support or permission for other uses. The Site backend enforces owner access. Caption results remain in memory and are excluded from stored diagnostics.</p></section>
+    <section id="about" class="about"><strong>About this build</strong><p>Experimental native-caption research. The Test Lab is not a general transcriber. Provider access can fail, and a successful caption request does not establish broad platform support or permission for other uses. The Site backend enforces owner access. Caption, post text and metadata results remain in memory and are excluded from stored diagnostics.</p></section>
   </main>
 </div>
 <script type="module" src="./app.mjs"></script>
