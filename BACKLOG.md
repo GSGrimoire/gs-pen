@@ -2,7 +2,7 @@
 
 Earlier deployment-pending statements below are historical. The owner-private Site is live; see docs/DEPLOYMENT.md.
 
-- PEN-009 / issue #8: TikTok post text/hashtags and public metadata; first Facebook public post adapter implemented, release verification in progress.
+- PEN-009 / issue #8: TikTok post text/hashtags and public metadata; first Facebook public post adapter implemented, deployed privately and verified on the two supplied examples; 75 unit and 30 browser checks pass. Pull request #9 awaits independent review.
 - Facebook captions: unimplemented. Do not infer a transcript from post text.
 - Facebook short/shared links and broader provider formats: pending.
 - Frame text recognition and independent Whisper: pending.
