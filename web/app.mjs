@@ -3,7 +3,7 @@ import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 const $=id=>document.getElementById(id);
 const BUILD="testlab_v1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
-const state={backend:false,serverCount:null,events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:""};
+const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:""};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
@@ -67,13 +67,14 @@ function drawEvents(){
   $("local-event-count").textContent=String(state.events.length);
   $("server-event-count").textContent=state.serverCount===null?"—":String(state.serverCount);
   const platform=$("filter-platform").value,status=$("filter-status").value;
-  const items=state.events.filter(e=>(platform==="all"||e.platform===platform)&&(status==="all"||e.status===status)).slice(-120).reverse();
+  const combined=[...state.events.map(e=>({...e,location:"browser"})),...state.serverEvents.map(e=>({...e,location:"backend"}))];
+  const items=combined.filter(e=>(platform==="all"||e.platform===platform)&&(status==="all"||e.status===status)).sort((a,b)=>Date.parse(b.timestamp)-Date.parse(a.timestamp)).slice(0,120);
   const tbody=$("diagnostic-rows");tbody.replaceChildren();
-  if(!items.length){const tr=node("tr"),td=node("td","No diagnostic records in this view.","no-rows");td.colSpan=7;tr.append(td);tbody.append(tr);return;}
+  if(!items.length){const tr=node("tr"),td=node("td","No diagnostic records in this view.","no-rows");td.colSpan=8;tr.append(td);tbody.append(tr);return;}
   for(const e of items){
     const tr=node("tr");
     const context=[e.sourceDomain,e.linkType,e.queryShape,e.cdnFamily,e.responseBucket,e.httpStatus?("HTTP "+e.httpStatus):null,e.captionCueCount!=null?(e.captionCueCount+" cues"):null].filter(x=>x&&x!=="unknown").join(" · ")||"—";
-    const vals=[new Date(e.timestamp).toLocaleTimeString(),e.platform,e.stage.replace(/_/g," "),e.status,e.code,context,e.durationMs!=null?e.durationMs+" ms":"—"];
+    const vals=[new Date(e.timestamp).toLocaleTimeString(),e.location,e.platform,e.stage.replace(/_/g," "),e.status,e.code,context,e.durationMs!=null?e.durationMs+" ms":"—"];
     for(const val of vals)tr.append(node("td",val));tbody.append(tr);
   }
 }
@@ -137,9 +138,9 @@ async function doProbe(event){
   }finally{clearTimeout(timer);renderTab();setBusy(false);void refreshServerCount();}
 }
 async function refreshServerCount(){
-  if(!state.backend){state.serverCount=null;drawEvents();return;}
-  try{const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverCount=Array.isArray(data.events)?data.events.length:null;}
-  catch{state.serverCount=null;$("storage-indicator").textContent="Unable to read backend logs";}
+  if(!state.backend){state.serverCount=null;state.serverEvents=[];drawEvents();return;}
+  try{const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverEvents=Array.isArray(data.events)?cleanEvents(data.events):[];state.serverCount=state.serverEvents.length;}
+  catch{state.serverCount=null;state.serverEvents=[];$("storage-indicator").textContent="Unable to read backend logs";}
   drawEvents();
 }
 async function connectBackend() {
@@ -190,7 +191,7 @@ function exportDiagnostics(){
 }
 async function clearDiagnostics(){
   if(!confirm("Clear local diagnostic records and attempt to clear the local backend log?"))return;
-  state.events=[];state.trace=[];state.serverCount=null;
+  state.events=[];state.trace=[];state.serverCount=null;state.serverEvents=[];
   try{localStorage.removeItem(KEY);}catch{}
   if(state.backend)try{const response=await fetch("/api/diagnostics",{method:"DELETE",headers:authHeaders()});if(!response.ok)throw Error("not_cleared");}catch{$("storage-indicator").textContent="Backend clear failed";}
   drawTrace();drawEvents();await refreshServerCount();
