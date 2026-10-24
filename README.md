@@ -32,6 +32,12 @@ Open `http://127.0.0.1:4173` on that computer. This research server only listens
 
 The Node.js live GitHub Actions check on 24 October 2026 retrieved 15 WebVTT cues from one public TikTok video and 12 from a second, separately. These are two samples, not evidence of platform-wide reliability or production authorization.
 
+## Automated browser checks
+
+GitHub Actions runs the Test Lab in desktop and mobile Chromium with Playwright. The acceptance suite checks caption result display, truthful errors, unimplemented tabs, sanitized diagnostics, export, 30-day retention, development-key UI and mobile overflow. Latest result: [22/22 browser tests passed](https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641). These use synthetic caption fixtures; the separate live research workflow continues to verify two real TikTok examples.
+
+For eventual private Sites provisioning, see [Work Sites deployment handoff](docs/SITES_DEPLOYMENT_HANDOFF.md). This GitHub connector can prepare code and CI, but cannot create or publish a ChatGPT Site.
+
 ## Not implemented or verified
 
 - No ChatGPT Site deployment or verified owner-only remote authentication and database.
