@@ -2,13 +2,13 @@
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="testlab_v1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
-const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:""};
+const BUILD="testlab_v01_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
+const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
 function node(type,text,cls){const e=document.createElement(type);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e;}
-function makeTrace(){return crypto.randomUUID().replace(/-/g,"").slice(0,24);}
+function makeTrace(){return crypto.randomUUID();}
 function cleanEvents(items){
   const since=Date.now()-MAX_AGE;
   return (Array.isArray(items)?items:[]).filter(e=>e?.schema==="gs-pen.diagnostic.v2" && Date.parse(e.timestamp)>=since).slice(-MAX);
@@ -21,7 +21,7 @@ async function syncEvent(event){
   try{
     const resp=await fetch("/api/diagnostics",{method:"POST",headers:authHeaders(true),body:JSON.stringify(event)});
     const data=await resp.json();
-    if(!resp.ok||!data.saved)return false;
+    if(!resp.ok||!data.saved){state.storageFailed=true;return false;}
     return true;
   }catch{return false;}
 }
@@ -33,7 +33,7 @@ function record(input,{sync=true,trace=true}={}){
   drawEvents();
   if(sync)void syncEvent(event).then(ok=>{
     if(state.backend && !ok){$("storage-indicator").textContent="Local only (sync failed)";}
-    else if(ok){$("storage-indicator").textContent="Local file connected";}
+    else if(ok && !state.storageFailed){$("storage-indicator").textContent=state.site?"Site database connected":"Local file connected";}
   });
   return event;
 }
@@ -45,7 +45,7 @@ function setContext(context,extras={}){
     "Platform":context.platform||"unknown",
     "URL query class":context.queryShape||"unknown",
     "Short-link redirect":context.requiresRedirect?"Yes":"No",
-    "Request transport":state.backend?"Local backend":"Browser only",
+    "Request transport":state.backend?(state.site?"Authenticated Site backend":"Local backend"):"Browser only",
     "Browser family":browserFamily(),
     "Device category":deviceClass(),
     ...extras
@@ -59,22 +59,22 @@ function drawTrace(){
     const line=node("div",undefined,"time-event "+(item.status==="failed"?"failed":""));
     const mark=node("span",undefined,"marker");
     const body=node("div");body.append(node("b",item.stage.replace(/_/g," ")),node("small",item.code+" · "+item.status));
-    const duration=node("em",Number.isInteger(item.durationMs)?item.durationMs+" ms":"—");
+    const duration=node("em",Number.isInteger(item.durationMs)?item.durationMs+" ms":"N/A");
     line.append(mark,body,duration);el.append(line);
   }
 }
 function drawEvents(){
   $("local-event-count").textContent=String(state.events.length);
-  $("server-event-count").textContent=state.serverCount===null?"—":String(state.serverCount);
-  const platform=$("filter-platform").value,status=$("filter-status").value;
+  $("server-event-count").textContent=state.serverCount===null?"N/A":String(state.serverCount);
+  const platform=$("filter-platform").value,status=$("filter-status").value,search=$("filter-search").value.trim().toLowerCase();
   const combined=[...state.events.map(e=>({...e,location:"browser"})),...state.serverEvents.map(e=>({...e,location:"backend"}))];
-  const items=combined.filter(e=>(platform==="all"||e.platform===platform)&&(status==="all"||e.status===status)).sort((a,b)=>Date.parse(b.timestamp)-Date.parse(a.timestamp)).slice(0,120);
+  const items=combined.filter(e=>(platform==="all"||e.platform===platform)&&(status==="all"||e.status===status)&&(!search||JSON.stringify(e).toLowerCase().includes(search))).sort((a,b)=>Date.parse(b.timestamp)-Date.parse(a.timestamp)).slice(0,120);
   const tbody=$("diagnostic-rows");tbody.replaceChildren();
   if(!items.length){const tr=node("tr"),td=node("td","No diagnostic records in this view.","no-rows");td.colSpan=8;tr.append(td);tbody.append(tr);return;}
   for(const e of items){
-    const tr=node("tr");
-    const context=[e.sourceDomain,e.linkType,e.queryShape,e.cdnFamily,e.responseBucket,e.httpStatus?("HTTP "+e.httpStatus):null,e.captionCueCount!=null?(e.captionCueCount+" cues"):null].filter(x=>x&&x!=="unknown").join(" · ")||"—";
-    const vals=[new Date(e.timestamp).toLocaleTimeString(),e.location,e.platform,e.stage.replace(/_/g," "),e.status,e.code,context,e.durationMs!=null?e.durationMs+" ms":"—"];
+    const tr=node("tr");tr.tabIndex=0;tr.title="Show processing timeline for this trace";const selectTrace=()=>{state.currentTrace=e.traceId;state.trace=combined.filter(x=>x.traceId===e.traceId).sort((a,b)=>Date.parse(a.timestamp)-Date.parse(b.timestamp));$("trace-id").textContent=e.traceId;drawTrace();$("timeline").scrollIntoView({behavior:"smooth"});};tr.addEventListener("click",selectTrace);tr.addEventListener("keydown",k=>{if(k.key==="Enter")selectTrace();});
+    const context=[e.sourceDomain,e.linkType,e.queryShape,e.cdnFamily,e.responseBucket,e.httpStatus?("HTTP "+e.httpStatus):null,e.captionCueCount!=null?(e.captionCueCount+" cues"):null].filter(x=>x&&x!=="unknown").join(" · ")||"N/A";
+    const vals=[new Date(e.timestamp).toLocaleTimeString(),e.location,e.platform,e.stage.replace(/_/g," "),e.status,e.code,context,e.durationMs!=null?e.durationMs+" ms":"N/A"];
     for(const val of vals)tr.append(node("td",val));tbody.append(tr);
   }
 }
@@ -93,6 +93,8 @@ function renderTab(){
   panel.append(wrap,note);
 }
 const errorText={
+  AUTH_DENIED:"Owner authentication was rejected. Sign in again to this private Site.",
+  RATE_LIMITED:"The research request limit was reached. Wait one minute and retry.",
   INVALID_URL:"The link is invalid or outside the supported video formats.",
   NOT_IMPLEMENTED:"This platform or link style has no caption adapter in the current test build.",
   UNSUPPORTED_LINK_TYPE:"The link is recognized, but the experimental caption resolver requires a canonical public video URL.",
@@ -102,7 +104,7 @@ const errorText={
   CAPTION_PARSE_FAILED:"A caption file was accessed, but it did not contain recognizable timed cues.",
   NETWORK_ERROR:"The network request could not be completed; this may be connectivity, a platform block or a host limitation.",
   TIMEOUT:"The retrieval exceeded the request time limit.",
-  BACKEND_UNAVAILABLE:"The private caption retrieval backend is not connected. A static Site cannot run this Node service on its own.",
+  BACKEND_UNAVAILABLE:"The private caption retrieval backend could not be reached. Check the backend and authentication status.",
   INTERNAL_ERROR:"The research backend encountered a safe, unclassified internal failure."
 };
 function explain(code){return (errorText[code]||"The request did not return an available caption track.")+" Error code: "+code+".";}
@@ -113,7 +115,7 @@ async function doProbe(event){
   state.currentTrace=makeTrace();state.trace=[];state.result=null;
   $("trace-id").textContent=state.currentTrace;
   setContext(context);renderTab();setBusy(true);displayStatus("Validating");
-  const base={traceId:state.currentTrace,...context,source:"browser",transport:state.backend?"local_backend":"browser_direct"};
+  const base={traceId:state.currentTrace,...context,source:"browser",transport:state.backend?(state.site?"site_backend":"local_backend"):"browser_direct"};
   const result=classifyPublicVideoUrl(input);
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
   if(!result.ok){state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
@@ -123,13 +125,14 @@ async function doProbe(event){
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
     const response=await fetch("/api/captions",{method:"POST",headers:authHeaders(true),body:JSON.stringify({url:input,traceId:state.currentTrace}),signal:controller.signal});
-    if(!response.ok)throw Error("backend_response");
+    if(!response.ok){const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;
+    if(outcome.unpersistedCaptionHost)setContext(context,{"Rejected caption host (not stored)":outcome.unpersistedCaptionHost});
     if(outcome.ok){displayStatus("Captions retrieved","ok");setContext(context,{"Caption tracks":outcome.captionTrackCount,"Caption cues":outcome.cues.length});}
     else displayStatus(outcome.code==="CAPTIONS_NOT_FOUND"?"No track found":"Retrieval failed","error");
-    if(!outcome.diagnosticsStored)$("storage-indicator").textContent="Local only (server write failed)";
+    if(!outcome.diagnosticsStored){state.storageFailed=true;$("storage-indicator").textContent="Storage failed; browser copy only";}
     record({...base,stage:"result_render",status:outcome.ok?"succeeded":"failed",code:outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined});
   }catch(e){
     const code=e?.name==="AbortError"?"TIMEOUT":"BACKEND_UNAVAILABLE";
@@ -168,7 +171,9 @@ async function checkBackend(){
     const response=await fetch("/api/health",{cache:"no-store"});
     if(!response.ok)throw Error("bad_status");
     const data=await response.json();
-    if(!["local_only","codespaces_private"].includes(data.backend))throw Error("unrecognized_backend");
+    if(!["local_only","codespaces_private","sites_private"].includes(data.backend))throw Error("unrecognized_backend");
+    state.site=data.backend==="sites_private";
+    if(state.site){state.backend=true;$("backend-badge").textContent="Owner-private Site backend";$("storage-indicator").textContent=data.centralSiteStorage?"Site database connected":"Site database unavailable";state.storageFailed=!data.centralSiteStorage;await refreshServerCount();return;}
     state.authRequired=!!data.authRequired;
     if(state.authRequired){
       $("dev-access").hidden=false;
@@ -178,19 +183,19 @@ async function checkBackend(){
       return;
     }
     state.backend=true;$("backend-badge").textContent="Local probe connected";$("backend-badge").className="pill";
-    $("storage-indicator").textContent="Local file connected";await refreshServerCount();
+    $("storage-indicator").textContent=state.site?"Site database connected":"Local file connected";await refreshServerCount();
   }catch{
     state.backend=false;$("backend-badge").textContent="Retrieval backend offline";$("backend-badge").className="pill error";
     $("storage-indicator").textContent="Browser only";
   }
 }
 function exportDiagnostics(){
-  const data={schema:"gs-pen.debug-export.v1",exportedAt:new Date().toISOString(),source:"browser_local",events:state.events};
+  const data={schema:"gs-pen.debug-export.v1",exportedAt:new Date().toISOString(),source:state.site?"browser_and_site":"browser_local",events:[...state.events,...state.serverEvents]};
   const blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"});
   const url=URL.createObjectURL(blob);const a=node("a");a.href=url;a.download="gs-pen-sanitized-diagnostics.json";document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);
 }
 async function clearDiagnostics(){
-  if(!confirm("Clear local diagnostic records and attempt to clear the local backend log?"))return;
+  if(!confirm("Delete browser and backend diagnostic records?"))return;
   state.events=[];state.trace=[];state.serverCount=null;state.serverEvents=[];
   try{localStorage.removeItem(KEY);}catch{}
   if(state.backend)try{const response=await fetch("/api/diagnostics",{method:"DELETE",headers:authHeaders()});if(!response.ok)throw Error("not_cleared");}catch{$("storage-indicator").textContent="Backend clear failed";}
@@ -201,9 +206,11 @@ document.querySelectorAll("[data-example]").forEach(button=>button.addEventListe
 $("video-url").addEventListener("input",()=>{const c=diagnosticLinkContext($("video-url").value);$("source-summary").textContent=c.platform==="unknown"?"Paste a supported public video link":c.platform+" · "+c.linkType+" · "+c.sourceDomain;});
 $("probe-form").addEventListener("submit",doProbe);
 $("connect-backend").addEventListener("click",connectBackend);
+$("filter-search").addEventListener("input",drawEvents);
 $("filter-platform").addEventListener("change",drawEvents);
 $("filter-status").addEventListener("change",drawEvents);
 $("refresh-diagnostics").addEventListener("click",refreshServerCount);
 $("export-diagnostics").addEventListener("click",exportDiagnostics);
 $("clear-diagnostics").addEventListener("click",clearDiagnostics);
 restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkContext(""));void checkBackend();
+

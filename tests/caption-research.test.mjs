@@ -45,3 +45,4 @@ test("unsupported platforms cannot trigger external HTTP requests",async()=>{
   assert.equal(result.code,"NOT_IMPLEMENTED");
   assert.equal(sent,0);
 });
+

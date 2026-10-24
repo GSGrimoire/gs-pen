@@ -22,3 +22,4 @@ Do not implement the full four-platform one-paste transcriber until the remainin
 
 ## Test evidence and known limitations
 Source-only URL classification tested in a local Node.js 22 environment, 29/29 assertions passed. No external video URLs, audio streams, Sites previews, synchronization, full transcription models or provider interfaces were executed. Existing code must not claim media access. Results are not end-to-end verification.
+

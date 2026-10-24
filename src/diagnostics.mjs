@@ -6,10 +6,10 @@ const choices = {
   stage: ["url_validate", "provider_identify", "auth_check", "request_start", "provider_page_fetch", "caption_track_discovery", "caption_host_validation", "caption_fetch", "caption_parse", "result_render", "history_write", "diagnostics_write", "finished"],
   status: ["started", "succeeded", "failed", "unavailable", "skipped"],
   source: ["browser", "site", "retrieval_service", "local_backend"],
-  code: ["OK", "STARTED", "INVALID_URL", "UNSUPPORTED_PLATFORM", "UNSUPPORTED_LINK_TYPE", "AUTH_DENIED", "NETWORK_ERROR", "PROVIDER_BLOCKED", "CAPTIONS_NOT_FOUND", "CAPTION_HOST_REJECTED", "CAPTION_PARSE_FAILED", "CORS_DENIED", "TIMEOUT", "AUDIO_UNAVAILABLE", "STORAGE_FAILED", "BACKEND_UNAVAILABLE", "INTERNAL_ERROR", "NOT_IMPLEMENTED"],
+  code: ["OK", "STARTED", "INVALID_URL", "UNSUPPORTED_PLATFORM", "UNSUPPORTED_LINK_TYPE", "AUTH_DENIED", "NETWORK_ERROR", "PROVIDER_BLOCKED", "CAPTIONS_NOT_FOUND", "CAPTION_HOST_REJECTED", "CAPTION_PARSE_FAILED", "CORS_DENIED", "TIMEOUT", "AUDIO_UNAVAILABLE", "STORAGE_FAILED", "BACKEND_UNAVAILABLE", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "RATE_LIMITED", "RESPONSE_TOO_LARGE"],
   linkType: ["watch", "shorts", "short_link", "reel", "creator_video", "share", "video", "unknown"],
   queryShape: ["none", "video_id_only", "additional_parameters", "unknown"],
-  cdnFamily: ["tiktokcdn", "tiktokcdn_us", "tiktokv", "byteoversea", "ibytedtos", "tiktok", "unknown", "none"],
+  cdnFamily: ["tiktokcdn", "tiktokcdn_us", "tiktokcdn_eu", "tiktokv", "byteoversea", "ibytedtos", "tiktok", "unknown", "none"],
   transport: ["browser_direct", "site_backend", "local_backend", "none"],
   browserFamily: ["chromium", "firefox", "safari", "other", "unknown"],
   deviceClass: ["desktop", "mobile", "tablet", "unknown"],
@@ -27,6 +27,7 @@ function family(host, root) { return host === root || host.endsWith("." + root);
 export function captionCdnFamily(hostname) {
   if (typeof hostname !== "string" || !/^[a-z0-9.-]{1,253}$/i.test(hostname)) return "unknown";
   const host = hostname.toLowerCase();
+  if (family(host, "tiktokcdn-eu.com")) return "tiktokcdn_eu";
   if (family(host, "tiktokcdn-us.com")) return "tiktokcdn_us";
   if (family(host, "tiktokcdn.com")) return "tiktokcdn";
   if (family(host, "tiktokv.com")) return "tiktokv";
@@ -100,3 +101,4 @@ export function sanitizeDiagnostic(input, now = new Date()) {
   for (const name of ["retryable","requiresRedirect"]) if (typeof input[name] === "boolean") out[name] = input[name];
   return out;
 }
+

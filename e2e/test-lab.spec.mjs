@@ -186,3 +186,25 @@ test('caption output treats HTML-like text as text and never executes it', async
   await expect(page.locator('#tab-panel img')).toHaveCount(0);
   expect(await page.evaluate(() => window.__injected)).toBeUndefined();
 });
+
+test('Site database health and synchronization failures are visible without blocking captions',async({page})=>{
+ await page.route('**/api/health',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
+ await page.route('**/api/diagnostics',route=>route.fulfill({status:route.request().method()==='POST'?503:200,contentType:'application/json',body:JSON.stringify(route.request().method()==='POST'?{code:'STORAGE_FAILED'}:{events:[]})}));
+ await stubCaptionResult(page,traceId=>({ok:true,code:'OK',cues:[{start:'00:00:01.000',end:'00:00:02.000',text:'Synthetic caption during logging outage'}],events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:false}));
+ await page.goto('/');await expect(page.locator('#backend-badge')).toHaveText('Owner-private Site backend');
+ await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();
+ await expect(page.locator('#tab-panel')).toContainText('Synthetic caption during logging outage');
+ await expect(page.locator('#storage-indicator')).toContainText(/failed/);
+});
+
+test('Search and error filters inspect backend diagnostics and select processing timelines',async({page})=>{
+ const trace='00000000-0000-4000-8000-000000000001';
+ await page.route('**/api/health',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
+ await page.route('**/api/diagnostics',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({events:mockEvents(trace,'failed','TIMEOUT')})}));
+ await page.goto('/');await expect(page.locator('#server-event-count')).toHaveText('1');
+ await page.locator('#filter-search').fill('TIMEOUT');await expect(page.locator('#diagnostic-rows tr')).toHaveCount(1);
+ await page.locator('#filter-status').selectOption('succeeded');await expect(page.locator('#diagnostic-rows')).toContainText('No diagnostic records');
+ await page.locator('#filter-status').selectOption('failed');await page.locator('#diagnostic-rows tr').click();
+ await expect(page.locator('#trace-id')).toHaveText(trace);await expect(page.locator('#timeline')).toContainText('TIMEOUT');
+});
+

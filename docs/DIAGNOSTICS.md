@@ -41,3 +41,4 @@ Authenticated user context must come from the Sites server, not client-provided 
 ## Limits
 
 Diagnostic data is useful for seeing systematic failure patterns. It cannot prove why a request was blocked, nor establish that a caption track truly does not exist when a provider request fails. The user controls any optional content-rich bug report separately and explicitly.
+

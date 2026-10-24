@@ -51,3 +51,4 @@ For eventual private Sites provisioning, see [Work Sites deployment handoff](doc
 Read `docs/HANDOFF.md`, `BACKLOG.md`, `docs/ARCHITECTURE_DECISION.md`, `docs/DIAGNOSTICS.md`, and `docs/TEST_SITE_PLAN.md`.
 
 GitHub Actions is a testing environment, not a persistent server. ChatGPT Sites is the preferred eventual owner-private host; first verify private preview, a supported authenticated backend runtime and Site database. Do not publish the raw local Node server. Saving in GitHub is not deployment to Sites.
+

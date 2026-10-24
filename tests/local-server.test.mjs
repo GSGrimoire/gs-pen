@@ -61,3 +61,4 @@ test("development access key protects all diagnostic reads and caption requests"
   const blocked=await fetch(root+"/api/captions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({url:"https://www.tiktok.com/@example/video/7538539956029902111",traceId:"short"})});
   assert.equal(blocked.status,401);
 });
+

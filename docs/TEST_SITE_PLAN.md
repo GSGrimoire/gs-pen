@@ -47,3 +47,4 @@ If Sites cannot perform permitted cross-origin server caption retrieval, evaluat
 ## Continuous browser tests
 
 `npm run test:e2e` uses Playwright to start the local test backend and inspect the actual interface in desktop and mobile Chromium. `.github/workflows/browser-e2e.yml` installs browsers and runs all tests on relevant pull requests. Tests use **synthetic fixtures** for success/failure UI and never store private captions. Failed runs save short-retention traces for engineering. Tests assert safe rendering of HTML-like caption text, account-key entry UI, 30-day local log expiry, diagnostic privacy, export and mobile overflow. GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641 passed 22/22. This suite does **not** validate private Site infrastructure or provider permission.
+

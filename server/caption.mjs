@@ -4,7 +4,7 @@ import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
-const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokv","byteoversea","ibytedtos","tiktok"]);
+const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
 function fail(code, status = "failed") { return { ok:false, status, code, cues:[], captionTrackCount:0 }; }
 function cleanToken(raw) { return raw.replace(/<[^>]*>/g, "").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim(); }
 
@@ -81,7 +81,7 @@ async function fetchBounded(url, limit, fetchImpl) {
 }
 export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="research",build="testlab_v1",onEvent=()=>{}}={}) {
   const start=Date.now(), context=diagnosticLinkContext(rawUrl);
-  const baseline={...context,traceId,build,transport:"local_backend",source:"local_backend",attempt:1};
+  const baseline={...context,traceId,build,transport:"local_backend",source:"local_backend",attempt:1,language:"unknown",trackType:"unknown"};
   const report=(stage,status,code,extras={})=>{
     const event=sanitizeDiagnostic({...baseline,stage,status,code,durationMs:Date.now()-start,...extras});
     try {onEvent(event);} catch { /* telemetry is never a retrieval prerequisite */ }
@@ -113,7 +113,7 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   if(!candidates.length){report("caption_track_discovery","unavailable","CAPTIONS_NOT_FOUND");return fail("CAPTIONS_NOT_FOUND","unavailable");}
   report("caption_track_discovery","succeeded","OK",{captionTrackCount:candidates.length});
   const asset=validateCaptionAsset(candidates[0]);
-  if(!asset){report("caption_host_validation","failed","CAPTION_HOST_REJECTED",{captionTrackCount:candidates.length});return fail("CAPTION_HOST_REJECTED");}
+  if(!asset){report("caption_host_validation","failed","CAPTION_HOST_REJECTED",{captionTrackCount:candidates.length});let host;try{host=new URL(candidates[0]).hostname;}catch{}return {...fail("CAPTION_HOST_REJECTED"),unpersistedCaptionHost:host};}
   report("caption_host_validation","succeeded","OK",{cdnFamily:asset.cdnFamily});
   let track;
   report("caption_fetch","started","STARTED",{cdnFamily:asset.cdnFamily});
@@ -125,5 +125,6 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   const cues=parseWebVtt(track.body.text);
   if(!cues.length){report("caption_parse","failed","CAPTION_PARSE_FAILED",{cdnFamily:asset.cdnFamily});return fail("CAPTION_PARSE_FAILED");}
   report("caption_parse","succeeded","OK",{captionCueCount:cues.length,captionTrackCount:candidates.length,cdnFamily:asset.cdnFamily});
-  return {ok:true,status:"succeeded",code:"OK",cues,captionTrackCount:candidates.length,captionType:"platform"};
+  return {ok:true,status:"succeeded",code:"OK",cues,captionTrackCount:candidates.length,captionType:"platform",language:"unknown",trackType:"unknown"};
 }
+

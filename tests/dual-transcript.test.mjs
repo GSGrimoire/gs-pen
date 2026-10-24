@@ -101,3 +101,4 @@ test('reports platform captions before slow Whisper completes', async () => {
   assert.equal(completed.whisperTranscript.status, 'available');
   assert.equal(updates.includes('whisperTranscript'), true);
 });
+

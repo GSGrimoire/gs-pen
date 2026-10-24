@@ -43,3 +43,4 @@ test("invalid numeric fields are omitted rather than serialized", () => {
   const out = sanitizeDiagnostic({...basic, durationMs: -1, captionCueCount: Infinity, httpStatus: 999, retryable:"true"}, when);
   for (const key of ["durationMs","captionCueCount","httpStatus","retryable"]) assert.equal(key in out, false);
 });
+

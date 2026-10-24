@@ -65,3 +65,4 @@ export function classifyPublicVideoUrl(input) {
   if (!valid) return { ok: false, error: "URL is not a supported public video format" };
   return { ok: true, platform, url: url.href, requiresRedirectResolution, mediaAccessVerified: false };
 }
+
