@@ -54,4 +54,3 @@ export async function runDualTranscript({ url, fetchCaptions, fetchAudio, transc
   const [platformCaptions, whisperTranscript, postData] = await Promise.all([captionsTask, whisperTask, postTask]);
   return { platformCaptions, whisperTranscript, postData };
 }
-

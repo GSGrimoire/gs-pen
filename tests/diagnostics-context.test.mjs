@@ -31,4 +31,3 @@ test("allows useful technical dimensions and rejects arbitrary raw values",()=>{
   assert.equal(e.cdnFamily,"tiktokcdn_us");
   assert.equal(e.schema,"gs-pen.diagnostic.v2");
 });
-

@@ -256,3 +256,49 @@ test('Output exports contain content and provenance while failed history saves r
  await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await expect(page.locator('#copy-output')).toBeDisabled();await expect(page.locator('#tab-panel')).not.toContainText('Saved fixture caption');
  const dims=await page.evaluate(()=>({width:document.documentElement.clientWidth,page:document.documentElement.scrollWidth}));expect(dims.page).toBeLessThanOrEqual(dims.width+2);
 });
+
+test('A delayed saved result cannot change a new extraction or its exported source',async({page})=>{
+ await stubHistory(page);
+ let releaseHistory,releaseCaptions;
+ const historyGate=new Promise(r=>releaseHistory=r),captionGate=new Promise(r=>releaseCaptions=r);
+ const savedId='00000000-0000-4000-8000-000000000010';
+ await page.route('**/api/history/'+savedId,async route=>{await historyGate;await route.fallback();});
+ await page.route('**/api/captions',async route=>{
+  const {traceId}=route.request().postDataJSON();await captionGate;
+  await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,code:'OK',cues:[{start:'00:00:05.000',end:'00:00:06.000',text:'New extraction caption'}],post:{status:'unavailable'},metadata:{status:'unavailable'},events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true,historyStatus:'saved'})});
+ });
+ await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await page.getByRole('link',{name:'Extract',exact:true}).click();
+ const other='https://www.tiktok.com/@hankgreen1/video/7047596209028074758';
+ await page.locator('#video-url').fill(other);await page.locator('#probe-button').click();
+ const savedResponse=page.waitForResponse(r=>r.url().endsWith(savedId));releaseHistory();await (await savedResponse).finished();
+ await expect(page.locator('#video-url')).toHaveValue(other);await expect(page.locator('#tab-panel')).not.toContainText('Saved fixture caption');
+ releaseCaptions();await expect(page.locator('#tab-panel')).toContainText('New extraction caption');
+ const download=page.waitForEvent('download');await page.locator('#export-json').click();
+ const record=JSON.parse(await(await import('node:fs/promises')).readFile(await(await download).path(),'utf8'));
+ expect(record.sourceUrl).toBe(other);expect(record.result.cues[0].text).toBe('New extraction caption');
+});
+
+test('The latest saved-result selection wins when responses arrive in reverse order',async({page})=>{
+ await stubHistory(page);const first='00000000-0000-4000-8000-000000000011',second='00000000-0000-4000-8000-000000000012';
+ const items=[first,second].map((id,i)=>({id,sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+86400000,title:'Selection '+i,creator:'Fixture'}));
+ await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items})}));
+ let releaseFirst;const firstGate=new Promise(r=>releaseFirst=r);
+ await page.route('**/api/history/*',async r=>{const id=r.request().url().split('/').at(-1);if(id===first)await firstGate;await r.fulfill({contentType:'application/json',body:JSON.stringify({item:{...items.find(x=>x.id===id),result:{ok:true,code:'OK',cues:[{start:'00:00:01.000',text:id===first?'Old saved selection':'Latest saved selection'}]}}})});});
+ await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.getByRole('button',{name:'Open extraction: Selection 0',exact:true}).click();await page.getByRole('button',{name:'Open extraction: Selection 1',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('Latest saved selection');
+ const response=page.waitForResponse(r=>r.url().endsWith(first));releaseFirst();await(await response).finished();
+ await expect(page.locator('#tab-panel')).toContainText('Latest saved selection');await expect(page.locator('#tab-panel')).not.toContainText('Old saved selection');
+});
+
+test('Unbroken provider creator text does not overflow Recent or its preview',async({page})=>{
+ await stubHistory(page);const creator='x'.repeat(200);
+ await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items:[{id:'00000000-0000-4000-8000-000000000010',sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+86400000,title:'Long creator fixture',creator}]})}));
+ await page.goto('/');await expect(page.locator('#recent-preview')).toContainText(creator);
+ for(const view of ['Extract','Recent']){
+  await page.getByRole('link',{name:view==='Recent'?/^Recent/:view,exact:view!=='Recent'}).click();
+  const size=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));expect(size.scroll).toBeLessThanOrEqual(size.width+2);
+ }
+});

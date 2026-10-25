@@ -13,7 +13,7 @@ const json = (body, status=200) => new Response(JSON.stringify(body), {status,he
 export function ownerAuthorized(request, env) {
   const id=request.headers.get('oai-authenticated-user-id');
   const email=request.headers.get('oai-authenticated-user-email');
-  return !!(id && email && env.GS_PEN_OWNER_EMAIL && email.toLowerCase() === env.GS_PEN_OWNER_EMAIL.toLowerCase() && (!env.GS_PEN_OWNER_ID || id===env.GS_PEN_OWNER_ID));
+  return !!(id && email && env.GS_PEN_OWNER_EMAIL && email.toLowerCase() === env.GS_PEN_OWNER_EMAIL.toLowerCase() && (env.GS_PEN_OWNER_ID && id===env.GS_PEN_OWNER_ID));
 }
 export async function expireEvents(db, now=Date.now()) {
   return db.prepare('DELETE FROM diagnostic_events WHERE expires_at <= ?').bind(now).run();

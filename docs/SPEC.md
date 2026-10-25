@@ -18,4 +18,3 @@ Schema: `gs-pen.transcript` version 1. Fields include source URL, retrieved time
 
 ## Release criterion
 Do not build or release a functional site until the five feasibility gates documented in FEASIBILITY.md are passed and PEN-006 explicitly approves scope.
-

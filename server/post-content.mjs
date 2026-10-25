@@ -10,12 +10,16 @@ export function hashtags(text) {return [...new Set(text?.match(/#[\p{L}\p{N}_]+/
 export function unavailableContent(code='CONTENT_NOT_FOUND') {
   return {post:{status:'unavailable',code,text:null,hashtags:[]},metadata:{status:'unavailable',code,fields:{}}};
 }
-export function tiktokContent(markup, expectedId) {
-  const missing=unavailableContent();
+export function matchedTikTokItem(markup, expectedId) {
   const match=markup.match(/<script\b[^>]*\bid=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i);
-  if(!match)return missing;
-  let item;try{item=JSON.parse(match[1]).__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;}catch{return missing;}
-  if(!item || String(item.id)!==expectedId)return missing;
+  if(!match)return null;
+  let item;try{item=JSON.parse(match[1]).__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;}catch{return null;}
+  return item && String(item.id)===String(expectedId) ? item : null;
+}
+export function tiktokContent(input, expectedId) {
+  const missing=unavailableContent();
+  const item=typeof input==='string'?matchedTikTokItem(input,expectedId):input;
+  if(!item || String(item.id)!==String(expectedId))return missing;
   const text=textValue(item.desc),author=item.author||{},video=item.video||{},stats=item.statsV2||item.stats||{};
   const fields={platform:'TikTok',creator:textValue(author.nickname,200),username:textValue(author.uniqueId,200),publishedAt:isoDate(item.createTime),
     durationSeconds:numberValue(video.duration),width:numberValue(video.width),height:numberValue(video.height),language:textValue(item.textLanguage,30),
