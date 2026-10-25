@@ -151,5 +151,3 @@ if __name__ == "__main__":
     # a probe that completed and printed "blocked" statuses.
     if "--require-tiktok" in sys.argv and not all(results[k]["track_verified"] for k in ("tiktok", "tiktok_second_public_video")):
         sys.exit(1)
-
-

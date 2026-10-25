@@ -25,18 +25,20 @@ Review is self-review only. GitHub change remains unmerged pending independent r
 
 # GS Pen deployment ledger
 
-## 24 October 2026
+## Current state, 25 October 2026
 
-An owner-private ChatGPT Site has **not** been created or published through this conversation. The Test Lab static frontend and local-only Node.js research backend exist in GitHub pull request #7. Automated tests and research runner results are referenced in docs/TEST_SITE_PLAN.md.
+The existing owner-private Site is deployed at https://gs-pen-test-lab.goofyspook.chatgpt.site, project `appgprj_6adce46e22dc81918dab627af382c76a`. Its latest pre-review runtime source is `7675ca656d74160e8d9b668c37f08a3fd2c03ef6`, saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_9cf19f0af6c8819194c77cbafb31fef2`, deployment `appgdep_6add0899e1d88191b7db64205c24f7a1`. This receipt is from the existing release, not the corrective changes in pull request #7.
 
-Do not publicly host `server/local-server.mjs`. It intentionally has **no remote owner authentication**, binds to 127.0.0.1, and uses a local JSON file. The future private Site must supply an authenticated backend and owner-scoped storage or remain browser-local only.
+The live Site already contains later stacked changes. Corrective merges must proceed #7, #9, #11, #13, each retargeted to main and rechecked, before publishing a reconciled main tree. Preserve owner-only access. Record the new GitHub main commit, Sites source commit, saved version, deployment and verification results after publication.
 
-When publishing, record Site project ID, exact private URL, deployed commit, version, permission checks, request egress results, live native-caption results, database validation and known limitations. A GitHub commit is not a Site deployment.
+Claude's independent review is recorded in pull request #7, combined comment 6393655281, with inline findings on all four pull requests. Fixes are self-reviewed against those findings. Browser acceptance uses synthetic provider fixtures against the loopback research server; hosted authorization, database and provider checks require separate evidence.
 
-## 24 October 2026 automated preview readiness
-The GitHub Test Lab's static build and Playwright browser suite passed 22/22 desktop/mobile tests: https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. This is **not a deployed Site**. No Sites project ID, private URL, authenticated server function or cloud diagnostic database exists from this workflow. The deployment brief to hand to ChatGPT Work / @Sites is docs/SITES_DEPLOYMENT_HANDOFF.md.
+## Historical pre-deployment evidence
 
 
 
 ## Final documentation publication receipt
 At 18:29 UTC (20:29 Copenhagen), owner-private publication succeeded for source `8b99ff7755bc0c90af91aa3cdf1d24959c96b4b4`, saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_0fa137b2890c8191b137b182ca3f2c59`, deployment `appgdep_6adcf8e207788191bb8023831026c581`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. This final source differs from the hosted-tested runtime commit only in BACKLOG.md, docs/DEPLOYMENT.md and docs/HANDOFF.md. Application code/build output is unchanged; no repeat provider calls were required. This receipt is recorded on the GitHub feature branch after publication.
+On 24 October 2026, local preview acceptance passed 22 desktop/mobile checks in run 40113533641. That run preceded Site provisioning and did not establish hosted authentication or database behavior. Later historical publication receipts are preserved in the descendant pull requests and Site source history.
+
+The research Node server remains loopback-only and must never be exposed publicly. The live service instead uses the authenticated Sites worker and owner-private database. Diagnostics have 30-day application retention with hourly physical expiry; infrastructure request logs have independent platform retention.

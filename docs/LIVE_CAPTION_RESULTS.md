@@ -69,4 +69,3 @@ GitHub Actions run: https://github.com/GSGrimoire/gs-pen/actions/runs/3985661610
 - The workflow is being strengthened to require **both** examples to pass. Two success cases do not measure TikTok-wide reliability, handle Danish-language captions, or establish permission for production scraping.
 
 Source of second test case: https://github.com/yt-dlp/yt-dlp/blob/master/yt_dlp/extractor/tiktok.py
-

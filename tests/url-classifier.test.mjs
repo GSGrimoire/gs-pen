@@ -35,4 +35,3 @@ test("redirect short links are flagged but not fetched", () => {
   assert.equal(classifyPublicVideoUrl("https://fb.watch/abc123/").requiresRedirectResolution, true);
   assert.equal(classifyPublicVideoUrl("https://www.youtube.com/watch?v=J---aiyznGQ").requiresRedirectResolution, false);
 });
-

@@ -6,7 +6,7 @@ import { handleSiteRequest,RETENTION_MS } from '../server/site-service.mjs';
 function setup(){
  const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new URL('../drizzle/0000_curvy_cargill.sql',import.meta.url),'utf8'));
  const db={prepare(query){let args=[];const api={bind(...values){args=values;return api;},async run(){return sql.prepare(query).run(...args);},async first(){return sql.prepare(query).get(...args);},async all(){return {results:sql.prepare(query).all(...args)};}};return api;},async batch(statements){sql.exec('BEGIN');try{for(const s of statements)await s.run();sql.exec('COMMIT');}catch(e){sql.exec('ROLLBACK');throw e;}}};
- return {env:{DB:db,GS_PEN_OWNER_EMAIL:'owner@example.test'},sql};
+ return {env:{DB:db,GS_PEN_OWNER_EMAIL:'owner@example.test',GS_PEN_OWNER_ID:'trusted-test-id'},sql};
 }
 function req(path,method='GET',body,identity='owner@example.test',extras={}){
  const headers={...extras};if(identity){headers['oai-authenticated-user-id']='trusted-test-id';headers['oai-authenticated-user-email']=identity;}
@@ -19,6 +19,7 @@ test('Site backend denies absent, alternate and mismatched identity on every dat
   assert.equal((await handleSiteRequest(req(p,m,b,identity),env)).status,403);
  }
  assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_ID:'wrong'})).status,403);
+ assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_ID:''})).status,403);
  assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_EMAIL:''})).status,403);
 });
 test('Site mutations reject cross-origin requests and oversized bodies',async()=>{
@@ -55,7 +56,7 @@ test('Authenticated storage check exercises real SQL without changing existing r
 });
 test('Site caption resolver returns native timed cues; stores only technical events',async()=>{
  const {env,sql}=setup();let count=0;
- const fetchImpl=async()=>++count===1?new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=private'}]})+'</script>'):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate synthetic caption\n');
+ const fetchImpl=async()=>++count===1?new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:{id:'1234567890123456789',video:{caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=private'}]}}}}}})+'</script>'):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate synthetic caption\n');
  const response=await (await handleSiteRequest(req('captions','POST',{traceId:data.traceId,url:'https://www.tiktok.com/@creator/video/1234567890123456789?secret=value'}),env,{fetchImpl})).json();
  assert.equal(response.ok,true);assert.equal(response.cues.length,1);assert.equal(response.diagnosticsStored,true);
  const raw=JSON.stringify(sql.prepare('SELECT * FROM diagnostic_events').all());
