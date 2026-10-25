@@ -138,3 +138,9 @@ test('History endpoints reject foreign-origin deletion and unsupported client wr
  assert.equal((await handleSiteRequest(req('history','POST',{result:{text:'client supplied'}}),env)).status,404);
  assert.equal((await handleSiteRequest(req('history/not-a-uuid'),env)).status,404);
 });
+
+
+test('Health detects an unavailable history table without relying on expiry side effects',async()=>{
+ const {env,sql}=setup();sql.exec('DROP TABLE extractions');
+ const health=await(await handleSiteRequest(req('health'),env)).json();assert.equal(health.historyAvailable,false);assert.equal(health.centralSiteStorage,true);assert.equal(health.retentionPaused,true);
+});

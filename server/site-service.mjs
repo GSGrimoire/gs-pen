@@ -68,7 +68,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     }
     if(path==='/api/health' && request.method==='GET') {
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
-      let history=false;try{await expireHistory(env.DB,now);history=true;}catch{}
+      let history=false;try{await env.DB.prepare('SELECT id FROM extractions LIMIT 1').first();history=true;}catch{}
       return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {

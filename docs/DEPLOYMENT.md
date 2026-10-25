@@ -2,7 +2,7 @@
 
 The user requested pausing automatic record deletion. Daily cleanup task `6adcf46e17b481919332f80387ddacfb` was disabled successfully. Issue #14 and branch `chatgpt/pen-retention-pause` prepare the application changes; these are not yet merged or deployed. Version 10 remains live, so normal-use expiry/count pruning still applies until the reviewed follow-up release. No user records were deleted or migrated during preparation.
 
-Local verification: 90 unit tests, Sites production build, lint and types pass. Browser verification is delegated to the existing GitHub desktop/mobile workflow because this container lacks its Chromium executable. No hosted verification of the changed policy is claimed before deployment. The scheduled-task pause is the only live state change so far.
+Local verification: 91 unit tests, Sites production build, lint and types pass. Browser verification is delegated to the existing GitHub desktop/mobile workflow because this container lacks its Chromium executable. No hosted verification of the changed policy is claimed before deployment. The scheduled-task pause is the only live state change so far.
 
 ---
 
