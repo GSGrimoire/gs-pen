@@ -24,15 +24,15 @@ Unknown or unmeasured values must remain unknown, not invented.
 
 Full video URLs, video IDs, creator handles, transcript or subtitle text, signed caption-file URLs, referrer, cookies, API keys, OAuth tokens, personal account IDs, IP addresses, precise device identifiers, raw browser agent strings, unrestricted exception messages and stack traces. Server logs must not contain request bodies or full URLs either.
 
-Events are built by `sanitizeDiagnostic()`, with allowlisted enumerable properties and canonical values. Unrecognized fields are discarded on the browser and **again on the local backend**. Sanitized JSON is all that can enter the diagnostic store. Captions are returned to the browser in the response and not included in diagnostic storage.
+Events are built by `sanitizeDiagnostic()`, with allowlisted enumerable properties and canonical values. Unrecognized fields are discarded on the browser and **again on each backend**. Sanitized JSON is all that can enter the diagnostic store. Captions are returned to the browser in the response and not included in diagnostic storage.
 
 ## Storage modes actually implemented
 
 - **Browser:** automatic localStorage log capped at 1,000 events; on read/write, events older than 30 days are discarded. Browser diagnostics can be viewed, filtered, exported and cleared.
 - **Loopback backend:** `server/local-server.mjs` listens only on 127.0.0.1 and writes sanitized events to ignored `.local/diagnostics.json`, capped at 2,500 entries. Each read/write enforces the 30-day cutoff. The file has user-only write permissions where the operating system supports them.
-- **Private ChatGPT Site database:** **not implemented**. Owner authentication, cross-account isolation, retention cleanup, rate limits and database storage must be verified as part of the future private Sites build. Never expose the loopback server as an unauthenticated public service.
+- **Private ChatGPT Site database:** implemented in `server/site-service.mjs`, restricted to one configured owner by trusted dispatcher identity. Sanitized events are capped at 10,000 rows, expire after 30 days, and are physically deleted on access and hourly housekeeping. Physical deletion can lag until the next successful task. Diagnostic rows have no owner column; add row ownership before allowing a second user. The loopback server remains unsuitable for public hosting.
 
-The interface distinguishes browser-only from locally stored backend diagnostics and reports save failures. In test mode, copy or export produces sanitized JSON. A video transcript never enters the automatically saved events.
+The interface distinguishes browser-only, local-backend and hosted database diagnostics and reports save failures. In test mode, copy or export produces sanitized JSON. A video transcript never enters the automatically saved events.
 
 ## Review conditions before private Sites deployment
 
@@ -42,3 +42,7 @@ Authenticated user context must come from the Sites server, not client-provided 
 
 Diagnostic data is useful for seeing systematic failure patterns. It cannot prove why a request was blocked, nor establish that a caption track truly does not exist when a provider request fails. The user controls any optional content-rich bug report separately and explicitly.
 
+
+## Infrastructure logging
+
+Sites infrastructure request metadata is separate from application diagnostics and has platform-controlled retention. Disabling worker application logging does not remove all hosting metadata. The application does not claim 30-day control over platform logs.

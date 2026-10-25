@@ -46,3 +46,15 @@ test("unsupported platforms cannot trigger external HTTP requests",async()=>{
   assert.equal(sent,0);
 });
 
+
+test('WebVTT entity decoding preserves one level of literal escaping',()=>{
+ const [cue]=parseWebVtt('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\n<b>Marked</b> &lt;b&gt; &amp;lt;b&amp;gt; &amp;\n');
+ assert.equal(cue.text,'Marked <b> &lt;b&gt; &');
+});
+for(const [stage,size] of [['provider_page_fetch',2_000_001],['caption_fetch',256_001]])test(`Oversized ${stage} is classified distinctly from network failure`,async()=>{
+ const events=[];let requests=0;
+ const result=await retrievePublicCaptions(src,{fetchImpl:async()=>new Response(++requests===1&&stage==='caption_fetch'?html:'x'.repeat(size)),onEvent:e=>events.push(e)});
+ assert.equal(result.code,'RESPONSE_TOO_LARGE');
+ assert.ok(events.some(e=>e.stage===stage&&e.status==='failed'&&e.code==='RESPONSE_TOO_LARGE'));
+ assert.equal(events.some(e=>e.code==='NETWORK_ERROR'),false);
+});

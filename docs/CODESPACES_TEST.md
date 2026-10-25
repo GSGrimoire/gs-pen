@@ -10,7 +10,7 @@ Access to private `GSGrimoire/gs-pen` repository, permission to create GitHub Co
 
 1. Open [GS Pen pull request #7](https://github.com/GSGrimoire/gs-pen/pull/7) and check out the `chatgpt/pen-007-diagnostics-plan` branch in a Codespace. In GitHub: **Code > Codespaces > Create codespace** on the selected branch.
 2. `.devcontainer/devcontainer.json` chooses Node.js 22, runs `npm run check` and requests forwarding of port 4173 with **private** visibility.
-3. In Codespaces terminal run `npm start`.
+3. In Codespaces terminal run `npm run start:local`.
 4. The terminal prints a randomly generated, temporary **development access key**. Do not paste it in GitHub issues or public chats. The key is reset whenever the server starts.
 5. Open the forwarded 4173 port in the **PORTS** tab (Private visibility). Authenticate to GitHub when prompted.
 6. Paste the development access key into the Test Lab's private backend unlock field. Then try a rights-cleared public TikTok URL.
@@ -22,7 +22,7 @@ Access to private `GSGrimoire/gs-pen` repository, permission to create GitHub Co
 
 Do not use personal, sensitive or unlicensed media in research tests. The page only exposes actual caption text while it is displayed. The automatic diagnostics store only sanitized platform, link-format and request-stage metadata. The access key is in browser session storage only (never sent to logs), and the GitHub credential is handled by Codespaces, not GS Pen.
 
-Close the Codespace when finished. It is a temporary machine that can incur usage charges after included quotas. Stopping or deleting it can erase its local diagnostic file if not exported. For a persistent owner-private service, complete the authenticated ChatGPT Sites backend and database work.
+Close the Codespace when finished. It is a temporary machine that can incur usage charges after included quotas. Stopping or deleting it can erase its local diagnostic file if not exported. The persistent owner-private Sites service already exists; see docs/DEPLOYMENT.md. Codespaces is an optional separate research environment.
 
 ## References
 
@@ -33,4 +33,3 @@ Close the Codespace when finished. It is a temporary machine that can incur usag
 ## Verification status
 
 The Codespaces configuration and development-key checks are automated, but the end-to-end forwarded port, GitHub authentication interaction, and GUI in an actual Codespace are **not yet verified**. Do not label this a deployed private Site.
-

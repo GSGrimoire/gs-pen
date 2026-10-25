@@ -6,7 +6,7 @@ import { handleSiteRequest,RETENTION_MS } from '../server/site-service.mjs';
 function setup(){
  const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new URL('../drizzle/0000_curvy_cargill.sql',import.meta.url),'utf8'));
  const db={prepare(query){let args=[];const api={bind(...values){args=values;return api;},async run(){return sql.prepare(query).run(...args);},async first(){return sql.prepare(query).get(...args);},async all(){return {results:sql.prepare(query).all(...args)};}};return api;},async batch(statements){sql.exec('BEGIN');try{for(const s of statements)await s.run();sql.exec('COMMIT');}catch(e){sql.exec('ROLLBACK');throw e;}}};
- return {env:{DB:db,GS_PEN_OWNER_EMAIL:'owner@example.test'},sql};
+ return {env:{DB:db,GS_PEN_OWNER_EMAIL:'owner@example.test',GS_PEN_OWNER_ID:'trusted-test-id'},sql};
 }
 function req(path,method='GET',body,identity='owner@example.test',extras={}){
  const headers={...extras};if(identity){headers['oai-authenticated-user-id']='trusted-test-id';headers['oai-authenticated-user-email']=identity;}
@@ -19,6 +19,7 @@ test('Site backend denies absent, alternate and mismatched identity on every dat
   assert.equal((await handleSiteRequest(req(p,m,b,identity),env)).status,403);
  }
  assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_ID:'wrong'})).status,403);
+ assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_ID:''})).status,403);
  assert.equal((await handleSiteRequest(req('health'),{...env,GS_PEN_OWNER_EMAIL:''})).status,403);
 });
 test('Site mutations reject cross-origin requests and oversized bodies',async()=>{

@@ -2,14 +2,9 @@ name: GS Pen browser acceptance
 
 on:
   pull_request:
-    paths:
-      - 'e2e/**'
-      - 'web/**'
-      - 'src/**'
-      - 'server/**'
-      - 'playwright.config.mjs'
-      - 'package.json'
-      - '.github/workflows/browser-e2e.yml'
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -25,7 +20,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install pinned browser test tooling
-        run: npm install --no-audit --no-fund
+        run: corepack enable && pnpm install --frozen-lockfile
       - name: Install Chromium and Linux dependencies
         run: npx playwright install --with-deps chromium
       - name: Build Test Lab and check source
@@ -42,4 +37,3 @@ jobs:
             playwright-report/
           retention-days: 3
           if-no-files-found: ignore
-

@@ -20,4 +20,3 @@ jobs:
           node-version: '22'
       - name: Try two documented public TikTok caption examples
         run: node scripts/live-caption-check.mjs
-

@@ -36,4 +36,3 @@ Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 Never commit personal media, transcripts, signed asset URLs, credentials or raw diagnostic payloads. A passing synthetic test does not establish rights to process real videos.
 
 - PEN-008 [completed for GitHub test environment] Browser regression automation: 22/22 desktop/mobile Playwright tests on 24 October 2026, run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. Work deployment brief: docs/SITES_DEPLOYMENT_HANDOFF.md.
-

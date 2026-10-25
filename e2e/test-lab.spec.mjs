@@ -207,4 +207,3 @@ test('Search and error filters inspect backend diagnostics and select processing
  await page.locator('#filter-status').selectOption('failed');await page.locator('#diagnostic-rows tr').click();
  await expect(page.locator('#trace-id')).toHaveText(trace);await expect(page.locator('#timeline')).toContainText('TIMEOUT');
 });
-

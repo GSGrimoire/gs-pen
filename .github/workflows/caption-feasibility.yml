@@ -33,4 +33,3 @@ jobs:
         run: python -m pip install --disable-pip-version-check youtube-transcript-api==1.2.4
       - name: Probe two TikTok and one YouTube caption examples
         run: python -m scripts.probe_public_captions --require-tiktok
-

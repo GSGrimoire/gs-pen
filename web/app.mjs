@@ -1,4 +1,4 @@
-// GS Pen Test Lab user interface v1. No telemetry endpoint other than same-origin local research backend.
+// GS Pen Test Lab user interface v1. Telemetry uses the same-origin backend; hosted diagnostics are owner-restricted.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 const $=id=>document.getElementById(id);
@@ -220,4 +220,3 @@ $("storage-check").addEventListener("click",async()=>{
   finally{$("storage-check").disabled=false;}
 });
 restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkContext(""));void checkBackend();
-
