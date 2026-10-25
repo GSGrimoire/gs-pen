@@ -2,16 +2,19 @@
 Updated 25 October 2026. The owner-private Site is live. Historical deployment-pending statements have been superseded.
 
 ## Current delivery
+- Version 11: reviewed #15 and #17 merged in order and published owner-private from main 4a7d271 on 25 October 2026. Retention is paused in the live application. Create workflow and confirmed owner job deletion are live. All 100 unit and 62 desktop/mobile tests plus build/lint/types pass; fresh hosted checks and limits are in docs/DEPLOYMENT.md. Assistant tools are provisioned/installed but need a live call in a fresh chat; Poster delivery remains pending.
+
+### Historical version 10 delivery
 - PEN-011 / issue #12: complete assistant handoffs for Claude and ChatGPT, with clipboard-first web launch, optional bounded Claude desktop prefill, and explicit failure fallbacks. Deployed owner-private as reviewed main version 10. Final verification: 89 unit tests, 48 desktop/mobile browser checks, build/lint/types and fresh hosted checks passed. Required review corrections and sequential merges are complete.
 - PEN-010 / issue #10 / pull request #11: orange Extract/Recent/Diagnostics workspace, owner-private latest-50 history, 30-day expiry, search/reopen/delete and text/structured exports are deployed.
 - PEN-009 / issue #8 / pull request #9: TikTok captions, post text/hashtags and metadata; initial Facebook public-preview post/creator/metadata retrieval are deployed. Facebook text may be shortened.
 - PEN-007 / pull request #7: authenticated Sites backend, sanitized automatic diagnostics, owner-private database and hourly physical expiration are deployed. Independent review completed by Claude; required corrections, all four main merges and private version 10 publication are complete. Receipt: docs/DEPLOYMENT.md.
 
 ## Current content workflow implementation
-- Issue #16: Create workspace, bounded deterministic briefs, owner-private jobs, validated creative responses, authenticated assistant tools and exact unsent Poster draft payloads are implemented on `chatgpt/pen-idea-to-draft`, stacked on #15. Plan and verification boundaries: docs/IDEA_TO_DRAFT_PLAN.md. No model calls, model service, paid generation or live Poster write has been added. Claude reviewed #17 and required explicit content-job deletion (C1); corrected on the branch. #15 merged and #17 now targets main; fresh verification and private release remain pending.
+- Issue #16: Create workspace, bounded deterministic briefs, owner-private jobs, validated creative responses, authenticated assistant tools and exact unsent Poster draft payloads are implemented on `chatgpt/pen-idea-to-draft`, stacked on #15. Plan and verification boundaries: docs/IDEA_TO_DRAFT_PLAN.md. No model calls, model service, paid generation or live Poster write has been added. Claude reviewed #17, C1 was corrected, and the change merged/published as version 11. Hosted owner workflow works; a live assistant tool call remains unverified in this chat.
 
 ## Current change
-- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes passed Claude review and merged in #15, pending private release; the live version 10 still expires data during normal use until then.
+- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes passed Claude review, merged in #15 and are live in version 11; normal-use expiry/count pruning is now paused.
 
 ## Proposed next integration
 The user's new goal is source link → Pen extraction → assistant creates an original GS Grimoire post or reel brief → Poster draft → owner approval. Prioritize a first complete text/image Facebook draft flow once Poster is working. Add authenticated Pen extraction/read tools, a shared content brief with source/provenance and missing-output flags, and a tested connection to Poster's existing draft tools. Preserve Poster's separate approval requirement. Never treat a shortened preview or post description as a verified video transcript. Generate fresh wording and approved/original assets rather than copying source footage or narration.

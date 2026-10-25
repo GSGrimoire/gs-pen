@@ -1,3 +1,48 @@
+# Published version 11, 25 October 2026
+
+Owner-private version **11** deployed successfully at **13:07:41 Europe/Copenhagen (UTC+01:00)**. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site
+
+## Source and publication receipt
+
+| Item | Verified value |
+| --- | --- |
+| Main application commit | `4a7d271af142a1d48affc994a9da4b42a178410a` |
+| Exact application tree | `5029510bdafbd025b6d23ced233f952b652dd5a5` |
+| Sites source commit | `d36fe98c852ffbffe9768ef9f8ddb3f16950578d` |
+| Archive SHA-256 | `e84b47b6656d6e6ff955f4cae5806dedb04879460937c6c102950d6d75097cce` |
+| Project | `appgprj_6adce46e22dc81918dab627af382c76a` |
+| Saved version | `appgprj_6adce46e22dc81918dab627af382c76a~appgver_eeb39a75a5bc8191950b96633d0bfb16` |
+| Deployment | `appgdep_6addf0d9991081919e6026f4eb2ecff7` |
+| Deployment status | `succeeded`, `has_mcp: true`, environment revision `2` |
+| Access | Existing custom owner-only policy preserved; one allowed user |
+| Client/server build | `workspace_v03_sites_2` |
+
+#15 merged first as `53bb1980e4a0c22dd5cf7a8ac65e3b8f05276a76`, after Claude's independent review of `09e8850` found no blockers. #17 was retargeted to main, C1 was corrected at `46d4c82c873cd3cc0751db1e25f12b47f22a5a05`, and fresh checks passed before its merge. The correction was self-reviewed against Claude's requested minimum fix; no second independent review of that corrective head is claimed. There was no intermediate deployment. The Site source tree was verified to have the same Git tree identity as the final main tree before publication. This later documentation receipt does not change the published application.
+
+## Automated verification
+
+- Corrective head after retarget: **100 unit tests, 62 desktop/mobile browser tests**, production build, lint and type checks pass. Migration consistency and whitespace checks pass locally. Runs: https://github.com/GSGrimoire/gs-pen/actions/runs/40191425394 and https://github.com/GSGrimoire/gs-pen/actions/runs/40191425408.
+- Final main: unit, hosted build/lint/types and browser jobs all passed before publication. Runs: https://github.com/GSGrimoire/gs-pen/actions/runs/40191598867 and https://github.com/GSGrimoire/gs-pen/actions/runs/40191598823.
+- Browser fixtures are synthetic provider/response tests, separate from the hosted checks below.
+
+## Fresh hosted verification
+
+- Signed-in owner sees the Create workspace and connected private backend. A disposable idea created a job in hosted storage; preparing the identical idea reused it. A structured draft validated/saved, survived page reload and reopened from saved jobs.
+- Poster export downloaded successfully from the hosted endpoint. It contained `draft_post`, `submissionStatus: not_sent`, `requiresOwnerApproval: true`, and exactly `message`, `images`, `label`, `release` argument fields. No provider write was performed.
+- Cancelling deletion kept the draft. Confirmed deletion removed the disposable job, cleared its open content, and the empty job list persisted after reload. Only the explicitly created test job was deleted. Existing extractions and diagnostic rows were not bulk-deleted.
+- The hosted storage self-check reported: diagnostics/history write, isolation, retention pause and explicit deletion passed. This check creates and removes its own isolated fixture rows.
+- All seven private-access assertions passed: anonymous root/content/MCP requests are 401; service-only content is 403; service-only MCP and forged visitor headers are rejected with 401 by the platform before application handling; legacy cleanup returns 200 with `retentionPaused: true` and `expiredDeleted: false`.
+- The initial service harness expected application-level 403 for two MCP cases; the platform returns an earlier authentication-layer 401. The harness was corrected to accept either rejection status and rerun successfully. No authentication guard was weakened.
+- Automatic expiry/count pruning is now paused in the running application, not just in its disabled schedule. Manual owner deletion remains available.
+
+## Assistant connection and remaining limits
+
+Sites reports the published MCP capability and supplies the endpoint `https://gs-pen-test-lab.goofyspook.chatgpt.site/mcp`. Its generated plugin is `plugin_asdk_app_sites_d8d5077ca42c8191bc8e4570797f6233`; plugin management confirmed **Already installed**. Those tools were not exposed to this active chat even after discovery, so a real signed-in assistant tool call and identity forwarding are **not yet verified**. Try the installed Pen plugin in a fresh chat and run `list_content_jobs` first. Do not substitute a service token for a visitor or loosen the owner guard. A real second signed-in non-owner client and Claude's external authentication also remain unverified; anonymous/service/forged-header rejection was tested, while alternate-owner checks pass in the automated worker tests.
+
+GS Poster remains disconnected while the owner builds it. No Poster source was modified, no draft was sent or published, and no paid model service was called. Video rendering/uploads and generated media remain future work. The browser fallback can prepare a compact brief and save/export the assistant's structured response today; publication alone does not prove a full automatic cross-tool flow.
+
+---
+
 # Release preparation after Claude review, 25 October 2026
 
 #15 passed independent review and merged as 53bb1980e4a0c22dd5cf7a8ac65e3b8f05276a76. #17 now targets main, with the required C1 owner-deletion correction and truthful source-copy wording. Final checks and private publication are pending; no intermediate deployment was made. The historical pending sections below describe preparation, not the latest merge state. Record the final main/source tree, saved version, deployment and hosted authentication/tool results here after publication. Poster is still disconnected and remains outside this release's live verification.

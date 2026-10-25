@@ -1,3 +1,15 @@
+# Current release: owner-private version 11
+
+25 October 2026. #15 and #17 are merged, in order. Final main application commit 4a7d271af142a1d48affc994a9da4b42a178410a, tree 5029510bdafbd025b6d23ced233f952b652dd5a5, is deployed as private version 11. Read docs/DEPLOYMENT.md first for the exact receipt and verification limits. All 100 unit tests, 62 desktop/mobile checks, production build, lint and types pass; fresh hosted storage, draft persistence/reuse/export/deletion and private-access checks passed.
+
+Automatic record deletion is paused in the running application and its schedule remains disabled. Bounded lists are display windows, not storage caps. Explicit owner deletion works for extractions, diagnostics and content jobs. Jobs hold independent source excerpts: deleting an extraction preserves separately saved jobs and the confirmation says so; deleting a job removes its own brief/excerpt/draft. No destructive assistant tool is exposed. C1 and the house-rule source comment are addressed; a second independent review of the corrective head was not claimed.
+
+The Create workspace supports standalone ideas or saved extractions, compact briefs, structured-response validation/save/reopen, and unsent Poster-field export. No model client or paid calls run in Pen. Sites reports MCP ready and the generated Pen plugin installed, but its tools did not appear in this active chat. Next: in a fresh chat, use the installed Pen plugin for a read-only list_content_jobs call and verify identity forwarding. Never weaken authentication if that fails. Real second-account MCP rejection and external Claude compatibility remain separate checks. Poster is still being built by the owner: do not modify its repository or claim live delivery. No user manual browser test is required now.
+
+Client/server build: workspace_v03_sites_2. Keep the Site owner-private. The sections below are historical preparation notes, superseded by this current release and the deployment ledger.
+
+---
+
 # Review corrections, 25 October 2026
 
 Claude reviewed #15 at 09e8850 with no blockers; it merged to main as 53bb1980e4a0c22dd5cf7a8ac65e3b8f05276a76. #17 now targets main. Claude reviewed #17 at e667c49 and requested C1: explicit owner deletion for copied content-job sources. The correction adds DELETE /api/content/<id> with owner scoping and a confirmed Create control, without adding a destructive assistant tool. Deleting an extraction preserves separately saved jobs; its dialog now says those jobs keep their source excerpt/link until independently deleted. Deleting a job clears its brief, excerpt and draft, while preserving the original extraction and external/downloaded copies. Failed or cancelled deletion keeps the open work. The Poster validator is named as the house-rule source of truth.
@@ -47,7 +59,7 @@ Claude's independent combined review is on #7, comment 6393655281. Required corr
 
 - TikTok: native timed captions, post text/hashtags and public metadata. Caption tracks and content are scoped to the exact requested video item, excluding recommendations and mismatched identifiers.
 - Facebook: public-preview post text, creator and available metadata. Preview text can be shortened. Native Facebook captions, YouTube/Instagram retrieval, independent Whisper and frame-text recognition remain unavailable.
-- Orange Extract/Recent/Diagnostics workspace. Owner-scoped content history retains the latest 50 results for 30 days; search/reopen/delete, tab copy and text/structured exports are implemented. Delayed history responses cannot overwrite a new extraction or a later history selection.
+- Orange Extract/Recent/Diagnostics workspace. Owner-scoped content history retains records until explicit deletion and displays the latest 50; search/reopen/delete, tab copy and text/structured exports are implemented. Delayed history responses cannot overwrite a new extraction or a later history selection.
 - Copy-all assistant handoffs preserve every available output, timestamps, source, provenance and availability warnings, excluding diagnostics. Clipboard writing starts before fixed website launch. Popup/clipboard failures are explicit. The optional Claude desktop link has exact 12,000-prompt/24,000-encoded-character bounds; native app delivery remains unverified. Nothing is submitted automatically.
 
 ## Runtime and verification
@@ -62,7 +74,7 @@ Browser acceptance uses synthetic provider fixtures against the loopback server.
 
 Both configured owner email and Site-specific identifier must match trusted dispatch identity. The identifier is a secret runtime setting, not the account identifier from the sharing policy. Derive it only from trusted existing owner data. Diagnostics have no owner column and depend on exactly one permitted owner; add row ownership before widening access.
 
-History contains canonical source links and extracted content in a separate store. Diagnostics exclude content, identifiers, credentials and arbitrary errors, have a 10,000-record cap and 30-day expiry. The originally hourly automation `6adcf46e17b481919332f80387ddacfb` was subsequently changed to daily and paused on 25 October 2026. Physical removal can lag until the next successful hourly run. The service-only retention endpoint exposes no records and deletes only already expired rows using server time, behind the owner-private dispatcher.
+History contains canonical source links and extracted content in a separate store. Diagnostics exclude content, identifiers, credentials and arbitrary errors. Automatic expiry/count pruning is paused; the latest 10,000 is a response window, not a storage cap. The originally hourly automation `6adcf46e17b481919332f80387ddacfb` was subsequently changed to daily and paused on 25 October 2026. No scheduled physical deletion is active. The legacy service-only retention endpoint exposes no records, never touches stored rows and reports retentionPaused true behind the owner-private dispatcher.
 
 Sites infrastructure metadata has independent platform retention. The application cannot promise 30-day control of those logs. A second real signed-in account and native Claude delivery remain separate verification gaps. Use isolated disposable records for storage checks, never clear the user's data.
 

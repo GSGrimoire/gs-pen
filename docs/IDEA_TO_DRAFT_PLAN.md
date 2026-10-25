@@ -1,6 +1,6 @@
 # GS Pen: idea-to-draft plan and first implementation
 
-25 October 2026. Issue #16. Branch `chatgpt/pen-idea-to-draft`, now targeting main after reviewed retention pause #15 merged. This is a review candidate, not a deployed release. GS Poster is being developed separately and has not been modified.
+25 October 2026. Issue #16. Branch `chatgpt/pen-idea-to-draft`, now targeting main after reviewed retention pause #15 merged. Deployed owner-private as version 11 after Claude review and the required C1 correction. The actual release and remaining live-integration limits are recorded in docs/DEPLOYMENT.md. GS Poster is being developed separately and has not been modified.
 
 ## Design decision
 
@@ -34,7 +34,7 @@ The creative pass is an architectural target, not a promise about a provider's b
 
 ## Authenticated assistant connection
 
-The branch exposes an owner-only `/mcp` endpoint and declares the Sites `mcp` capability. Sites publication and connection are still required. The endpoint reuses the existing trusted owner identity and origin protections; missing identity and service-only callers cannot read or write jobs.
+The branch exposes an owner-only `/mcp` endpoint and declares the Sites `mcp` capability. Sites publication succeeded and plugin management reports the generated plugin installed; tools were not exposed in this active chat, so a live read-only call in a fresh chat is still required. The endpoint reuses the existing trusted owner identity and origin protections; missing identity and service-only callers cannot read or write jobs.
 
 Tools:
 
@@ -60,4 +60,4 @@ Local tests exercise source budgets and provenance, caption deduplication, exact
 
 These fixtures do not verify hosted sign-in, real D1 migration, Sites tool discovery, Claude compatibility, model generation quality, live Poster writes, image delivery or video production. Verify those independently when the reviewed branch is published. No synthetic test should be described as end-to-end live generation/publication.
 
-Claude reviewed both changes; #15 is merged and this change targets main. Address C1, rerun checks, merge the reviewed correction, and publish from the final main tree. Keep the current Site owner-private. Pure background maintenance should use ordinary worker/database scheduling where supported, rather than model-driven recurring tasks. Retention cleanup remains paused.
+Claude reviewed both changes; #15 and #17 merged in order after C1 was corrected and checks reran. Version 11 was published once from the final main tree. Keep the current Site owner-private. Pure background maintenance should use ordinary worker/database scheduling where supported, rather than model-driven recurring tasks. Retention cleanup remains paused.
