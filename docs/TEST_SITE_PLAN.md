@@ -15,6 +15,6 @@ Run the locked install, unit checks, Sites production build, lint, type checking
 
 Separately verify the private deployment's owner audience and backend identity checks, anonymous and forged-identity rejection, owner database access, disposable-record deletion and expiry, visible nonblocking logging failures and actual permitted provider requests. Do not delete real records. If a second account is unavailable, distinguish synthetic row isolation from real cross-account testing.
 
-Verify unattended housekeeping while the Site is closed. Records logically expire after 30 days and physical deletion can lag until the next successful hourly task. Infrastructure request logs remain under platform retention, separate from sanitized application diagnostics.
+Verify automatic deletion stays paused on reads, writes, and the legacy housekeeping route. Existing rows with old expiry timestamps and more than 50 saved results must survive. Keep explicit owner deletion functional. The latest-50 history and latest-10,000 diagnostic response windows are display bounds, not storage pruning. Infrastructure request logs remain under platform retention, separate from sanitized application diagnostics.
 
 Record every release's source, version, build, checks and verification limits in `docs/DEPLOYMENT.md`. Do not claim broad provider coverage from two successful samples.

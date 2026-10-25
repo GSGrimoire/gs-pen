@@ -1,7 +1,7 @@
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v02_sites_3';
+export const BUILD = 'workspace_v02_sites_4';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -15,18 +15,16 @@ export function ownerAuthorized(request, env) {
   const email=request.headers.get('oai-authenticated-user-email');
   return !!(id && email && env.GS_PEN_OWNER_EMAIL && email.toLowerCase() === env.GS_PEN_OWNER_EMAIL.toLowerCase() && (env.GS_PEN_OWNER_ID && id===env.GS_PEN_OWNER_ID));
 }
-export async function expireEvents(db, now=Date.now()) {
-  return db.prepare('DELETE FROM diagnostic_events WHERE expires_at <= ?').bind(now).run();
-}
+// Automatic retention is paused, including for records with legacy expiry timestamps.
+export async function expireEvents() { return {paused:true}; }
 export function sanitizedSiteEvent(input, {traceId=crypto.randomUUID(),source='site',now=Date.now()}={}) {
   return sanitizeDiagnostic({...input,traceId,source,build:BUILD,transport:'site_backend'},new Date(now));
 }
 export async function storeEvents(db, events, now=Date.now()) {
   await expireEvents(db,now);
   const statements=events.map(e=>db.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)')
-    .bind(crypto.randomUUID(),now,now+RETENTION_MS,JSON.stringify(e)));
+    .bind(crypto.randomUUID(),now,Number.MAX_SAFE_INTEGER,JSON.stringify(e)));
   if(statements.length) await db.batch(statements);
-  await db.prepare('DELETE FROM diagnostic_events WHERE id IN (SELECT id FROM diagnostic_events ORDER BY created_at DESC, id DESC LIMIT -1 OFFSET 10000)').run();
 }
 async function boundedJson(request) {
   if(!request.headers.get('content-type')?.startsWith('application/json'))throw Error('invalid');
@@ -44,12 +42,12 @@ async function budget(db, now) {
 }
 export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.now()}={}) {
   const path=new URL(request.url).pathname;
-  // Destructive-only housekeeping relies on the confirmed owner-private dispatch boundary.
-  // It returns no records and cannot delete unexpired events. Never make this Site public.
+  // Keep the old service route harmless if a previously scheduled caller runs.
+  // It never deletes records while retention is paused; preserve the private boundary.
   if(path==='/api/retention' && request.method==='POST') {
     if(request.headers.get('oai-authenticated-user-id') && !ownerAuthorized(request,env))return json({code:'AUTH_DENIED'},403);
     if(request.headers.get('origin') && request.headers.get('origin')!==new URL(request.url).origin)return json({code:'AUTH_DENIED'},403);
-    try{await expireEvents(env.DB,now);await expireHistory(env.DB,now);return json({expiredDeleted:true,retentionDays:30});}catch{return json({code:'STORAGE_FAILED'},503);}
+    return json({expiredDeleted:false,retentionPaused:true,retentionDays:null});
   }
   if(!ownerAuthorized(request,env))return json({code:'AUTH_DENIED'},403);
   if(!['GET','POST','DELETE'].includes(request.method))return json({code:'NOT_IMPLEMENTED'},405);
@@ -57,7 +55,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
   if(request.method!=='GET' && ((origin && origin!==new URL(request.url).origin) || request.headers.get('sec-fetch-site')==='cross-site'))return json({code:'AUTH_DENIED'},403);
   try {
     const ownerId=request.headers.get('oai-authenticated-user-id');
-    if(path==='/api/history' && request.method==='GET')return json({items:await listExtractions(env.DB,ownerId,now),retentionDays:30,limit:50});
+    if(path==='/api/history' && request.method==='GET')return json({items:await listExtractions(env.DB,ownerId,now),retentionDays:null,retentionPaused:true,limit:50});
     if(path.startsWith('/api/history/')){
       const id=path.slice('/api/history/'.length);
       if(!UUID.test(id))return json({code:'NOT_FOUND'},404);
@@ -71,12 +69,12 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     if(path==='/api/health' && request.method==='GET') {
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
       let history=false;try{await expireHistory(env.DB,now);history=true;}catch{}
-      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:30});
+      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);
-      const result=await env.DB.prepare('SELECT payload FROM diagnostic_events WHERE expires_at > ? ORDER BY created_at DESC, id DESC LIMIT 10000').bind(now).all();
-      return json({events:result.results.map(row=>JSON.parse(row.payload)),retentionDays:30,storage:'site_database'});
+      const result=await env.DB.prepare('SELECT payload FROM diagnostic_events ORDER BY created_at DESC, id DESC LIMIT 10000').all();
+      return json({events:result.results.map(row=>JSON.parse(row.payload)),retentionDays:null,retentionPaused:true,storage:'site_database'});
     }
     if(path==='/api/diagnostics' && request.method==='DELETE') {
       await env.DB.prepare('DELETE FROM diagnostic_events').run();return json({cleared:true});
@@ -94,7 +92,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
         const deletePassed=!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
         await env.DB.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)').bind(id,now-RETENTION_MS,now,payload).run();
         await expireEvents(env.DB,now);
-        const expiryPassed=!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
+        const retentionPausedPassed=!!(await env.DB.prepare('SELECT id FROM diagnostic_events WHERE id=?').bind(id).first());
         const historyOwner='self-check:'+crypto.randomUUID();
         let historyId;
         try{
@@ -103,9 +101,10 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
           const historyIsolationPassed=!(await readExtraction(env.DB,ownerId,historyId,now));
           const historyDeletePassed=await deleteExtraction(env.DB,historyOwner,historyId);
           historyId=await saveExtraction(env.DB,historyOwner,'https://www.facebook.com/reel/123456789012345',{ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text:'Disposable expiry fixture'},metadata:{status:'unavailable'}},now-RETENTION_MS);
+          await env.DB.prepare('UPDATE extractions SET expires_at=? WHERE id=?').bind(now,historyId).run();
           await expireHistory(env.DB,now);
-          const historyExpiryPassed=!(await readExtraction(env.DB,historyOwner,historyId,now));
-          return json({writePassed,privacyPassed,deletePassed,expiryPassed,historyWritePassed,historyIsolationPassed,historyDeletePassed,historyExpiryPassed,storage:'site_database'});
+          const historyRetentionPausedPassed=!!(await readExtraction(env.DB,historyOwner,historyId,now+RETENTION_MS+1));
+          return json({writePassed,privacyPassed,deletePassed,retentionPausedPassed,historyWritePassed,historyIsolationPassed,historyDeletePassed,historyRetentionPausedPassed,storage:'site_database'});
         }finally{if(historyId)await deleteExtraction(env.DB,historyOwner,historyId);}
       } finally {await env.DB.prepare('DELETE FROM diagnostic_events WHERE id=?').bind(id).run();}
     }

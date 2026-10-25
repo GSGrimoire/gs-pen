@@ -3,17 +3,18 @@ import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v02_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
+const BUILD="workspace_v02_sites_4", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
 function node(type,text,cls){const e=document.createElement(type);if(text!==undefined)e.textContent=String(text);if(cls)e.className=cls;return e;}
 function makeTrace(){return crypto.randomUUID();}
-function cleanEvents(items){
-  const since=Date.now()-MAX_AGE;
-  return (Array.isArray(items)?items:[]).filter(e=>e?.schema==="gs-pen.diagnostic.v2" && Date.parse(e.timestamp)>=since).slice(-MAX);
+function validEvents(items){
+  return (Array.isArray(items)?items:[]).filter(e=>e?.schema==="gs-pen.diagnostic.v2" && Number.isFinite(Date.parse(e.timestamp)));
 }
+// Only the browser cache is bounded. The backend's list window is separate.
+function cleanEvents(items){return validEvents(items).slice(-MAX);}
 function saveLocal(){try{localStorage.setItem(KEY,JSON.stringify(state.events));return true;}catch{$("storage-indicator").textContent="Local storage blocked";return false;}}
 function restoreLocal(){try{state.events=cleanEvents(JSON.parse(localStorage.getItem(KEY)||"[]"));saveLocal();}catch{state.events=[];}}
 function displayStatus(message,type="muted"){for(const id of ["trace-status","extraction-status"]){$(id).textContent=message;$(id).dataset.state=type;}}
@@ -157,7 +158,7 @@ async function doProbe(event){
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;state.sourceUrl=input;
-    $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent. Available for 30 days.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
+    $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent. Automatic deletion is paused.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
     if(state.site)void refreshHistory();
     const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
     if(partial){state.tab=outcome.post?.text?'post':'metadata';}
@@ -175,7 +176,7 @@ async function doProbe(event){
 }
 async function refreshServerCount(){
   if(!state.backend){state.serverCount=null;state.serverEvents=[];drawEvents();return;}
-  try{const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverEvents=Array.isArray(data.events)?cleanEvents(data.events):[];state.serverCount=state.serverEvents.length;}
+  try{const response=await fetch("/api/diagnostics",{cache:"no-store",headers:authHeaders()});if(!response.ok)throw Error("bad_status");const data=await response.json();state.serverEvents=validEvents(data.events).slice(0,10000);state.serverCount=state.serverEvents.length;}
   catch{state.serverCount=null;state.serverEvents=[];$("storage-indicator").textContent="Unable to read backend logs";}
   drawEvents();
 }
@@ -248,7 +249,7 @@ $("clear-diagnostics").addEventListener("click",clearDiagnostics);
 $("storage-check").addEventListener("click",async()=>{
   $("storage-check").disabled=true;
   try{const response=await fetch('/api/storage-check',{method:'POST',headers:authHeaders(true),body:'{}'});const data=await response.json();
-    $("storage-check-result").textContent=response.ok&&['writePassed','privacyPassed','deletePassed','expiryPassed','historyWritePassed','historyIsolationPassed','historyDeletePassed','historyExpiryPassed'].every(k=>data[k])?'Passed: diagnostics and history write, isolation, expiry and deletion.':'Storage checks failed. Check backend storage status.';
+    $("storage-check-result").textContent=response.ok&&['writePassed','privacyPassed','deletePassed','retentionPausedPassed','historyWritePassed','historyIsolationPassed','historyDeletePassed','historyRetentionPausedPassed'].every(k=>data[k])?'Passed: diagnostics and history write, isolation, retention pause and explicit deletion.':'Storage checks failed. Check backend storage status.';
   }catch{$("storage-check-result").textContent='Storage checks could not reach the authenticated backend.';}
   finally{$("storage-check").disabled=false;}
 });
@@ -283,13 +284,13 @@ function drawHistory(){
 }
 async function refreshHistory(){
   if(!state.site||!state.historyAvailable){$('history-status').textContent=state.site?'Private history is unavailable. New extractions can still be copied or exported.':'Private history is available on the hosted Site.';drawHistory();return;}
-  try{const response=await fetch('/api/history',{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('history');const data=await response.json();state.history=data.items||[];$('history-status').textContent=state.history.length+' saved '+(state.history.length===1?'extraction':'extractions')+' · Latest 50 · Automatically expire after 30 days';drawHistory();}
+  try{const response=await fetch('/api/history',{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('history');const data=await response.json();state.history=data.items||[];$('history-status').textContent=state.history.length+' saved '+(state.history.length===1?'extraction':'extractions')+' · Latest 50 shown · Automatic deletion paused';drawHistory();}
   catch{$('history-status').textContent='Could not load Recent. Refresh to try again.';}
 }
 async function openExtraction(id){
   if(state.busy)return;const seq=++state.openSeq;
-  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();if(state.busy||seq!==state.openSeq)return;state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Expires '+new Date(item.expiresAt).toLocaleDateString();displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
-  catch{if(state.busy||seq!==state.openSeq)return;$('history-status').textContent='This extraction is unavailable or has expired. Refresh Recent.';}
+  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();if(state.busy||seq!==state.openSeq)return;state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Automatic deletion paused';displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
+  catch{if(state.busy||seq!==state.openSeq)return;$('history-status').textContent='This extraction is unavailable. Refresh Recent.';}
 }
 function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 window.addEventListener('hashchange',navigate);

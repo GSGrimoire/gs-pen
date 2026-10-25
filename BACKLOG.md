@@ -7,7 +7,15 @@ Updated 25 October 2026. The owner-private Site is live. Historical deployment-p
 - PEN-009 / issue #8 / pull request #9: TikTok captions, post text/hashtags and metadata; initial Facebook public-preview post/creator/metadata retrieval are deployed. Facebook text may be shortened.
 - PEN-007 / pull request #7: authenticated Sites backend, sanitized automatic diagnostics, owner-private database and hourly physical expiration are deployed. Independent review completed by Claude; required corrections, all four main merges and private version 10 publication are complete. Receipt: docs/DEPLOYMENT.md.
 
-## Next priorities
+## Current change
+- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes are on `chatgpt/pen-retention-pause`, pending independent review and release; the live version 10 still expires data during normal use until then.
+
+## Proposed next integration
+The user's new goal is source link → Pen extraction → assistant creates an original GS Grimoire post or reel brief → Poster draft → owner approval. Prioritize a first complete text/image Facebook draft flow once Poster is working. Add authenticated Pen extraction/read tools, a shared content brief with source/provenance and missing-output flags, and a tested connection to Poster's existing draft tools. Preserve Poster's separate approval requirement. Never treat a shortened preview or post description as a verified video transcript. Generate fresh wording and approved/original assets rather than copying source footage or narration.
+
+GS Poster source inspected on 25 October 2026: `src/mcp.ts` provides draft_post/update_draft/list_posts and related tools; `src/publish.ts` publishes only after approval. The current repository handles Facebook feed text/images, not video rendering or reel uploads. Do not modify Poster while the user is building it. A Sites-hosted Pen connector can serve ChatGPT; compatibility/authentication for Claude must be separately established. An unattended button invoking a model outside an assistant task needs a separate supported model integration and approved usage budget.
+
+Other previously agreed priorities remain:
 1. Google Drive saving: explicit durable text export containing every output, source and availability/provenance warnings, with a confirmed file link. Reuse Scribe patterns where suitable, but authorize Pen separately.
 2. Asana task creation: editable title, selected project and optional due date, with source and a durable saved-content link. Do not rely only on expiring Pen history.
 3. PEN-101: Facebook ordinary shared/short links and broader video formats, safe canonical resolution, more reliable partial results, and permitted native caption feasibility.
@@ -34,3 +42,5 @@ Updated 25 October 2026. The owner-private Site is live. Historical deployment-p
 - Add diagnostic row ownership before any second user is allowed.
 
 PEN-105 release completed on 25 October 2026. Native mobile app delivery and real second-account access remain verification follow-ups.
+
+- Add pagination/search for retained history older than the latest-50 display window; do not reintroduce deletion as a pagination shortcut.

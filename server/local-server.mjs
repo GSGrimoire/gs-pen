@@ -9,7 +9,7 @@ import {retrievePublicCaptions} from "./caption.mjs";
 
 const ROOT=path.resolve(path.dirname(fileURLToPath(import.meta.url)),"..");
 const STORE=path.join(ROOT,".local","diagnostics.json");
-const MAX_EVENTS=2500, DAYS=30;
+const MAX_EVENTS=2500;
 const CODESPACE_MODE=process.env.CODESPACES==="true" || process.env.CODESPACES==="1";
 const CODE_NAME=process.env.CODESPACE_NAME||"";
 const CODE_DOMAIN=process.env.GITHUB_CODESPACES_PORT_FORWARDING_DOMAIN||"app.github.dev";
@@ -29,17 +29,16 @@ const files=new Map([
 ]);
 let queue=Promise.resolve();
 const now=()=>Date.now();
-const cutoff=()=>now()-DAYS*86400000;
-function filterFresh(events) {
-  return events.filter(e=>typeof e.timestamp==="string" && Date.parse(e.timestamp)>=cutoff()).slice(-MAX_EVENTS);
+function validEvents(events) {
+  return events.filter(e=>typeof e.timestamp==="string" && Number.isFinite(Date.parse(e.timestamp)));
 }
 async function getEvents() {
-  try{const raw=JSON.parse(await readFile(STORE,"utf8"));return filterFresh(Array.isArray(raw)?raw:[]);}
+  try{const raw=JSON.parse(await readFile(STORE,"utf8"));return validEvents(Array.isArray(raw)?raw:[]);}
   catch{return [];}
 }
 async function commitEvents(batch) {
   const writing=queue.then(async ()=>{
-    const items=filterFresh([...(await getEvents()),...batch.map(item=>sanitizeDiagnostic(item))]);
+    const items=validEvents([...(await getEvents()),...batch.map(item=>sanitizeDiagnostic(item))]);
     await mkdir(path.dirname(STORE),{recursive:true,mode:0o700});
     const tmp=STORE+".tmp";
     await writeFile(tmp,JSON.stringify(items),{mode:0o600});
@@ -80,7 +79,7 @@ export function createLocalTestServer({developmentKey=DEVELOPMENT_KEY}={}){
     }
     if(route.startsWith("/api/") && !authorizedKey(req.headers["x-gs-pen-dev-key"],developmentKey)) {reply(res,401,{code:"AUTH_DENIED"});return;}
     if(req.method==="GET" && route==="/api/diagnostics"){
-      try {await queue;reply(res,200,{events:await getEvents(),retentionDays:DAYS,storage:"local_file"});}
+      try {await queue;reply(res,200,{events:(await getEvents()).slice(-MAX_EVENTS),retentionDays:null,retentionPaused:true,storage:"local_file"});}
       catch {reply(res,503,{code:"STORAGE_FAILED"});}
       return;
     }

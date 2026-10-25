@@ -159,7 +159,7 @@ test('Codespaces mode requires a development key before diagnostic access', asyn
   await expect(page.locator('#dev-access')).toBeHidden();
 });
 
-test('automatically removes locally stored diagnostic records older than 30 days', async ({ page }) => {
+test('preserves older diagnostic cache records while automatic deletion is paused', async ({ page }) => {
   await page.addInitScript(() => {
     const event = timestamp => ({
       schema:'gs-pen.diagnostic.v2',timestamp,traceId:'synthetic_123',
@@ -170,7 +170,7 @@ test('automatically removes locally stored diagnostic records older than 30 days
     localStorage.setItem('gs-pen-testlab-diag-v2',JSON.stringify([event(old),event(new Date().toISOString())]));
   });
   await openConnected(page);
-  await expect(page.locator('#local-event-count')).toHaveText('1');
+  await expect(page.locator('#local-event-count')).toHaveText('2');
 });
 
 test('caption output treats HTML-like text as text and never executes it', async ({ page }) => {
@@ -338,4 +338,23 @@ test('Unbroken provider creator text does not overflow Recent or its preview',as
   await page.getByRole('link',{name:view==='Recent'?/^Recent/:view,exact:view!=='Recent'}).click();
   const size=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));expect(size.scroll).toBeLessThanOrEqual(size.width+2);
  }
+});
+
+
+test('History states retention is paused and does not display legacy expiry as an active deadline',async({page})=>{
+ await stubHistory(page);await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await expect(page.locator('#history-status')).toContainText('Automatic deletion paused');
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await expect(page.locator('#history-save-status')).toHaveText('Saved extraction · Automatic deletion paused');
+ await expect(page.locator('#history-save-status')).not.toContainText('Expires');
+});
+
+test('Hosted diagnostic reads display aged records without the browser-cache size cutoff',async({page})=>{
+ const timestamp=new Date(Date.now()-90*86400000).toISOString();
+ const events=Array.from({length:1001},(_,i)=>({schema:'gs-pen.diagnostic.v2',timestamp,traceId:'retained_'+i,platform:'tiktok',stage:'finished',status:'succeeded',code:'OK',source:'site',build:'test'}));
+ await page.route('**/api/health',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
+ await page.route('**/api/diagnostics',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({events,retentionPaused:true,retentionDays:null})}));
+ await page.goto('/');await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
+ await expect(page.locator('#server-event-count')).toHaveText('1001');
+ await expect(page.locator('#diagnostic-rows')).toContainText('OK');
 });
