@@ -1,50 +1,20 @@
-# GS Pen Test Lab: development build
+# GS Pen Test Lab verification plan
 
-Updated 24 October 2026. The **code is built and tested**, but a private ChatGPT Site is **not deployed**.
+The owner-private Site is deployed at https://gs-pen-test-lab.goofyspook.chatgpt.site. See `docs/DEPLOYMENT.md` for exact source/version receipts and historical evidence.
 
-## Available development build
+## Two runtimes
 
-- `web/index.html`, `web/styles.css`, `web/app.mjs`: responsive dark research console, input validation, four distinct result tabs, stage trace, technical context, automatic local diagnostics, filters, safe export and clear actions.
-- `src/diagnostics.mjs`: strict granular depersonalized diagnostic schema v2 and source domain/link-type classification.
-- `server/caption.mjs`: experimental direct no-login TikTok public-page and WebVTT caption access, bounded downloads, no redirects, no social cookies, no speech model.
-- `server/local-server.mjs`: loopback-only test server serving static build, caption lookup and sanitized events. **Not authenticated for remote hosting**.
-- `scripts/build-site.mjs`: copies static assets and shared source modules into self-contained `dist/`.
-- `.local/diagnostics.json`: local-only 30-day sanitized diagnostic store ignored by Git.
+- Hosted: Sites worker, trusted owner identity and database, built by `npm run build`.
+- Local research: `npm run check` then `npm run start:local`, at http://127.0.0.1:4173. This loopback server and optional Codespaces development key are not production authentication.
 
-## GitHub Codespaces preview
+The frontend has distinct native-caption, independent Whisper, original post and metadata outputs. Unavailable capabilities are labeled explicitly. No platform captions may be presented as independently transcribed speech.
 
-GitHub Codespaces provides an optional owner-only **temporary interactive test machine**; unlike GitHub Actions, it can forward the development server through a private GitHub-authenticated port. The Codespaces configuration is committed in `.devcontainer/devcontainer.json`. The server uses an ephemeral 48-character access key displayed only in the Codespaces terminal to authorize caption and diagnostic operations. See `docs/CODESPACES_TEST.md`. This mode is not long-lived hosting, does not create a Site, and has not been exercised in an actual Codespace yet.
+## Required checks
 
-## Run on a computer with Node.js 22 or newer
+Run the locked install, unit checks, Sites production build, lint, type checking and desktop/mobile browser checks. The browser configuration starts the local research server and uses synthetic provider responses. It verifies interaction, truthful errors, data exclusion, exports and responsive layout. It does not establish hosted identity, database behavior, outbound access or native assistant-app delivery.
 
-```bash
-npm run check
-npm start
-```
+Separately verify the private deployment's owner audience and backend identity checks, anonymous and forged-identity rejection, owner database access, disposable-record deletion and expiry, visible nonblocking logging failures and actual permitted provider requests. Do not delete real records. If a second account is unavailable, distinguish synthetic row isolation from real cross-account testing.
 
-Then open `http://127.0.0.1:4173` on that computer. The app never runs Whisper. For research using rights-cleared public TikTok videos, the backend attempts existing captions. Other platforms clearly report NOT_IMPLEMENTED. Backend network blocks are distinct from caption absence.
+Verify unattended housekeeping while the Site is closed. Records logically expire after 30 days and physical deletion can lag until the next successful hourly task. Infrastructure request logs remain under platform retention, separate from sanitized application diagnostics.
 
-## Verified
-GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40090272982 passed 56 synthetic JavaScript tests after producing the static bundle.
-Live JavaScript retrieval check https://github.com/GSGrimoire/gs-pen/actions/runs/40090424854 retrieved TikTok caption tracks: 15 cues (Scrub Daddy) and 12 cues (Hank Green) with no transcript text in logs. That is a cloud runner test, not proof of an ordinary user's computer or a ChatGPT Site.
-The frontend was built and exercised automatically in **desktop and mobile Chromium browsers**, with 22/22 Playwright tests passing on https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. Full human visual assessment and private Sites deployment/access validation have not happened.
-
-## Private ChatGPT Site next
-
-Use ChatGPT Work with Sites, taking `GSGrimoire/gs-pen` as source reference. Generate a **private preview** of the `dist/` frontend. Adapt the caption backend to the supported Sites runtime with owner authentication and authenticated database storage. The standalone local Node server must **not** be exposed as a remote Site. Verify actual outbound requests and database persistence before claiming that the live Site can extract captions automatically.
-
-If Sites cannot perform permitted cross-origin server caption retrieval, evaluate a minimal authorized backend service through an authenticated Site endpoint. Do not use GitHub Actions as an interactive backend.
-
-## Publication gate
-
-- Verify owner-only audience, login and negative authorization tests.
-- Verify TikTok retrieval from the real Site runtime and accurately distinguish network block from true caption absence.
-- Verify diagnostic entry persistence, filtering, 30-day expiry and deletion against real Site database.
-- Verify the privacy whitelist in browser and server logs with adversarial URLs.
-- Perform human review of visual accessibility, keyboard operation and responsive layout.
-- Document the real Site URL, commit, build and limitations in `docs/DEPLOYMENT.md`. Do not claim other platform coverage or Whisper.
-
-## Continuous browser tests
-
-`npm run test:e2e` uses Playwright to start the local test backend and inspect the actual interface in desktop and mobile Chromium. `.github/workflows/browser-e2e.yml` installs browsers and runs all tests on relevant pull requests. Tests use **synthetic fixtures** for success/failure UI and never store private captions. Failed runs save short-retention traces for engineering. Tests assert safe rendering of HTML-like caption text, account-key entry UI, 30-day local log expiry, diagnostic privacy, export and mobile overflow. GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641 passed 22/22. This suite does **not** validate private Site infrastructure or provider permission.
-
+Record every release's source, version, build, checks and verification limits in `docs/DEPLOYMENT.md`. Do not claim broad provider coverage from two successful samples.

@@ -101,4 +101,3 @@ export function sanitizeDiagnostic(input, now = new Date()) {
   for (const name of ["retryable","requiresRedirect","postTextFound","metadataFound"]) if (typeof input[name] === "boolean") out[name] = input[name];
   return out;
 }
-

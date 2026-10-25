@@ -2,11 +2,11 @@
 // NOT an authorized general-purpose extractor. No redirects, cookies, proxies or video download.
 import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
-import { tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
+import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
-function cleanToken(raw) { return raw.replace(/<[^>]*>/g, "").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").trim(); }
+function cleanToken(raw) { return raw.replace(/<[^>]*>/g, "").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&amp;/g,"&").trim(); }
 
 export function parseWebVtt(raw) {
   if (typeof raw !== "string" || !raw.replace(/^\uFEFF/,"").trimStart().startsWith("WEBVTT")) return [];
@@ -23,11 +23,13 @@ export function parseWebVtt(raw) {
   }
   return cues;
 }
-export function findCaptionUrls(markup) {
-  const match = markup.match(/<script\b[^>]*\bid=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i);
-  if (!match) return [];
-  let payload;
-  try { payload = JSON.parse(match[1]); } catch { return []; }
+export function findCaptionUrls(input) {
+  let payload=input;
+  if(typeof input==='string'){
+    const match=input.match(/<script\b[^>]*\bid=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i);
+    if(!match)return [];
+    try { payload=JSON.parse(match[1]); } catch { return []; }
+  }
   const urls = [];
   const seen = new WeakSet();
   function walk(node, depth = 0) {
@@ -61,7 +63,7 @@ async function limitedResponse(response, maxSize) {
       const {done,value}=await reader.read();
       if(done) break;
       size+=value.length;
-      if(size>maxSize) { await reader.cancel(); return null; }
+      if(size>maxSize) { await reader.cancel(); return {tooLarge:true}; }
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }
@@ -110,10 +112,12 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   try {page=await fetchBounded(canonical,LIMIT_PAGE,fetchImpl);}
   catch(e){const code=e?.name==="AbortError"?"TIMEOUT":"NETWORK_ERROR"; report("provider_page_fetch","failed",code);return fail(code);}
   if(page.status!==200){report("provider_page_fetch","failed","PROVIDER_BLOCKED",{httpStatus:page.status});return fail("PROVIDER_BLOCKED");}
+  if(page.body?.tooLarge){report("provider_page_fetch","failed","RESPONSE_TOO_LARGE");return fail("RESPONSE_TOO_LARGE");}
   if(!page.body){report("provider_page_fetch","failed","NETWORK_ERROR");return fail("NETWORK_ERROR");}
   report("provider_page_fetch","succeeded","OK",{responseBucket:responseSizeBucket(page.body.size),contentType:"html",httpStatus:200});
   const videoId=u.pathname.startsWith('/watch')?u.searchParams.get('v'):u.pathname.split('/').filter(Boolean).at(-1);
-  content=verdict.platform==='tiktok'?tiktokContent(page.body.text,videoId):facebookContent(page.body.text,videoId);
+  const item=verdict.platform==='tiktok'?matchedTikTokItem(page.body.text,videoId):null;
+  content=verdict.platform==='tiktok'?tiktokContent(item,videoId):facebookContent(page.body.text,videoId);
   contentParsed=true;
   for(const [key,stage] of [['post','post_parse'],['metadata','metadata_parse']])report(stage,content[key].status,content[key].code,{...(key==='post'?{postTextFound:!!content.post.text}:{metadataFound:content.metadata.status==='succeeded'})});
   if(verdict.platform==='facebook'){
@@ -121,7 +125,7 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
     report('caption_track_discovery','unavailable','NOT_IMPLEMENTED');
     return fail('NOT_IMPLEMENTED','unavailable');
   }
-  const candidates=findCaptionUrls(page.body.text);
+  const candidates=findCaptionUrls(item);
   if(!candidates.length){report("caption_track_discovery","unavailable","CAPTIONS_NOT_FOUND");return fail("CAPTIONS_NOT_FOUND","unavailable");}
   report("caption_track_discovery","succeeded","OK",{captionTrackCount:candidates.length});
   const asset=validateCaptionAsset(candidates[0]);
@@ -132,6 +136,7 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   try {track=await fetchBounded(asset.url,LIMIT_VTT,fetchImpl);}
   catch(e){const code=e?.name==="AbortError"?"TIMEOUT":"NETWORK_ERROR";report("caption_fetch","failed",code,{cdnFamily:asset.cdnFamily});return fail(code);}
   if(track.status!==200){report("caption_fetch","failed","PROVIDER_BLOCKED",{cdnFamily:asset.cdnFamily,httpStatus:track.status});return fail("PROVIDER_BLOCKED");}
+  if(track.body?.tooLarge){report("caption_fetch","failed","RESPONSE_TOO_LARGE",{cdnFamily:asset.cdnFamily});return fail("RESPONSE_TOO_LARGE");}
   if(!track.body){report("caption_fetch","failed","NETWORK_ERROR",{cdnFamily:asset.cdnFamily});return fail("NETWORK_ERROR");}
   report("caption_fetch","succeeded","OK",{cdnFamily:asset.cdnFamily,contentType:"vtt",responseBucket:responseSizeBucket(track.body.size)});
   const cues=parseWebVtt(track.body.text);
@@ -139,4 +144,3 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   report("caption_parse","succeeded","OK",{captionCueCount:cues.length,captionTrackCount:candidates.length,cdnFamily:asset.cdnFamily});
   return {ok:true,status:"succeeded",code:"OK",cues,captionTrackCount:candidates.length,captionType:"platform",language:"unknown",trackType:"unknown",...content};
 }
-

@@ -1,85 +1,31 @@
-# PEN-011 assistant handoff, 24 October 2026
+# GS Pen current handoff
+Updated 25 October 2026 after Claude's independent review.
 
-- Issue #12; branch `chatgpt/pen-011-assistant-handoff`, stacked on pull request #11. Preserve owner-private Sites access and independent review before merge.
-- Both new buttons copy a complete structured extraction, including timed caption cues, track count, original post text/hashtags, metadata, source/provenance and completeness warning, even when viewing another tab or reopening Recent. The prompt explicitly separates platform captions from unavailable independent Whisper and treats extracted content as quoted data. Diagnostic events are excluded.
-- Opens a blank tab synchronously, copies first, then navigates to a fixed assistant website without embedding source data in a web query. Clipboard failure closes the blank tab and offers existing exports; popup failure preserves clipboard with an explicit website fallback. No auto-submission.
-- Optional Claude desktop link uses its documented `claude://claude.ai/new?q=` scheme. It appears only on desktop and only below conservative 12,000-character prompt and 24,000-character encoded bounds. Longer content remains fully copied. Native app handling cannot be verified in this Linux browser and must not be claimed as tested. ChatGPT and mobile ordinary-chat prefill are not promised.
-- Automatic diagnostic storage, history, authentication and retention are unchanged. No new external service, cost or backend endpoint.
-- Current verification and publication receipt: docs/DEPLOYMENT.md. Current actionable backlog: BACKLOG.md.
+Existing owner-private Site: https://gs-pen-test-lab.goofyspook.chatgpt.site. Project `appgprj_6adce46e22dc81918dab627af382c76a`. Preserve its identity, audience, database and source workflow. Current publication receipts and verification limits are in docs/DEPLOYMENT.md.
 
----
+The authorized correction and merge sequence is #7, #9, #11, #13, each retargeted to main and rechecked. Claude's independent combined review is on #7, comment 6393655281. Corrective code is self-reviewed against that report. Deploy only the verified merged main tree after the last merge, then record its exact GitHub and Sites provenance. Do not count older reviews as new-head approval.
 
-# PEN-010 current work: 24 October 2026
+## Current functionality
 
-Orange workspace and owner-private history replace the laboratory-first interface. Three destinations: Extract, Recent, Diagnostics. Native captions, post text, metadata and future Whisper remain separate. Source and provider limits unchanged.
+- TikTok: native timed captions, post text/hashtags and public metadata. Caption tracks and content are scoped to the exact requested video item, excluding recommendations and mismatched identifiers.
+- Facebook: public-preview post text, creator and available metadata. Preview text can be shortened. Native Facebook captions, YouTube/Instagram retrieval, independent Whisper and frame-text recognition remain unavailable.
+- Orange Extract/Recent/Diagnostics workspace. Owner-scoped content history retains the latest 50 results for 30 days; search/reopen/delete, tab copy and text/structured exports are implemented. Delayed history responses cannot overwrite a new extraction or a later history selection.
+- Copy-all assistant handoffs preserve every available output, timestamps, source, provenance and availability warnings, excluding diagnostics. Clipboard writing starts before fixed website launch. Popup/clipboard failures are explicit. The optional Claude desktop link has exact 12,000-prompt/24,000-encoded-character bounds; native app delivery remains unverified. Nothing is submitted automatically.
 
-- Branch `chatgpt/pen-010-workspace-history`, stacked on pull request #9, issue #10. Keep unmerged pending independent review.
-- New schema migration `0001_mighty_captain_britain.sql` adds `extractions`, separate from diagnostic records. Rows are scoped by the trusted Sites user identifier. No client result-write endpoint. Successful and partial extractions auto-save, newest 50 per owner, expire after 30 days. History failure never blocks retrieval.
-- History contains canonical source links and extracted captions/post/metadata; tracking queries, raw provider pages, signed resource URLs, logs, cookies and credentials are not stored. Diagnostics continue to exclude output content.
-- Read/list/delete enforce owner authorization and row ownership. Individual permanent deletion has a confirmation dialog. Deleted content can remain in the currently open in-memory result until navigation/reload. Copy/export are explicit user actions.
-- Exports: current-tab copy, plain text and structured data. Provenance and platform-caption/Whisper separation preserved, including shortened Facebook preview warning.
-- Housekeeping deletes expired diagnostic and extraction rows; storage self-check verifies history write, isolation, delete and expiry with isolated disposable fixture rows.
-- 80 unit checks and 34 desktop/mobile browser checks pass. Hosted TikTok/Facebook save/reopen/export, actual database isolation/deletion/expiry self-check and service/anonymous access checks passed. Existing hourly cleanup task was extended to history. Full source/version/verification receipts are in docs/DEPLOYMENT.md. Pull request #11 remains unmerged.
-- Self-review only. New database migration, owner isolation and retention require independent review before merge. No changes to other GS projects.
+## Runtime and verification
 
----
+`npm run start:local` runs the loopback research server on port 4173; `npm start` runs the built Sites worker through Wrangler. Never expose the Node research server publicly. The optional Codespaces flow remains unverified in an actual forwarded Codespace.
 
-# Current handoff: PEN-009 (24 October 2026)
+Use `npm run install:ci`, `npm run check`, `npm run build`, `npm run lint`, `pnpm exec tsc --noEmit` and `npm run test:e2e`. Dependencies are frozen with pnpm 11.25.0; installation must not rewrite tracked policy. Automated checks cover every pull request, retarget and main push, including hosted builds and types. Generated browser reports are excluded from lint.
 
-The historical handoff below predates the private Sites deployment and is superseded by this section.
+Browser acceptance uses synthetic provider fixtures against the loopback server. Hosted authentication, database, provider access and infrastructure behavior require separate checks. This container lacks the matching local Chromium executable; GitHub installs and runs the matching browser. Report actual counts and runs from the deployment ledger, not historical claims.
 
-- Existing owner-private Site: https://gs-pen-test-lab.goofyspook.chatgpt.site (project `appgprj_6adce46e22dc81918dab627af382c76a`). Preserve its access policy.
-- Feature branch: `chatgpt/pen-009-post-metadata-facebook`, based on PR #7 head `568e3cf01d97921147503f8fd39d4089883823a8`. Issue #8. Keep PR #7 and this change unmerged until independent review.
-- TikTok now returns independent post text/hashtags and public creator, date, duration, dimensions, language and engagement fields, from the same public page used for captions.
-- Facebook now attempts a bounded public-page request for canonical reel/watch/video links. Reads public share text, creator/title/engagement summary and matching structured video metadata when available. Share previews are explicitly marked as potentially shortened.
-- Native Facebook captions, text recognition from frames, and independent Whisper transcription remain unimplemented. No media download, platform cookies, proxy or private Graph endpoints.
-- Caption success remains `ok`; `post` and `metadata` have independent statuses/provenance. Caption failure preserves successfully retrieved post data. Browser selects a successful output for partial results.
-- Output text/creator/media identifiers remain memory-only. Diagnostic additions are fixed stages/codes and availability booleans only. Database storage still uses the existing owner checks and 30-day retention.
-- Local live probes: supplied TikTok returned 62 timed cues, 237 post characters and public metadata; supplied Facebook returned 1,528 post characters, five hashtags, creator and title. These are sample results, not universal coverage.
-- Verification: 75 unit tests and 30 desktop/mobile browser acceptance checks pass, including synthetic post/caption independence, matching-video scoping, provider failure, tracking stripping, diagnostic exclusion and existing owner authorization/retention tests. Browser suite extended for TikTok output safety and Facebook partial results. Hosted signed-in TikTok and Facebook verification, database checks, anonymous rejection, source/version and build receipts are recorded in docs/DEPLOYMENT.md. Pull request #9 remains unmerged.
-- Review: self-review of request bounds, fixed-host requests, untrusted text rendering, data exclusion and unchanged authentication. No independent review completed in this session.
-- Next: verify broader Facebook variants and permitted native-caption tracks, support safe canonical resolution for shared/short links, then work on independent speech and frame text recognition as separate capabilities.
+## Security and retention
 
----
+Both configured owner email and Site-specific identifier must match trusted dispatch identity. The identifier is a secret runtime setting, not the account identifier from the sharing policy. Derive it only from trusted existing owner data. Diagnostics have no owner column and depend on exactly one permitted owner; add row ownership before widening access.
 
-# GS Pen handoff
-Updated 24 October 2026. Next milestone: review and create owner-private ChatGPT Sites preview.
+History contains canonical source links and extracted content in a separate store. Diagnostics exclude content, identifiers, credentials and arbitrary errors, have a 10,000-record cap and 30-day expiry. Existing hourly automation `6adcf46e17b481919332f80387ddacfb` remains enabled; last run was observed on 25 October 2026. Physical removal can lag until the next successful hourly run. The service-only retention endpoint exposes no records and deletes only already expired rows using server time, behind the owner-private dispatcher.
 
-## Current branch and pull request
-- Main contains research PRs #2-#4, including two distinct live TikTok caption extraction cases from GitHub-hosted Python probes.
-- Open PR **#7** on `chatgpt/pen-007-diagnostics-plan` now contains the **working local Test Lab** and implementation of granular depersonalized diagnostics. This branch is not merged and must not be publicly deployed.
-- Source: `web/` frontend, `src/` shared validation and diagnostics, `server/` loopback backend, `scripts/build-site.mjs`; `dist/` generated.
-- `npm run check` builds static assets and runs unit tests; `npm start` launches local loopback Test Lab on port 4173.
+Sites infrastructure metadata has independent platform retention. The application cannot promise 30-day control of those logs. A second real signed-in account and native Claude delivery remain separate verification gaps. Use isolated disposable records for storage checks, never clear the user's data.
 
-## Proven
-- GitHub Actions unit check: 56 / 56 passed on 24 October 2026, including server HTTP, sanitization, caption parser, and metadata classification. Latest passing run: https://github.com/GSGrimoire/gs-pen/actions/runs/40090272982.
-- Node.js live public-caption research check: two distinct TikTok examples returned valid WebVTT caption files with 15 and 12 cues without saving text. Run: https://github.com/GSGrimoire/gs-pen/actions/runs/40090424854.
-- No paid speech recognition or third-party transcript service; Whisper remains unimplemented.
-
-## Diagnostic privacy decision
-Collect maximum useful structured **non-identifying** technical metadata: allowlisted source hostname, link format, coarse query shape, provider name, CDN family, broad browser/device category, stage/status/error code, elapsed times, HTTP status, response size category, counts and random trace ID. No raw video IDs, creator handles, video URLs, subtitles, speech, signed asset URLs, arbitrary error strings, IP addresses or raw agent strings. Docs: `docs/DIAGNOSTICS.md`.
-
-## Still unverified
-- Private Sites deployment, supported backend runtime, authenticated Site database, cross-account access controls.
-- Hosted Site caption retrieval, including outbound network permission and platform rights.
-- Browser visual quality assurance, real device tests, provider success ratios across days.
-- Real metadata and Whisper extraction. Do not claim the local loopback server is an authenticated production service.
-
-## Security / review rule
-PR #7 includes local request handling and diagnostic storage and should receive independent security review before merger into main or adaptation to a real private Site. This conversation cannot independently approve its own work. The local Node server listens only on 127.0.0.1 and is **not** a remotely deployable API.
-
-## Optional remote test without a home server
-
-A private GitHub Codespaces development configuration and additional per-start development access key are now included in PR #7. Live endpoint access requires the private Codespaces port and this key; local mode remains loopback-only. Security checks include a unit test for unauthorized log read/caption requests. **A Codespace has not been provisioned or tested for port forwarding**. See docs/CODESPACES_TEST.md. Final unit run: 57/57 passing after auth-key changes on 24 October 2026.
-
-## Next implementation sequence
-1. Review PR #7 security and Test Lab tests.
-2. In ChatGPT Work/Sites, create **GS Pen Test Lab** from this repo as a *private preview*, keeping `dist/` static frontend; do not expose `server/local-server.mjs` to the internet.
-3. Build a narrow authenticated Site-compatible caption service and owner-only Site diagnostic database, verify access/retention with real Site runtime.
-4. Publish privately only after negative auth and data-exfiltration tests, and document the actual deployment receipt in `docs/DEPLOYMENT.md`.
-
-## PEN-008 automated QA and Work Sites handoff (24 October 2026)
-On development branch `chatgpt/pen-007-diagnostics-plan`, Playwright 1.64.1 is pinned, with desktop Chromium and mobile Chromium acceptance suite in `e2e/test-lab.spec.mjs`, Playwright configuration and `.github/workflows/browser-e2e.yml`. GitHub Actions run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641 passed **22/22 real browser tests**, including four tabs, success/error caption displays with synthetic fixtures, cross-provider no-op, backend missing state, diagnostic redaction/export, no horizontal overflow, Codespaces-key behavior, expiry of >30-day records, and HTML-safe caption presentation. Separate unit and real TikTok research workflows also passed on that commit. Browser tests use synthetic/mocked caption responses; live caption retrieval was separately verified for two TikTok examples through GitHub Actions.
-
-Private ChatGPT Sites project cannot be created or deployed using the GitHub-only connector tools available in this chat. The exact Work / @Sites deployment handoff is `docs/SITES_DEPLOYMENT_HANDOFF.md`. A saved Site version is not yet created. Remote authenticated endpoints/diagnostic database not implemented, so do not publish or claim Site readiness. PR #7 remains open pending independent security review of remote integration; no user manual testing required.
-
+Next features are Google Drive saving, then optional Asana task creation. The latter needs a durable content reference that outlives Pen history. Neither integration is implemented. See BACKLOG.md for provider reliability, independent speech and other deferred work. Do not modify other GS projects.

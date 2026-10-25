@@ -1,3 +1,2 @@
 # GS Pen collaboration rules
 Read docs/HANDOFF.md, BACKLOG.md and the relevant source before making changes. Treat source and passing tests as authoritative, not prior chat claims. One issue, branch and reviewed pull request per feature. Do not merge unreviewed code or publish unverified functionality. Never commit audio, transcripts, personal data, auth tokens or external-account cookies. Preserve the GS Scribe and GS VoiceStudio projects; no cross-project changes without explicit scope. For every change, run tests and record what was not verified. Keep interface errors truthful and distinguish URL recognition from authorized content retrieval.
-

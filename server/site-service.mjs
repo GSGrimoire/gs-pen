@@ -1,7 +1,7 @@
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v02_sites_1';
+export const BUILD = 'workspace_v02_sites_3';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -13,7 +13,7 @@ const json = (body, status=200) => new Response(JSON.stringify(body), {status,he
 export function ownerAuthorized(request, env) {
   const id=request.headers.get('oai-authenticated-user-id');
   const email=request.headers.get('oai-authenticated-user-email');
-  return !!(id && email && env.GS_PEN_OWNER_EMAIL && email.toLowerCase() === env.GS_PEN_OWNER_EMAIL.toLowerCase() && (!env.GS_PEN_OWNER_ID || id===env.GS_PEN_OWNER_ID));
+  return !!(id && email && env.GS_PEN_OWNER_EMAIL && email.toLowerCase() === env.GS_PEN_OWNER_EMAIL.toLowerCase() && (env.GS_PEN_OWNER_ID && id===env.GS_PEN_OWNER_ID));
 }
 export async function expireEvents(db, now=Date.now()) {
   return db.prepare('DELETE FROM diagnostic_events WHERE expires_at <= ?').bind(now).run();

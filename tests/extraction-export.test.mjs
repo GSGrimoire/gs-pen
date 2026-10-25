@@ -22,3 +22,24 @@ test('Long and unicode packages are copied completely without truncated launch l
  }
  const partial=assistantHandoff({...result,ok:false,cues:[]},'source','claude').prompt;assert.ok(partial.includes('Fixture description'));assert.ok(partial.includes('"ok": false'));
 });
+
+test('Claude desktop link includes exactly 12000 prompt characters and excludes 12001',()=>{
+ const source='source',base={...result,post:{...result.post,text:''}};
+ const overhead=assistantHandoff(base,source,'claude').prompt.length;
+ for(const length of [12000,12001]){
+  const handoff=assistantHandoff({...base,post:{...base.post,text:'x'.repeat(length-overhead)}},source,'claude');
+  assert.equal(handoff.prompt.length,length);assert.ok(encodeURIComponent(handoff.prompt).length<24000);
+  assert.equal(handoff.desktopUrl!==null,length===12000);
+ }
+});
+test('Claude desktop link includes exactly 24000 encoded characters and excludes 24001',()=>{
+ const source='source',base={...result,post:{...result.post,text:''}};
+ const overhead=encodeURIComponent(assistantHandoff(base,source,'claude').prompt).length;
+ for(const length of [24000,24001]){
+  const remaining=length-overhead,text='é'.repeat(Math.floor(remaining/6))+'x'.repeat(remaining%6);
+  const handoff=assistantHandoff({...base,post:{...base.post,text}},source,'claude');
+  assert.equal(encodeURIComponent(handoff.prompt).length,length);assert.ok(handoff.prompt.length<12000);
+  assert.equal(handoff.desktopUrl!==null,length===24000);
+  if(handoff.desktopUrl)assert.equal(new URL(handoff.desktopUrl).searchParams.get('q'),handoff.prompt);
+ }
+});

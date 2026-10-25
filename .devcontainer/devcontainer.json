@@ -11,4 +11,3 @@
   },
   "postCreateCommand": "npm run check"
 }
-

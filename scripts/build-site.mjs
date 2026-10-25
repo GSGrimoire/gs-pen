@@ -8,4 +8,3 @@ for (const file of ["index.html","styles.css","app.mjs"])
 for (const file of ["url-classifier.mjs","diagnostics.mjs","extraction-export.mjs"])
   await copyFile(path.join(root,"src",file),path.join(root,"local-dist","modules",file));
 process.stdout.write("Built self-contained static preview in local-dist/\n");
-

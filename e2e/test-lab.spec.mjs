@@ -261,7 +261,7 @@ async function mockAssistantLaunch(page,{clipboardFails=false,popupBlocked=false
  await page.addInitScript(({clipboardFails,popupBlocked})=>{
   window.assistantTest={copies:[],launches:[],closed:false};
   Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{if(clipboardFails)throw Error('denied');window.assistantTest.copies.push(text);}}});
-  window.open=()=>popupBlocked?null:{opener:window,closed:false,location:{replace:url=>window.assistantTest.launches.push(url)},close:()=>{window.assistantTest.closed=true;}};
+  window.open=()=>{if(popupBlocked)return null;const win={opener:window,closed:false,location:{replace:url=>window.assistantTest.launches.push(url)},close:()=>{window.assistantTest.closed=true;}};window.assistantTest.win=win;return win;};
  },{clipboardFails,popupBlocked});
 }
 test('Assistant handoffs copy all saved outputs even from Whisper tab and expose safe destinations',async({page,isMobile})=>{
@@ -270,12 +270,13 @@ test('Assistant handoffs copy all saved outputs even from Whisper tab and expose
  await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
  await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await page.locator('#open-claude').click();
  await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');
+ expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
  const data=await page.evaluate(()=>window.assistantTest);expect(data.launches).toEqual(['https://claude.ai/new']);
  for(const text of ['Saved fixture caption','Saved fixture post','Fixture creator','not_implemented'])expect(data.copies[0]).toContain(text);
  expect(data.copies[0]).not.toContain('diagnosticsStored');
  if(isMobile)await expect(page.locator('#claude-desktop-link')).toBeHidden();else{await expect(page.locator('#claude-desktop-link')).toBeVisible();expect(new URL(await page.locator('#claude-desktop-link').getAttribute('href')).searchParams.get('q')).toBe(data.copies[0]);}
  await page.locator('#open-chatgpt').click();await expect(page.locator('#assistant-action-status')).toContainText('ChatGPT');await expect(page.locator('#claude-desktop-link')).toBeHidden();
- expect((await page.evaluate(()=>window.assistantTest)).launches.at(-1)).toBe('https://chatgpt.com/');
+ expect((await page.evaluate(()=>window.assistantTest)).launches.at(-1)).toBe('https://chatgpt.com/');expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
  const size=await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.clientWidth]);expect(size[0]).toBeLessThanOrEqual(size[1]+2);
 });
 test('Clipboard rejection closes unused tab without sending content or claiming success',async({page})=>{
@@ -291,4 +292,50 @@ test('Long partial extraction handoff stays complete and offers no truncating ap
  await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text,hashtags:['#fixture'],provenance:'Synthetic fixture',completeness:'page_preview_may_be_truncated'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
  await openConnected(page);await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();await expect(page.locator('#open-claude')).toBeEnabled();await page.locator('#open-claude').click();
  await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');await expect(page.locator('#claude-desktop-link')).toBeHidden();expect((await page.evaluate(()=>window.assistantTest)).copies[0]).toContain(text);
+});
+
+test('A delayed saved result cannot change a new extraction or its exported source',async({page})=>{
+ await stubHistory(page);
+ let releaseHistory,releaseCaptions;
+ const historyGate=new Promise(r=>releaseHistory=r),captionGate=new Promise(r=>releaseCaptions=r);
+ const savedId='00000000-0000-4000-8000-000000000010';
+ await page.route('**/api/history/'+savedId,async route=>{await historyGate;await route.fallback();});
+ await page.route('**/api/captions',async route=>{
+  const {traceId}=route.request().postDataJSON();await captionGate;
+  await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,code:'OK',cues:[{start:'00:00:05.000',end:'00:00:06.000',text:'New extraction caption'}],post:{status:'unavailable'},metadata:{status:'unavailable'},events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true,historyStatus:'saved'})});
+ });
+ await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await page.getByRole('link',{name:'Extract',exact:true}).click();
+ const other='https://www.tiktok.com/@hankgreen1/video/7047596209028074758';
+ await page.locator('#video-url').fill(other);await page.locator('#probe-button').click();
+ const savedResponse=page.waitForResponse(r=>r.url().endsWith(savedId));releaseHistory();await (await savedResponse).finished();
+ await expect(page.locator('#video-url')).toHaveValue(other);await expect(page.locator('#tab-panel')).not.toContainText('Saved fixture caption');
+ releaseCaptions();await expect(page.locator('#tab-panel')).toContainText('New extraction caption');
+ const download=page.waitForEvent('download');await page.locator('#export-json').click();
+ const record=JSON.parse(await(await import('node:fs/promises')).readFile(await(await download).path(),'utf8'));
+ expect(record.sourceUrl).toBe(other);expect(record.result.cues[0].text).toBe('New extraction caption');
+});
+
+test('The latest saved-result selection wins when responses arrive in reverse order',async({page})=>{
+ await stubHistory(page);const first='00000000-0000-4000-8000-000000000011',second='00000000-0000-4000-8000-000000000012';
+ const items=[first,second].map((id,i)=>({id,sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+86400000,title:'Selection '+i,creator:'Fixture'}));
+ await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items})}));
+ let releaseFirst;const firstGate=new Promise(r=>releaseFirst=r);
+ await page.route('**/api/history/*',async r=>{const id=r.request().url().split('/').at(-1);if(id===first)await firstGate;await r.fulfill({contentType:'application/json',body:JSON.stringify({item:{...items.find(x=>x.id===id),result:{ok:true,code:'OK',cues:[{start:'00:00:01.000',text:id===first?'Old saved selection':'Latest saved selection'}]}}})});});
+ await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.getByRole('button',{name:'Open extraction: Selection 0',exact:true}).click();await page.getByRole('button',{name:'Open extraction: Selection 1',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('Latest saved selection');
+ const response=page.waitForResponse(r=>r.url().endsWith(first));releaseFirst();await(await response).finished();
+ await expect(page.locator('#tab-panel')).toContainText('Latest saved selection');await expect(page.locator('#tab-panel')).not.toContainText('Old saved selection');
+});
+
+test('Unbroken provider creator text does not overflow Recent or its preview',async({page})=>{
+ await stubHistory(page);const creator='x'.repeat(200);
+ await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items:[{id:'00000000-0000-4000-8000-000000000010',sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+86400000,title:'Long creator fixture',creator}]})}));
+ await page.goto('/');await expect(page.locator('#recent-preview')).toContainText(creator);
+ for(const view of ['Extract','Recent']){
+  await page.getByRole('link',{name:view==='Recent'?/^Recent/:view,exact:view!=='Recent'}).click();
+  const size=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));expect(size.scroll).toBeLessThanOrEqual(size.width+2);
+ }
 });

@@ -1,10 +1,10 @@
-// GS Pen Test Lab user interface v1. No telemetry endpoint other than same-origin local research backend.
+// GS Pen Test Lab user interface v1. Telemetry uses the same-origin backend; hosted diagnostics are owner-restricted.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v02_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
-const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null};
+const BUILD="workspace_v02_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
+const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
@@ -138,7 +138,7 @@ const errorText={
 function explain(code){return (errorText[code]||"The request did not return an available caption track.")+" Error code: "+code+".";}
 function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Extract video ↗";}
 async function doProbe(event){
-  event.preventDefault();if(state.busy)return;
+  event.preventDefault();if(state.busy)return;state.openSeq++;
   const input=$("video-url").value.trim(),context=diagnosticLinkContext(input);
   state.currentTrace=makeTrace();state.trace=[];state.result=null;state.sourceUrl=input;$("output-action-status").textContent="";$("history-save-status").textContent="Extracting. Available content will be saved privately.";
   $("trace-id").textContent=state.currentTrace;
@@ -156,7 +156,7 @@ async function doProbe(event){
     if(!response.ok){$("history-save-status").textContent="No extraction saved. The request was rejected.";const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
-    state.result=outcome;
+    state.result=outcome;state.sourceUrl=input;
     $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent. Available for 30 days.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
     if(state.site)void refreshHistory();
     const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
@@ -287,9 +287,9 @@ async function refreshHistory(){
   catch{$('history-status').textContent='Could not load Recent. Refresh to try again.';}
 }
 async function openExtraction(id){
-  if(state.busy)return;
-  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Expires '+new Date(item.expiresAt).toLocaleDateString();displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
-  catch{$('history-status').textContent='This extraction is unavailable or has expired. Refresh Recent.';}
+  if(state.busy)return;const seq=++state.openSeq;
+  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();if(state.busy||seq!==state.openSeq)return;state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Expires '+new Date(item.expiresAt).toLocaleDateString();displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
+  catch{if(state.busy||seq!==state.openSeq)return;$('history-status').textContent='This extraction is unavailable or has expired. Refresh Recent.';}
 }
 function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 window.addEventListener('hashchange',navigate);

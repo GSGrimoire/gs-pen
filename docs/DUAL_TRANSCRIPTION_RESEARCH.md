@@ -28,4 +28,3 @@ A practical, terms-compliant method of obtaining existing transcript tracks from
 
 ## Validation plan for real captions
 For each of the four platforms, test 10 authorized public examples twice, with and without human/automatic caption tracks if possible. Log original caption status, extraction permission, retrieval route, duration, language, timestamps and transcript completeness. Verify independent model output only when permitted audio access exists. Never store personal test captions or video in GitHub.
-

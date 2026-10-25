@@ -11,4 +11,3 @@ for (const [label,url] of cases){
   console.log(JSON.stringify({sample:label,retrieved:result.ok,code:result.code,cueCount:result.ok?result.cues.length:0}));
 }
 console.log(JSON.stringify({samples:cases.length,verified,kind:"single-run-node-caption-access",productionReadiness:"unverified"}));
-

@@ -1,14 +1,9 @@
 name: GS Pen unit tests
 on:
   pull_request:
-    paths:
-      - 'src/**'
-      - 'server/**'
-      - 'web/**'
-      - 'scripts/**'
-      - 'tests/*.test.mjs'
-      - 'package.json'
-      - '.github/workflows/unit-tests.yml'
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
   workflow_dispatch:
 permissions:
   contents: read
@@ -24,3 +19,19 @@ jobs:
       - name: Build static preview and run JavaScript unit tests
         run: npm run check
 
+  hosted:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install the locked dependency tree
+        run: corepack enable && pnpm install --frozen-lockfile
+      - name: Build the Sites worker
+        run: npm run build
+      - name: Lint hosted and shared source
+        run: npm run lint
+      - name: Type check
+        run: pnpm exec tsc --noEmit
