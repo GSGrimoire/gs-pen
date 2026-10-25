@@ -1,3 +1,22 @@
+# PEN-010 release verification (24 October 2026)
+
+Orange workspace and separate owner-private saved extraction history are deployed and verified. Site identity and owner-only audience are preserved. Migration `0001_mighty_captain_britain.sql` was generated through Drizzle, inspected, applied to the local preview database and applied by Sites during deployment.
+
+Hosted-tested source: `36694bf049339b93f9d8a4fa0c4c70f38016c1fe`. Private deployment: `appgdep_6add0498c4c481919bf60c5172b187e2`. Saved version: `appgprj_6adce46e22dc81918dab627af382c76a~appgver_53c878f914c48191860cb25fda9a5156`. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site. GitHub implementation: `75751063a983f1b63538014abbcbe9aca703ec10` plus state fixes `053810cdc42bb5de04646c8a8f4c01c8e7600bf6`; pull request #11 stacked on #9, unmerged.
+
+Verification:
+- 80 unit checks passed locally and in GitHub. Final functional-head browser run passed 34/34 desktop/mobile Chromium checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40124648711. Includes navigation, filtering, reopening after reload, deletion/cancel confirmation, output safety, export structure, save failures and mobile layout. Those provider responses are synthetic.
+- Separate real hosted TikTok request returned 62 caption cues, post text and metadata; saved automatically, survived reload and reopened without another provider request. Current-tab clipboard copy reported success.
+- Real hosted Facebook request returned 1,528 post characters, five hashtags and metadata, saved as a partial result without native captions. Structured export downloaded and was inspected: platform captions empty, independent transcript not implemented, preview warning preserved, diagnostic events excluded.
+- Actual database has two owner extraction rows with exactly 30-day expiry. Hosted disposable-record self-check passed diagnostics/history write, owner isolation, physical delete and expiry. No user extraction was deleted during hosted testing; individual deletion/cancel was verified through synthetic browser acceptance tests and real SQL unit checks.
+- Service retention request returned 200 with expiredDeleted true. Service history read and forged-identity history read returned 403; anonymous history read returned 401. No second signed-in account was available; row isolation is covered by actual database self-check and unit tests, with missing/alternate identity rejection.
+- Existing hourly cleanup automation `6adcf46e17b481919332f80387ddacfb` was retained and extended to saved history. Its schedule and enabled state were preserved; successful runs are silent. Cleanup deletes expired rows on access and through the hourly unattended endpoint, so physical removal while closed can lag expiry by up to the next successful hourly run.
+- Desktop visual review completed. A final logo alignment correction and documentation publication follow this functional release; no retrieval, storage or authorization changes are included in that correction.
+
+This is self-review only, with independent review still required before merge. Facebook captions, YouTube, independent Whisper and frame text recognition remain unimplemented. No new provider support is claimed.
+
+---
+
 # Current deployment ledger: 24 October 2026
 
 Historical records below predate the actual Sites deployment and are superseded here.
@@ -37,6 +56,8 @@ Claude's independent review is recorded in pull request #7, combined comment 639
 
 
 
+## PEN-010 final publication receipt
+Final owner-private publication succeeded at 19:23 UTC (21:23 Copenhagen) on 24 October 2026. Source `26c26aab24534f1ae0f6a5f3d1774947641c03ed`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_fa5d1a1e246c8191969e78ecc83ff255`; deployment `appgdep_6add059c7afc81919fd8dab681d0c86c`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. Final source adds only wordmark alignment and verification documentation to the hosted-tested functional version. The final GitHub implementation head `153e06507573a3d7f32f9aeb249e9b5358b136dd` also passed the 80-unit and 34-browser checks, browser run https://github.com/GSGrimoire/gs-pen/actions/runs/40124975851. Final desktop visual review confirmed aligned wordmark, owner backend connected, separate hidden Diagnostics view and no horizontal overflow at 1,348 pixels. This receipt is committed to GitHub after publication; no application code changes are included in it.
 ## Final documentation publication receipt
 At 18:29 UTC (20:29 Copenhagen), owner-private publication succeeded for source `8b99ff7755bc0c90af91aa3cdf1d24959c96b4b4`, saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_0fa137b2890c8191b137b182ca3f2c59`, deployment `appgdep_6adcf8e207788191bb8023831026c581`. URL unchanged: https://gs-pen-test-lab.goofyspook.chatgpt.site. This final source differs from the hosted-tested runtime commit only in BACKLOG.md, docs/DEPLOYMENT.md and docs/HANDOFF.md. Application code/build output is unchanged; no repeat provider calls were required. This receipt is recorded on the GitHub feature branch after publication.
 On 24 October 2026, local preview acceptance passed 22 desktop/mobile checks in run 40113533641. That run preceded Site provisioning and did not establish hosted authentication or database behavior. Later historical publication receipts are preserved in the descendant pull requests and Site source history.

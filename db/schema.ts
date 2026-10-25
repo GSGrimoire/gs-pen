@@ -10,3 +10,12 @@ export const requestBudget = sqliteTable('request_budget', {
   window: integer('window').notNull(),
   used: integer('used').notNull(),
 });
+export const extractions = sqliteTable('extractions', {
+  id: text('id').primaryKey(),
+  ownerId: text('owner_id').notNull(),
+  sourceUrl: text('source_url').notNull(),
+  platform: text('platform').notNull(),
+  createdAt: integer('created_at').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+  payload: text('payload').notNull(),
+}, t => [index('extraction_owner_created').on(t.ownerId,t.createdAt),index('extraction_expiry').on(t.expiresAt)]);

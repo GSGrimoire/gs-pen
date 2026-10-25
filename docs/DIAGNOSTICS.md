@@ -46,6 +46,10 @@ Diagnostic data is useful for seeing systematic failure patterns. It cannot prov
 
 ## PEN-009 output availability
 `post_parse` and `metadata_parse` record fixed statuses/codes; `postTextFound` and `metadataFound` are booleans. `PARTIAL_RESULT` identifies a displayed post or metadata result without caption success. Post text, hashtags, creator details, engagement values, dates, and media URLs never enter diagnostic records. Displayed outputs exist in memory only.
+
+
+## PEN-010 saved extraction history
+User-approved history is intentionally content-bearing and stored in `extractions`, scoped to the trusted Sites visitor identifier. It contains canonical source links and supported output fields, never diagnostic traces or provider resource URLs. It is not diagnostic telemetry. Latest 50 per owner, 30-day expiry, individual physical deletion. Diagnostic-clear does not clear extraction history. History status is returned to the interface without sending stored content to logging.
 ## Infrastructure logging
 
 Sites infrastructure request metadata is separate from application diagnostics and has platform-controlled retention. Disabling worker application logging does not remove all hosting metadata. The application does not claim 30-day control over platform logs.

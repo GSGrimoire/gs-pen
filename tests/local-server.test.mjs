@@ -14,7 +14,7 @@ test("local Test Lab serves UI, rejects arbitrary content, persists only sanitiz
   assert.equal(meta.centralSiteStorage,false);
   const html=await fetch(root+"/");
   assert.equal(html.status,200);
-  assert.match(await html.text(),/Native captions laboratory/);
+  assert.match(await html.text(),/GS Pen \| Your video workspace/);
   const blocked=await fetch(root+"/api/diagnostics",{
     method:"POST",headers:{"Content-Type":"application/json","Origin":"https://evil.test"},
     body:JSON.stringify({traceId:"testing",stage:"finished"})
