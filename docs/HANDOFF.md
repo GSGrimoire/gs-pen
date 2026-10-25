@@ -3,7 +3,9 @@ Updated 25 October 2026 after Claude's independent review.
 
 Existing owner-private Site: https://gs-pen-test-lab.goofyspook.chatgpt.site. Project `appgprj_6adce46e22dc81918dab627af382c76a`. Preserve its identity, audience, database and source workflow. Current publication receipts and verification limits are in docs/DEPLOYMENT.md.
 
-The authorized correction and merge sequence is #7, #9, #11, #13, each retargeted to main and rechecked. Claude's independent combined review is on #7, comment 6393655281. Corrective code is self-reviewed against that report. Deploy only the verified merged main tree after the last merge, then record its exact GitHub and Sites provenance. Do not count older reviews as new-head approval.
+Pull requests #7, #9, #11 and #13 are merged into main in that order after retargeting and fresh checks. Main application commit is `8a406c758a3f75a54782425e3eabd226de25c8a5`; its exact tree was published owner-private as version 10. The post-publication documentation commit records the receipt without changing application code. Final main passed 89 unit tests, 48 desktop/mobile browser checks, Sites build, lint and types. Fresh hosted access, disposable database checks, service rejection/retention and both live TikTok examples passed. See docs/DEPLOYMENT.md for exact source, version and run identifiers.
+
+Claude's independent combined review is on #7, comment 6393655281. Required corrections are complete and were self-reviewed against the independent report; a second review of the corrective heads is not claimed. Existing hourly cleanup remains enabled. No user action is required for this release.
 
 ## Current functionality
 

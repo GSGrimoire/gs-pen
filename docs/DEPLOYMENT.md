@@ -1,3 +1,69 @@
+# Reviewed main release, 25 October 2026
+
+Owner-private version **10** deployed successfully at 06:00:32 UTC, 07:00:32 Europe/Copenhagen (UTC+01:00).
+URL: https://gs-pen-test-lab.goofyspook.chatgpt.site
+Project: `appgprj_6adce46e22dc81918dab627af382c76a`
+Saved version: `appgprj_6adce46e22dc81918dab627af382c76a~appgver_8b7154e677148191853a2fe217c2b297`
+Deployment: `appgdep_6add9af1de1881918aaf0aa6d2e560fc`
+Environment revision: **2**, with both owner email and Site-specific owner identifier configured as secrets. Values are deliberately excluded from this ledger.
+
+## Exact source reconciliation
+
+- GitHub merged main: `8a406c758a3f75a54782425e3eabd226de25c8a5`.
+- GitHub main tree: `7f605751b6f64543da3a58388c94b7ab65f80892`.
+- Sites runtime source: `a0ce2411dae44cb1076b284c5f6f8d4e19dd81df`.
+- The Sites source tree was checked against GitHub main and is exactly `7f605751b6f64543da3a58388c94b7ab65f80892`, including file modes. This release was built and packaged only after all four requested merges.
+- Saved artifact: SHA-256 `52327f9d9d7b59c85e2d61f018252cb60acf38e50e264f6103807144f9b06135`, 1,566,720 bytes, 67 files.
+- This receipt is committed to GitHub after publication. Its subsequent documentation-only commit does not change the deployed application tree; another publication is unnecessary for that receipt.
+
+## Review corrections and ordered merges
+
+Claude independently reviewed the original stack in [the combined report](https://github.com/GSGrimoire/gs-pen/pull/7#issuecomment-6393655281), with inline comments on each pull request. Corrective changes were self-reviewed against those findings and tested; no second independent review of the corrective heads is claimed. The user explicitly authorized corrections and sequential merges.
+
+| Pull request | Corrective head | Merge into main | Unit tests | Desktop/mobile browser checks |
+|---|---|---|---|---|
+| #7 | `bff165f0bf6a7041f3771b2a999d74fe7471373b` | `5f8d226a0d4913c328e781831f7169d376c1a08a` | 70 | 26 |
+| #9 | `0f9ebd5165011bddec78dc861b10f48f7fb4a1f1` | `ffce50d71248eebe347222d7d9858cd2e0afe15e` | 80 | 30 |
+| #11 | `011c64a60f8f23c46744307bed56fb67e8cee66f` | `0596d90941f9ba2ddd103b65462e68fe164689fe` | 85 | 40 |
+| #13 | `20edeeed8a02416a94ccf7feea2b51b81553030e` | `8a406c758a3f75a54782425e3eabd226de25c8a5` | 89 | 48 |
+
+Every pull request targeted main before merging. Checks were rerun after each retarget, and merges used expected-head guards and merge commits, preserving the stacked ancestry. The final main push also passed all 89 unit and 48 browser checks, Sites production build, lint and TypeScript checking.
+
+- #7 checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40166936720 and https://github.com/GSGrimoire/gs-pen/actions/runs/40166936762.
+- #9 checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40167086422 and https://github.com/GSGrimoire/gs-pen/actions/runs/40167086463. Fresh live research probe https://github.com/GSGrimoire/gs-pen/actions/runs/40167086434 returned 15 and 12 caption cues with strict video matching.
+- #11 checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40167227725 and https://github.com/GSGrimoire/gs-pen/actions/runs/40167227722.
+- #13 checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40167358019 and https://github.com/GSGrimoire/gs-pen/actions/runs/40167358109.
+- Final main: https://github.com/GSGrimoire/gs-pen/actions/runs/40167450579 and https://github.com/GSGrimoire/gs-pen/actions/runs/40167450724.
+
+Required corrections cover hosted workflow triggers/build/type checking, frozen dependency installation without tracked policy rewrites, executable installer scripts, raw-import declarations, accurate oversized-response codes, single-pass caption entity decoding, exact requested-video caption scoping, stale history response/provenance races, mobile creator wrapping, opener isolation and exact desktop-link boundaries. Documentation and client/server build labels are reconciled. All branch diffs passed whitespace checking.
+
+## Fresh hosted verification on version 10
+
+- The existing signed-in owner loaded the workspace, diagnostics and history after the stricter identifier requirement. Sharing remained owner-only, without external viewers, editors or groups.
+- The actual database self-check reported: “Passed: diagnostics and history write, isolation, expiry and deletion.” It uses isolated disposable rows, leaving real records untouched.
+- Seven direct dispatch/service tests passed: anonymous root/history/diagnostics returned 401; forged owner headers without service access returned 401; service-only history reads and forged owner headers through service access returned 403; service retention returned 200 with `expiredDeleted:true`.
+- Both known TikTok examples were freshly retrieved through the hosted Site, returning 15 and 12 timed native caption cues. Metadata was available for both; post text was available for the first and correctly unavailable for the second. These are two sample results, not universal provider reliability.
+- Both results saved automatically. Reload showed four saved extractions including the two existing user results; the 12-cue result reopened from Recent, with the assistant handoff controls enabled.
+- A bounded database sample included three events from build `workspace_v02_sites_3`. Those events contained none of the tested content fields, source links, sample video identifiers or creator handles. The hosted privacy self-check also passed. No raw diagnostic records or extracted content were committed.
+- Existing hourly cleanup automation `6adcf46e17b481919332f80387ddacfb` was confirmed enabled; its last observed run was 25 October 2026 at 05:19 UTC. No duplicate task was created. The freshly tested retention endpoint physically deletes already expired rows using server time.
+
+## Verification limits and nonblocking follow-ups
+
+Local Chromium was unavailable in this container, so local browser attempts could not launch. The passing desktop/mobile evidence above comes from GitHub runners installing the exact pinned browser. Those browser provider fixtures are synthetic; fresh hosted provider and database checks are listed separately.
+
+A second real signed-in account, native Claude app delivery and real destination prompt submission remain unverified. Nothing is submitted automatically. Real logging/database failure injection was not performed on the hosted user database; nonblocking failure behavior is covered by unit and browser fixtures. Facebook retrieval was not freshly re-probed in this release because its adapter was unchanged.
+
+Diagnostics rely on exactly one permitted owner and have no owner column. Add ownership before widening access. The narrow service retention endpoint relies on the private dispatch boundary; a separate task secret is a possible future hardening. Compact history summaries can reduce listing overhead. These are recorded in BACKLOG.md.
+
+Application history and diagnostics expire after 30 days. Physical cleanup can lag until the next successful hourly task. Sites infrastructure request metadata remains under separate platform retention, outside the application's 30-day promise.
+
+---
+
+# Historical publication receipts
+
+The records below describe earlier versions and are superseded by version 10 above.
+
+
 # PEN-011 release verification, 24 October 2026
 
 Owner-private publication succeeded at 19:36 UTC (21:36 Copenhagen). URL: https://gs-pen-test-lab.goofyspook.chatgpt.site. Project `appgprj_6adce46e22dc81918dab627af382c76a`; runtime source `7675ca656d74160e8d9b668c37f08a3fd2c03ef6`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_9cf19f0af6c8819194c77cbafb31fef2`; deployment `appgdep_6add0899e1d88191b7db64205c24f7a1`. Owner-only access, no external viewers/editors, confirmed before publication. No access/storage/backend changes.
