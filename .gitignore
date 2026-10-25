@@ -52,3 +52,5 @@ yarn-error.log*
 /public/app.mjs
 /public/styles.css
 /public/modules/
+
+/public/content-workflow.mjs

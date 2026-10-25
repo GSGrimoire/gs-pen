@@ -15,6 +15,13 @@
       "when": 1792868978900,
       "tag": "0001_mighty_captain_britain",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792922908510,
+      "tag": "0002_same_hawkeye",
+      "breakpoints": true
     }
   ]
 }

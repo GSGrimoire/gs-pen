@@ -1,3 +1,13 @@
+# Pending content workflow, 25 October 2026
+
+Issue #16, branch `chatgpt/pen-idea-to-draft`, stacked on #15. Read docs/IDEA_TO_DRAFT_PLAN.md for the implementation plan, cost split, interfaces and release gates. New Create workspace supports an idea or owner-scoped saved extraction; code handles brief preparation/deduplication, character budgets, job reuse, validation, storage and Poster payload formatting. The assistant performs the creative text pass through authenticated tools or the explicit copy/paste fallback. No model calls run in Pen.
+
+New additive `content_jobs` migration and owner-only /mcp route require independent review. Tool responses avoid repeated source payloads; a saved draft is reused and writes return compact receipts. Source omissions are explicit. No diagnostics enter a creative prompt. No source content or real drafts are committed. Poster fields are exported as not_sent; no connected Poster tool was found and no live write was attempted. Do not claim full integration or Claude compatibility before separate hosted tests. Poster itself was not modified while the user works on it.
+
+Merge and release only after #15 and this branch are reviewed; preserve Site identity/access. This branch declares the Sites mcp capability, which has not yet been published or connected. The existing live version 10 remains unchanged.
+
+---
+
 # Pending retention pause, 25 October 2026
 
 Issue #14, branch `chatgpt/pen-retention-pause`. The user asked to stop record deletion for now. The daily cleanup automation `6adcf46e17b481919332f80387ddacfb` is paused. This branch also stops age-based deletion and diagnostic/history count pruning in the application. Existing legacy expiry timestamps are ignored on reads; new rows use a non-expiring sentinel for schema compatibility, and API history summaries report expiresAt null. Explicit owner deletion remains functional. No schema migration or bulk data deletion is required.

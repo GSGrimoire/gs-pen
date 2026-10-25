@@ -1,3 +1,9 @@
+# Pending idea-to-draft workflow, 25 October 2026
+
+Issue #16, branch `chatgpt/pen-idea-to-draft`, stacked on retention pause #15. First implementation and its plan are in docs/IDEA_TO_DRAFT_PLAN.md. This branch is not yet merged or deployed. No Site version was created, no model service was invoked, and no Poster submission occurred. Local unit/build/lint/type and migration checks plus GitHub desktop/mobile fixtures are the verification scope; hosted migration, tool discovery, authentication and provider writes remain unverified for this branch.
+
+---
+
 # Pending retention change, 25 October 2026
 
 The user requested pausing automatic record deletion. Daily cleanup task `6adcf46e17b481919332f80387ddacfb` was disabled successfully. Issue #14 and branch `chatgpt/pen-retention-pause` prepare the application changes; these are not yet merged or deployed. Version 10 remains live, so normal-use expiry/count pruning still applies until the reviewed follow-up release. No user records were deleted or migrated during preparation.
