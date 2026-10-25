@@ -1,6 +1,6 @@
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
-export const BUILD = 'testlab_v01_sites_1';
+export const BUILD = 'testlab_v01_sites_2';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -57,7 +57,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
   try {
     if(path==='/api/health' && request.method==='GET') {
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
-      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,captionAdapter:'tiktok_experimental',retentionDays:30});
+      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:30});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);

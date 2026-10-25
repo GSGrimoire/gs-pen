@@ -29,9 +29,9 @@ test('home page exposes private research status, actual backend and four separat
   await page.getByRole('tab', {name: 'Whisper transcript'}).click();
   await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
   await page.getByRole('tab', {name: 'Post text'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('not implemented');
+  await expect(page.locator('#tab-panel')).toContainText('No post request yet');
   await page.getByRole('tab', {name: 'Metadata'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('not implemented');
+  await expect(page.locator('#tab-panel')).toContainText('No metadata request yet');
   await page.getByRole('tab', {name: 'Original captions'}).click();
   await expect(page.locator('#tab-panel')).toContainText('No caption request yet');
 });
@@ -206,4 +206,25 @@ test('Search and error filters inspect backend diagnostics and select processing
  await page.locator('#filter-status').selectOption('succeeded');await expect(page.locator('#diagnostic-rows')).toContainText('No diagnostic records');
  await page.locator('#filter-status').selectOption('failed');await page.locator('#diagnostic-rows tr').click();
  await expect(page.locator('#trace-id')).toHaveText(trace);await expect(page.locator('#timeline')).toContainText('TIMEOUT');
+});
+
+
+test('TikTok post and metadata tabs show independent results and safely render provider text',async({page})=>{
+ const attack='<img src=x onerror="window.__injected=true">';
+ await stubCaptionResult(page,traceId=>({ok:true,code:'OK',cues:[{start:'00:00:01.000',text:'Synthetic caption'}],captionTrackCount:1,post:{status:'succeeded',code:'OK',text:'Synthetic post '+attack+' #test',hashtags:['#test'],provenance:'Synthetic fixture'},metadata:{status:'succeeded',code:'OK',fields:{platform:'TikTok',creator:attack,likes:0},provenance:'Synthetic fixture'},events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true}));
+ await openConnected(page);await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();
+ await expect(page.locator('#result-summary')).toContainText('Post text: Available');
+ await page.getByRole('tab',{name:'Post text',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic post '+attack);
+ await expect(page.locator('#tab-panel img')).toHaveCount(0);
+ await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText(attack);await expect(page.locator('#tab-panel')).toContainText('Likes');
+ await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
+ const stored=await page.evaluate(()=>JSON.stringify(localStorage));expect(stored).not.toContain('Synthetic post');expect(stored).not.toContain(attack);
+});
+
+test('Facebook reaches the backend and displays partial post information without claiming captions',async({page})=>{
+ await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',code:'OK',text:'Synthetic Facebook story #magic',hashtags:['#magic'],provenance:'Facebook public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',code:'OK',fields:{platform:'Facebook',creator:'Synthetic Studio'},provenance:'Synthetic fixture'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
+ await openConnected(page);await page.locator('#video-url').fill('https://www.facebook.com/reel/123456789012345');await page.locator('#probe-button').click();
+ await expect(page.locator('#trace-status')).toHaveText('Post information retrieved; captions unavailable');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
+ await page.getByRole('tab',{name:'Original captions',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Native captions unavailable');
+ await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
 });

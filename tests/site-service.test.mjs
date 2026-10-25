@@ -56,7 +56,7 @@ test('Authenticated storage check exercises real SQL without changing existing r
 });
 test('Site caption resolver returns native timed cues; stores only technical events',async()=>{
  const {env,sql}=setup();let count=0;
- const fetchImpl=async()=>++count===1?new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=private'}]})+'</script>'):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate synthetic caption\n');
+ const fetchImpl=async()=>++count===1?new Response('<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:{id:'1234567890123456789',video:{caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=private'}]}}}}}})+'</script>'):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate synthetic caption\n');
  const response=await (await handleSiteRequest(req('captions','POST',{traceId:data.traceId,url:'https://www.tiktok.com/@creator/video/1234567890123456789?secret=value'}),env,{fetchImpl})).json();
  assert.equal(response.ok,true);assert.equal(response.cues.length,1);assert.equal(response.diagnosticsStored,true);
  const raw=JSON.stringify(sql.prepare('SELECT * FROM diagnostic_events').all());
@@ -72,4 +72,13 @@ test('Durable request budget restricts repeated provider calls',async()=>{
  const {env}=setup();let count=0;const fetchImpl=async()=>{count++;return new Response('',{status:403});};
  for(let n=0;n<10;n++)assert.equal((await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl,now:60000})).status,200);
  assert.equal((await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl,now:60000})).status,429);assert.equal(count,10);
+});
+test('Site returns TikTok post fields while database stores only availability and technical categories',async()=>{
+ const {env,sql}=setup();const id='1234567890123456789';
+ const item={id,desc:'Private post sentinel #secret',author:{nickname:'Private creator sentinel',uniqueId:'private_handle'},video:{duration:5},stats:{playCount:99}};
+ const markup='<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:item}}}})+'</script>';
+ const r=await (await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@private_handle/video/'+id}),env,{fetchImpl:async()=>new Response(markup)})).json();
+ assert.equal(r.post.text,item.desc);assert.equal(r.metadata.fields.creator,item.author.nickname);assert.equal(r.ok,false);assert.equal(r.diagnosticsStored,true);
+ const raw=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());for(const value of [item.desc,'Private creator sentinel','private_handle',id])assert.ok(!raw.includes(value));
+ assert.ok(r.events.some(e=>e.stage==='metadata_parse'&&e.metadataFound));
 });

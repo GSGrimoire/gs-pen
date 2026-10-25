@@ -2,7 +2,7 @@
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="testlab_v01_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
+const BUILD="testlab_v01_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000, MAX_AGE=30*86400000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
@@ -82,9 +82,28 @@ function plainEmpty(title,detail){const el=node("div",undefined,"empty");el.appe
 function renderTab(){
   document.querySelectorAll(".tab").forEach(b=>{const selected=b.dataset.tab===state.tab;b.classList.toggle("selected",selected);b.setAttribute("aria-selected",String(selected));});
   const panel=$("tab-panel");panel.replaceChildren();
+  const result=state.result;
+  const summary=$("result-summary");summary.replaceChildren();
+  if(result){
+    const rows=[['Original captions',result.ok?result.cues.length+' timed cues':explain(result.code)],['Post text',result.post?.text?'Available':'Unavailable'],['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable'],['Whisper','Not implemented']];
+    for(const [label,value] of rows)summary.append(node('p',label+': '+value));
+  }
   if(state.tab==="whisper"){panel.append(plainEmpty("Independent Whisper is not active","Audio capture and speech recognition are planned for a future release. This tab never displays platform captions as Whisper output."));return;}
-  if(state.tab==="post"){panel.append(plainEmpty("Post descriptions not implemented","Descriptions, hashtags and mentions are a separate metadata-retrieval capability; they are not inferred from captions."));return;}
-  if(state.tab==="metadata"){panel.append(plainEmpty("Metadata retrieval not implemented","Only limited technical video-link classification is available. Creator details and engagement counts are not fetched."));return;}
+  if(state.tab==="post"){
+    if(!result){panel.append(plainEmpty('No post request yet','Inspect a TikTok or Facebook video to retrieve public post text and hashtags.'));return;}
+    if(!result.post?.text){panel.append(plainEmpty('Post text unavailable',explain(result.post?.code||result.code)));return;}
+    panel.append(node('p',result.post.provenance,'output-note'),node('div',result.post.text,'post-output'));
+    if(result.post.hashtags?.length)panel.append(node('p',result.post.hashtags.join(' '),'output-note'));
+    if(result.post.completeness==='page_preview_may_be_truncated')panel.append(node('p','Facebook exposes this text in its public share preview. It may be shortened. It is post text, not an independently generated transcript.','output-note'));
+    return;
+  }
+  if(state.tab==="metadata"){
+    if(!result){panel.append(plainEmpty('No metadata request yet','Inspect a TikTok or Facebook video to retrieve available public metadata.'));return;}
+    if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('Metadata unavailable',explain(result.metadata?.code||result.code)));return;}
+    const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook'};
+    const list=node('dl',undefined,'detail-list');for(const [key,value] of Object.entries(result.metadata.fields))list.append(node('dt',labels[key]||key),node('dd',value));
+    panel.append(node('p',result.metadata.provenance+'. Only fields returned by the public page are shown; counts reflect retrieval time.','output-note'),list);return;
+  }
   if(!state.result){panel.append(plainEmpty("No caption request yet","Inspect a public TikTok video to test native caption retrieval."));return;}
   if(!state.result.ok){panel.append(plainEmpty("Native captions unavailable",explain(state.result.code)));return;}
   const wrap=node("div",undefined,"caption-output");
@@ -93,10 +112,11 @@ function renderTab(){
   panel.append(wrap,note);
 }
 const errorText={
+  CONTENT_NOT_FOUND:"The public page did not expose this information in a supported format. It may still be visible on the platform.",
   AUTH_DENIED:"Owner authentication was rejected. Sign in again to this private Site.",
   RATE_LIMITED:"The research request limit was reached. Wait one minute and retry.",
   INVALID_URL:"The link is invalid or outside the supported video formats.",
-  NOT_IMPLEMENTED:"This platform or link style has no caption adapter in the current test build.",
+  NOT_IMPLEMENTED:"Native caption retrieval is not implemented for this platform or link style. Post text and metadata may still be available in their tabs.",
   UNSUPPORTED_LINK_TYPE:"The link is recognized, but the experimental caption resolver requires a canonical public video URL.",
   PROVIDER_BLOCKED:"The platform or caption asset rejected the request. Captions might still exist.",
   CAPTIONS_NOT_FOUND:"The page was retrieved, but no caption track was discovered. This is not proof that captions do not exist.",
@@ -108,7 +128,7 @@ const errorText={
   INTERNAL_ERROR:"The research backend encountered a safe, unclassified internal failure."
 };
 function explain(code){return (errorText[code]||"The request did not return an available caption track.")+" Error code: "+code+".";}
-function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Inspect captions →";}
+function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Inspect video →";}
 async function doProbe(event){
   event.preventDefault();if(state.busy)return;
   const input=$("video-url").value.trim(),context=diagnosticLinkContext(input);
@@ -120,7 +140,7 @@ async function doProbe(event){
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
   if(!result.ok){state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
   if(!state.backend){record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
-  if(result.platform!=="tiktok"){record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
+  if(!['tiktok','facebook'].includes(result.platform)){record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
@@ -129,11 +149,14 @@ async function doProbe(event){
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;
+    const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
+    if(partial){state.tab=outcome.post?.text?'post':'metadata';}
     if(outcome.unpersistedCaptionHost)setContext(context,{"Rejected caption host (not stored)":outcome.unpersistedCaptionHost});
     if(outcome.ok){displayStatus("Captions retrieved","ok");setContext(context,{"Caption tracks":outcome.captionTrackCount,"Caption cues":outcome.cues.length});}
+    else if(partial)displayStatus('Post information retrieved; captions unavailable','ok');
     else displayStatus(outcome.code==="CAPTIONS_NOT_FOUND"?"No track found":"Retrieval failed","error");
     if(!outcome.diagnosticsStored){state.storageFailed=true;$("storage-indicator").textContent="Storage failed; browser copy only";}
-    record({...base,stage:"result_render",status:outcome.ok?"succeeded":"failed",code:outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined});
+    record({...base,stage:"result_render",status:outcome.ok||partial?"succeeded":"failed",code:partial?'PARTIAL_RESULT':outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined,postTextFound:!!outcome.post?.text,metadataFound:outcome.metadata?.status==='succeeded'});
   }catch(e){
     const code=e?.name==="AbortError"?"TIMEOUT":"BACKEND_UNAVAILABLE";
     state.result={ok:false,code};displayStatus("Connection failed","error");

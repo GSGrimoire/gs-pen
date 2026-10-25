@@ -1,3 +1,22 @@
+# Current handoff: PEN-009 (24 October 2026)
+
+The historical handoff below predates the private Sites deployment and is superseded by this section.
+
+- Existing owner-private Site: https://gs-pen-test-lab.goofyspook.chatgpt.site (project `appgprj_6adce46e22dc81918dab627af382c76a`). Preserve its access policy.
+- Feature branch: `chatgpt/pen-009-post-metadata-facebook`, based on PR #7 head `568e3cf01d97921147503f8fd39d4089883823a8`. Issue #8. Keep PR #7 and this change unmerged until independent review.
+- TikTok now returns independent post text/hashtags and public creator, date, duration, dimensions, language and engagement fields, from the same public page used for captions.
+- Facebook now attempts a bounded public-page request for canonical reel/watch/video links. Reads public share text, creator/title/engagement summary and matching structured video metadata when available. Share previews are explicitly marked as potentially shortened.
+- Native Facebook captions, text recognition from frames, and independent Whisper transcription remain unimplemented. No media download, platform cookies, proxy or private Graph endpoints.
+- Caption success remains `ok`; `post` and `metadata` have independent statuses/provenance. Caption failure preserves successfully retrieved post data. Browser selects a successful output for partial results.
+- Output text/creator/media identifiers remain memory-only. Diagnostic additions are fixed stages/codes and availability booleans only. Database storage still uses the existing owner checks and 30-day retention.
+- Local live probes: supplied TikTok returned 62 timed cues, 237 post characters and public metadata; supplied Facebook returned 1,528 post characters, five hashtags, creator and title. These are sample results, not universal coverage.
+- Verification: 75 unit tests and 30 desktop/mobile browser acceptance checks pass, including synthetic post/caption independence, matching-video scoping, provider failure, tracking stripping, diagnostic exclusion and existing owner authorization/retention tests. Browser suite extended for TikTok output safety and Facebook partial results. Hosted signed-in TikTok and Facebook verification, database checks, anonymous rejection, source/version and build receipts are recorded in docs/DEPLOYMENT.md. Pull request #9 remains unmerged.
+- Review: self-review of request bounds, fixed-host requests, untrusted text rendering, data exclusion and unchanged authentication. No independent review completed in this session.
+- Next: verify broader Facebook variants and permitted native-caption tracks, support safe canonical resolution for shared/short links, then work on independent speech and frame text recognition as separate capabilities.
+
+
+---
+
 # GS Pen current handoff
 Updated 25 October 2026 after Claude's independent review.
 
