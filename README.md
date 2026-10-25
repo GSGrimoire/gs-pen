@@ -6,7 +6,9 @@ GS Pen Test Lab is deployed owner-private at https://gs-pen-test-lab.goofyspook.
 
 The Sites worker uses `app/`, `worker/` and `server/site-service.mjs`, with trusted dispatcher identity and an owner-restricted database. Both `GS_PEN_OWNER_EMAIL` and `GS_PEN_OWNER_ID` are required. Keep the Site owner-private. Diagnostic records exclude extracted content and expire after 30 days; hourly housekeeping physically removes expired rows. Hosting infrastructure logs have separate platform-controlled retention.
 
-The canonical public TikTok adapter uses bounded requests with no redirects, social-account cookies, media downloading or proxy evasion. Two documented live examples returned 15 and 12 native caption cues. These samples do not establish universal reliability or retrieval rights. Other provider captions and independent Whisper remain unavailable at this baseline.
+The canonical public TikTok adapter uses bounded requests with no redirects, social-account cookies, media downloading or proxy evasion. Two documented live examples returned 15 and 12 native caption cues. These samples do not establish universal reliability or retrieval rights. Facebook public-preview post text and creator/metadata retrieval are also implemented, with explicit shortening warnings. Facebook captions, YouTube and Instagram retrieval, independent Whisper and frame-text recognition remain unavailable.
+
+The orange workspace provides Extract, Recent and Diagnostics. Successful and partial results save in a separate owner-scoped content store, newest 50 per owner for 30 days, with search/reopen/delete and copy/export controls. Complete assistant handoffs copy all outputs and open Claude or ChatGPT, with optional bounded Claude desktop links. Native app delivery remains unverified.
 
 ## Local research server
 

@@ -45,7 +45,7 @@ Diagnostic data is useful for seeing systematic failure patterns. It cannot prov
 
 
 ## PEN-009 output availability
-`post_parse` and `metadata_parse` record fixed statuses/codes; `postTextFound` and `metadataFound` are booleans. `PARTIAL_RESULT` identifies a displayed post or metadata result without caption success. Post text, hashtags, creator details, engagement values, dates, and media URLs never enter diagnostic records. Displayed outputs exist in memory only.
+`post_parse` and `metadata_parse` record fixed statuses/codes; `postTextFound` and `metadataFound` are booleans. `PARTIAL_RESULT` identifies a displayed post or metadata result without caption success. Post text, hashtags, creator details, engagement values, dates, and media URLs never enter diagnostic records. Saved output content is retained only in the separate owner-scoped extraction history; it is excluded from diagnostic events.
 
 
 ## PEN-010 saved extraction history

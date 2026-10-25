@@ -1,7 +1,7 @@
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v02_sites_1';
+export const BUILD = 'workspace_v02_sites_3';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {

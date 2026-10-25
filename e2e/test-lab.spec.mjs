@@ -257,6 +257,43 @@ test('Output exports contain content and provenance while failed history saves r
  const dims=await page.evaluate(()=>({width:document.documentElement.clientWidth,page:document.documentElement.scrollWidth}));expect(dims.page).toBeLessThanOrEqual(dims.width+2);
 });
 
+async function mockAssistantLaunch(page,{clipboardFails=false,popupBlocked=false}={}){
+ await page.addInitScript(({clipboardFails,popupBlocked})=>{
+  window.assistantTest={copies:[],launches:[],closed:false};
+  Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>{if(clipboardFails)throw Error('denied');window.assistantTest.copies.push(text);}}});
+  window.open=()=>{if(popupBlocked)return null;const win={opener:window,closed:false,location:{replace:url=>window.assistantTest.launches.push(url)},close:()=>{window.assistantTest.closed=true;}};window.assistantTest.win=win;return win;};
+ },{clipboardFails,popupBlocked});
+}
+test('Assistant handoffs copy all saved outputs even from Whisper tab and expose safe destinations',async({page,isMobile})=>{
+ await mockAssistantLaunch(page);await stubHistory(page);await page.goto('/');
+ await expect(page.locator('#open-chatgpt')).toBeDisabled();
+ await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await page.locator('#open-claude').click();
+ await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');
+ expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
+ const data=await page.evaluate(()=>window.assistantTest);expect(data.launches).toEqual(['https://claude.ai/new']);
+ for(const text of ['Saved fixture caption','Saved fixture post','Fixture creator','not_implemented'])expect(data.copies[0]).toContain(text);
+ expect(data.copies[0]).not.toContain('diagnosticsStored');
+ if(isMobile)await expect(page.locator('#claude-desktop-link')).toBeHidden();else{await expect(page.locator('#claude-desktop-link')).toBeVisible();expect(new URL(await page.locator('#claude-desktop-link').getAttribute('href')).searchParams.get('q')).toBe(data.copies[0]);}
+ await page.locator('#open-chatgpt').click();await expect(page.locator('#assistant-action-status')).toContainText('ChatGPT');await expect(page.locator('#claude-desktop-link')).toBeHidden();
+ expect((await page.evaluate(()=>window.assistantTest)).launches.at(-1)).toBe('https://chatgpt.com/');expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
+ const size=await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.clientWidth]);expect(size[0]).toBeLessThanOrEqual(size[1]+2);
+});
+test('Clipboard rejection closes unused tab without sending content or claiming success',async({page})=>{
+ await mockAssistantLaunch(page,{clipboardFails:true});await stubHistory(page);await page.goto('/');await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();await expect(page.locator('#open-claude')).toBeEnabled();await page.locator('#open-claude').click();
+ await expect(page.locator('#assistant-action-status')).toContainText('Could not copy');await expect(page.locator('#assistant-fallbacks')).toBeHidden();const data=await page.evaluate(()=>window.assistantTest);expect(data.launches).toEqual([]);expect(data.closed).toBe(true);
+});
+test('Blocked assistant popup preserves complete clipboard and manual website link',async({page})=>{
+ await mockAssistantLaunch(page,{popupBlocked:true});await stubHistory(page);await page.goto('/');await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();await expect(page.locator('#open-chatgpt')).toBeEnabled();await page.locator('#open-chatgpt').click();
+ await expect(page.locator('#assistant-action-status')).toContainText('Opening was blocked');await expect(page.locator('#assistant-web-link')).toHaveAttribute('href','https://chatgpt.com/');expect((await page.evaluate(()=>window.assistantTest)).copies[0]).toContain('Saved fixture caption');
+});
+test('Long partial extraction handoff stays complete and offers no truncating app link',async({page})=>{
+ await mockAssistantLaunch(page);const text='Long fixture '.repeat(1600);
+ await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text,hashtags:['#fixture'],provenance:'Synthetic fixture',completeness:'page_preview_may_be_truncated'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
+ await openConnected(page);await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();await expect(page.locator('#open-claude')).toBeEnabled();await page.locator('#open-claude').click();
+ await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');await expect(page.locator('#claude-desktop-link')).toBeHidden();expect((await page.evaluate(()=>window.assistantTest)).copies[0]).toContain(text);
+});
+
 test('A delayed saved result cannot change a new extraction or its exported source',async({page})=>{
  await stubHistory(page);
  let releaseHistory,releaseCaptions;

@@ -1,3 +1,19 @@
+# PEN-011 release verification, 24 October 2026
+
+Owner-private publication succeeded at 19:36 UTC (21:36 Copenhagen). URL: https://gs-pen-test-lab.goofyspook.chatgpt.site. Project `appgprj_6adce46e22dc81918dab627af382c76a`; runtime source `7675ca656d74160e8d9b668c37f08a3fd2c03ef6`; saved version `appgprj_6adce46e22dc81918dab627af382c76a~appgver_9cf19f0af6c8819194c77cbafb31fef2`; deployment `appgdep_6add0899e1d88191b7db64205c24f7a1`. Owner-only access, no external viewers/editors, confirmed before publication. No access/storage/backend changes.
+
+GitHub implementation `90e7deedbf8ff358da9f5fecb8b9f68b6a54eb68`, focus-order fix `192cf237d05f038d22376c1bd9d0f7722cceb75c`; issue #12, pull request #13 stacked on #11 and unmerged. The publication source contains both changes. This documentation receipt is recorded after deployment and does not change runtime behavior.
+
+Verification:
+- 82 unit tests passed locally and in GitHub. Final code browser suite passed 42/42 desktop/mobile Chromium checks: https://github.com/GSGrimoire/gs-pen/actions/runs/40125872572; unit workflow: https://github.com/GSGrimoire/gs-pen/actions/runs/40125872689.
+- New synthetic browser cases cover complete saved-result package from the unavailable Whisper tab, trusted fixed assistant destinations, diagnostic exclusion, clipboard rejection, popup blocking, full long partial results, desktop-link visibility and mobile layout. Unit checks verify full prompt contents, end timestamps, hashtags, metadata, preview provenance and conservative Unicode/length bounds.
+- Hosted signed-in browser reopened existing Facebook and TikTok extractions. Both assistant buttons reported resolved clipboard writes and opened their actual destinations: Claude sign-in at https://claude.ai/login?from=logout&reauth=1&returnTo=%2Fnew%3F and ChatGPT at https://chatgpt.com/. A TikTok handoff also worked while viewing the unavailable Whisper tab, independently of current-tab copy being disabled.
+- The browser automation virtual clipboard could not read back the browser page's clipboard. Exact payload verification therefore comes from unit and synthetic browser checks, not a claimed live paste/readback. Neither destination received an automatically submitted prompt.
+- Claude desktop prefilling is a documented opt-in deep link under conservative limits, not verified in this Linux cloud browser. Physical phone/desktop app delivery is not claimed. Website launches use plain fixed links and require pasting. Long prompts are never silently truncated.
+- Self-review only; independent review remains required before merge. No new provider retrieval is claimed. Diagnostic storage and history behavior retain the existing tested backend.
+
+---
+
 # PEN-010 release verification (24 October 2026)
 
 Orange workspace and separate owner-private saved extraction history are deployed and verified. Site identity and owner-only audience are preserved. Migration `0001_mighty_captain_britain.sql` was generated through Drizzle, inspected, applied to the local preview database and applied by Sites during deployment.
