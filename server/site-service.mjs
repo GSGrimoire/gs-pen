@@ -1,9 +1,9 @@
 import {ContentError} from '../src/content-workflow.mjs';
-import {contentAction,contentMcp,readContentJson,readContentJob,listContentJobs} from './content-service.mjs';
+import {contentAction,contentMcp,readContentJson,readContentJob,listContentJobs,deleteContentJob} from './content-service.mjs';
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v03_sites_1';
+export const BUILD = 'workspace_v03_sites_2';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -65,8 +65,9 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     if(path==='/api/content'&&request.method==='GET')return json({jobs:await listContentJobs(env.DB,ownerId)});
     if(path==='/api/content'&&request.method==='POST')return json(await contentAction('create_content_job',await readContentJson(request),env,ownerId,now));
     if(path==='/api/content/draft'&&request.method==='POST')return json(await contentAction('save_content_draft',await readContentJson(request),env,ownerId,now));
-    if(path.startsWith('/api/content/')&&request.method==='GET'){
+    if(path.startsWith('/api/content/')&&['GET','DELETE'].includes(request.method)){
       const parts=path.slice('/api/content/'.length).split('/');
+      if(request.method==='DELETE')return parts.length===1?json(await deleteContentJob(env.DB,ownerId,parts[0])):json({code:'CONTENT_NOT_FOUND'},404);
       if(parts.length===2&&parts[1]==='brief')return json(await contentAction('get_content_brief',{id:parts[0]},env,ownerId,now));
       if(parts.length===2&&parts[1]==='poster')return json(await contentAction('get_poster_draft',{id:parts[0]},env,ownerId,now));
       if(parts.length===1)return json({job:await readContentJob(env.DB,ownerId,parts[0])});

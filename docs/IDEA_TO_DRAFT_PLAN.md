@@ -1,6 +1,6 @@
 # GS Pen: idea-to-draft plan and first implementation
 
-25 October 2026. Issue #16. Branch `chatgpt/pen-idea-to-draft`, stacked on retention pause #15. This is a review candidate, not a deployed release. GS Poster is being developed separately and has not been modified.
+25 October 2026. Issue #16. Branch `chatgpt/pen-idea-to-draft`, now targeting main after reviewed retention pause #15 merged. This is a review candidate, not a deployed release. GS Poster is being developed separately and has not been modified.
 
 ## Design decision
 
@@ -44,6 +44,8 @@ Tools:
 4. `save_content_draft`: validate and persist, returning only a small receipt rather than repeating source/draft content.
 5. `get_poster_draft`: return exact draft arguments, never send or publish.
 
+Owners can explicitly delete a content job through the confirmed Create control and owner-scoped DELETE endpoint. This deletes the brief/source excerpt/draft only. Extraction deletion preserves separately saved jobs and says so in its confirmation. No destructive assistant tool is exposed.
+
 Tool results are returned once as JSON text, rather than duplicating the same source in both text and structured representations. ChatGPT's Sites-hosted connection is the supported first target. Claude access to the owner-private Sites authentication boundary must be separately tested; do not invent a cross-provider sign-in bypass or copy credentials.
 
 ## Live integration boundary
@@ -58,4 +60,4 @@ Local tests exercise source budgets and provenance, caption deduplication, exact
 
 These fixtures do not verify hosted sign-in, real D1 migration, Sites tool discovery, Claude compatibility, model generation quality, live Poster writes, image delivery or video production. Verify those independently when the reviewed branch is published. No synthetic test should be described as end-to-end live generation/publication.
 
-Merge #15 first, retarget this change to main, rerun checks and obtain independent review under AGENTS.md before private publication. Keep the current Site owner-private. Pure background maintenance should use ordinary worker/database scheduling where supported, rather than model-driven recurring tasks. Retention cleanup remains paused.
+Claude reviewed both changes; #15 is merged and this change targets main. Address C1, rerun checks, merge the reviewed correction, and publish from the final main tree. Keep the current Site owner-private. Pure background maintenance should use ordinary worker/database scheduling where supported, rather than model-driven recurring tasks. Retention cleanup remains paused.

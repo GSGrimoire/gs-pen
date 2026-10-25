@@ -360,14 +360,15 @@ test('Hosted diagnostic reads display aged records without the browser-cache siz
 });
 
 async function stubContentJobs(page){
- const id='00000000-0000-4000-8000-000000000020';let saved=null,version=1;
+ const id='00000000-0000-4000-8000-000000000020';let saved=null,version=1,deleted=false;
  const brief={schema:'gs-pen.content-brief.v1',idea:'A lighthouse key',constraints:'',format:'facebook_post',brand:{name:'GS Grimoire'},source:{kind:'none',extractionId:null,characterBudget:4000,text:'',selectedCharacters:0,totalCharacters:0,truncated:false},output:{title:'string',message:'string'}};
  const job=()=>({id,inputHash:'fixture_hash',version,brief,draft:saved});
  await page.route('**/api/content',async route=>{
   if(route.request().method()==='POST')return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job(),reused:!!saved})});
-  return route.fulfill({contentType:'application/json',body:JSON.stringify({jobs:[{id,title:saved?.title||brief.idea,status:saved?'draft_ready':'awaiting_creative'}]})});
+  return route.fulfill({contentType:'application/json',body:JSON.stringify({jobs:deleted?[]:[{id,title:saved?.title||brief.idea,status:saved?'draft_ready':'awaiting_creative'}]})});
  });
  await page.route('**/api/content/**',async route=>{
+  if(route.request().method()==='DELETE'){deleted=true;return route.fulfill({contentType:'application/json',body:JSON.stringify({deleted:true})});}
   if(route.request().url().endsWith('/draft')){saved=route.request().postDataJSON().draft;version++;return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job()})});}
   if(route.request().url().endsWith('/poster'))return route.fulfill({contentType:'application/json',body:JSON.stringify({tool:'draft_post',submissionStatus:'not_sent',requiresOwnerApproval:true,arguments:{message:saved.message,images:[],label:saved.title,release:'Pen '+id}})});
   return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job()})});
@@ -393,4 +394,19 @@ test('Saved extraction can seed a creative brief without copying arbitrary brows
  await page.route('**/api/content',async route=>{if(route.request().method()==='POST'){submitted=route.request().postDataJSON();}await route.fallback();});
  await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();await page.locator('#create-from-result').click();await expect(page.locator('#create-view')).toBeVisible();await expect(page.locator('#content-source')).toContainText('saved Pen extraction');
  await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();await expect(page.locator('#content-status')).toContainText('Brief saved');expect(submitted.extractionId).toBe('00000000-0000-4000-8000-000000000010');expect(submitted.source).toBeUndefined();expect(submitted.captions).toBeUndefined();
+});
+
+test('Content deletion requires confirmation, clears copies and explains separate source retention',async({page})=>{
+ await stubContentJobs(page);await stubHistory(page);let deletes=0;page.on('request',r=>{if(r.method()==='DELETE'&&r.url().includes('/api/content/'))deletes++;});
+ await page.goto('/#create');await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();await expect(page.locator('#content-delete')).toBeEnabled();
+ await page.locator('#content-delete').click();await expect(page.locator('#content-delete-dialog')).toBeVisible();await expect(page.locator('#content-delete-dialog')).toContainText('original extraction stays in Recent');
+ await page.getByRole('button',{name:'Keep content job',exact:true}).click();expect(deletes).toBe(0);await expect(page.locator('#content-brief-panel')).toBeVisible();
+ await page.locator('#content-delete').click();await page.locator('#content-confirm-delete').click();await expect(page.locator('#content-status')).toContainText('Content job deleted');expect(deletes).toBe(1);
+ await expect(page.locator('#content-brief-panel')).toBeHidden();await expect(page.locator('#content-prompt')).toBeEmpty();await expect(page.locator('#content-response')).toHaveValue('');await expect(page.locator('#content-jobs')).toContainText('Your content jobs will appear here');
+ await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await expect(page.locator('#delete-dialog')).toContainText('Content jobs made from it keep their source excerpt and link');await page.getByRole('button',{name:'Keep extraction',exact:true}).click();
+});
+test('A failed content deletion keeps the open brief and editable response',async({page})=>{
+ await stubContentJobs(page);await page.route('**/api/content/**',async route=>{if(route.request().method()==='DELETE')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'STORAGE_FAILED'})});await route.fallback();});
+ await page.goto('/#create');await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();await expect(page.locator('#content-delete')).toBeEnabled();await page.locator('#content-response').fill('Unsaved creative response');
+ await page.locator('#content-delete').click();await page.locator('#content-confirm-delete').click();await expect(page.locator('#content-status')).toContainText('Could not delete');await expect(page.locator('#content-brief-panel')).toBeVisible();await expect(page.locator('#content-response')).toHaveValue('Unsaved creative response');await expect(page.locator('#content-delete')).toBeEnabled();
 });

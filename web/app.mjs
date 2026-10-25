@@ -4,7 +4,7 @@ import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v03_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const BUILD="workspace_v03_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}

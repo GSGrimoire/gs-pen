@@ -185,3 +185,27 @@ test('Creative sources cannot be borrowed from another owner and full originals 
  const created=await(await handleSiteRequest(req('content','POST',{idea:'New magic',extractionId:own,sourceChars:2000}),env)).json();assert.equal(created.job.brief.source.truncated,true);assert.equal(created.job.brief.source.selectedCharacters,2000);assert.equal(created.job.brief.source.provenance.postCompleteness,'page_preview_may_be_truncated');
  const archived=JSON.parse(sql.prepare('SELECT payload FROM extractions WHERE id=?').get(own).payload);assert.equal(archived.post.text,content.post.text);
 });
+
+test('Owners can explicitly delete content jobs and their source copies without deleting the original extraction',async()=>{
+ const {env,sql}=setup();const {saveExtraction}=await import('../server/history.mjs');
+ const source=await saveExtraction(env.DB,'trusted-test-id','https://www.facebook.com/reel/123456789012345',{cues:[],post:{text:'Synthetic source excerpt',status:'succeeded'}});
+ const create=await(await handleSiteRequest(req('content','POST',{idea:'A new creation',extractionId:source}),env)).json();const job=create.job;
+ const deletion=()=>req('content/'+job.id,'DELETE');
+ for(const identity of [null,'other@example.test'])assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE',undefined,identity),env)).status,403);
+ assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE',undefined,undefined,{origin:'https://foreign.test'}),env)).status,403);
+ const other=deletion();other.headers.set('oai-authenticated-user-id','other-owner');assert.equal((await handleSiteRequest(other,{...env,GS_PEN_OWNER_ID:'other-owner'})).status,404);
+ assert.equal((await handleSiteRequest(req('content/not-a-uuid','DELETE'),env)).status,404);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,1);
+ // Source deletion retains separately saved work, as the confirmation dialog explains.
+ assert.equal((await handleSiteRequest(req('history/'+source,'DELETE'),env)).status,200);
+ assert.equal((await handleSiteRequest(req('content/'+job.id),env)).status,200);
+ assert.equal((await handleSiteRequest(deletion(),env)).status,200);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,0);
+ assert.equal((await handleSiteRequest(req('content/'+job.id),env)).status,404);
+ assert.equal((await handleSiteRequest(req('content/'+job.id+'/poster'),env)).status,404);
+ assert.equal((await handleSiteRequest(deletion(),env)).status,404);
+ const original=await saveExtraction(env.DB,'trusted-test-id','https://www.facebook.com/reel/123456789012345',{cues:[],post:{text:'Original remains',status:'succeeded'}});
+ const standalone=await(await handleSiteRequest(req('content','POST',{idea:'Another job',extractionId:original}),env)).json();
+ await handleSiteRequest(req('content/'+standalone.job.id,'DELETE'),env);
+ assert.equal((await handleSiteRequest(req('history/'+original),env)).status,200);
+});

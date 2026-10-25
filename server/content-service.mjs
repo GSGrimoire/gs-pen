@@ -8,6 +8,12 @@ export async function readContentJob(db,ownerId,id){
  const row=await db.prepare('SELECT * FROM content_jobs WHERE id=? AND owner_id=?').bind(checkId(id),ownerId).first();
  const job=rowJob(row);if(!job)throw new ContentError('CONTENT_NOT_FOUND',404);return job;
 }
+// Deletion is an explicit owner interface action, never an assistant tool.
+export async function deleteContentJob(db,ownerId,id){
+ const deleted=await db.prepare('DELETE FROM content_jobs WHERE id=? AND owner_id=? RETURNING id').bind(checkId(id),ownerId).first();
+ if(!deleted)throw new ContentError('CONTENT_NOT_FOUND',404);
+ return {deleted:true};
+}
 export async function createContentJob(db,ownerId,raw,now=Date.now()){
  const input=contentInput(raw);let source=null;
  if(input.extractionId){source=await readExtraction(db,ownerId,input.extractionId,now);if(!source)throw new ContentError('CONTENT_SOURCE_NOT_FOUND',404);}

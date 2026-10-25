@@ -1,3 +1,13 @@
+# Review corrections, 25 October 2026
+
+Claude reviewed #15 at 09e8850 with no blockers; it merged to main as 53bb1980e4a0c22dd5cf7a8ac65e3b8f05276a76. #17 now targets main. Claude reviewed #17 at e667c49 and requested C1: explicit owner deletion for copied content-job sources. The correction adds DELETE /api/content/<id> with owner scoping and a confirmed Create control, without adding a destructive assistant tool. Deleting an extraction preserves separately saved jobs; its dialog now says those jobs keep their source excerpt/link until independently deleted. Deleting a job clears its brief, excerpt and draft, while preserving the original extraction and external/downloaded copies. Failed or cancelled deletion keeps the open work. The Poster validator is named as the house-rule source of truth.
+
+Client/server build labels are workspace_v03_sites_2. Rerun all checks on the corrective head after retargeting. Publish only the final merged main tree, then replace pending release statements below with the actual receipt. Hosted identity/tool discovery and non-owner rejection must be recorded. Poster remains disconnected because its owner is still building it; no Poster source changes, draft writes or paid generation are in scope.
+
+The following sections describe pre-release implementation history and are superseded by a later publication receipt when present.
+
+---
+
 # Pending content workflow, 25 October 2026
 
 Issue #16, branch `chatgpt/pen-idea-to-draft`, stacked on #15. Read docs/IDEA_TO_DRAFT_PLAN.md for the implementation plan, cost split, interfaces and release gates. New Create workspace supports an idea or owner-scoped saved extraction; code handles brief preparation/deduplication, character budgets, job reuse, validation, storage and Poster payload formatting. The assistant performs the creative text pass through authenticated tools or the explicit copy/paste fallback. No model calls run in Pen.

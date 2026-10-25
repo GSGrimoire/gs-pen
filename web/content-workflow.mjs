@@ -1,7 +1,7 @@
 // Owner-private workflow controls. Creative work is performed in the chosen assistant.
 import {creativePrompt} from './modules/content-workflow.mjs';
 export function initContentWorkspace(){
- const $=id=>document.getElementById(id);let job=null,sourceId=null,busy=false;
+ const $=id=>document.getElementById(id);let job=null,sourceId=null,busy=false,pendingDelete=null,listVersion=0;
  const status=message=>{$('content-status').textContent=message;};
  async function request(path,options){
   const response=await fetch(path,{cache:'no-store',...options});let data;try{data=await response.json();}catch{throw Error('CONTENT_BACKEND_UNAVAILABLE');}
@@ -12,17 +12,19 @@ export function initContentWorkspace(){
  function render(){
   $('content-brief-panel').hidden=!job;
   $('content-copy-brief').disabled=!job;$('content-download-brief').disabled=!job;$('content-save-draft').disabled=!job||busy;
-  $('content-poster-export').disabled=!job?.draft||job.brief.format!=='facebook_post';
+  $('content-poster-export').disabled=busy||!job?.draft||job.brief.format!=='facebook_post';
+  $('content-delete').disabled=!job||busy;
   $('content-source').textContent=sourceId?'A saved Pen extraction will be used.':'Start from your idea. No source extraction selected.';
   $('content-summary').textContent=job?job.brief.source.selectedCharacters+' source characters selected'+(job.brief.source.truncated?' · Source shortened; full extraction remains stored.':'')+' · Creative work runs only in your chosen assistant.':'';
   $('content-prompt').textContent=job?creativePrompt(job.brief):'';
   $('content-preview').textContent=job?.draft?[job.draft.title,job.draft.message,job.draft.hashtags.join(' '),job.draft.visualBrief,job.draft.script].filter(Boolean).join('\n\n'):'';
  }
  async function list(){
-  try{const data=await request('/api/content');const container=$('content-jobs');container.replaceChildren();
+  const version=++listVersion;
+  try{const data=await request('/api/content');if(version!==listVersion)return;const container=$('content-jobs');container.replaceChildren();
    for(const item of data.jobs){const button=document.createElement('button');button.type='button';button.className='outline';button.textContent=item.title+' · '+item.status;button.addEventListener('click',()=>open(item.id));container.append(button);}
    if(!data.jobs.length)container.textContent='Your content jobs will appear here.';
-  }catch{status('Content workflow requires the updated owner-private Site backend.');}
+  }catch{if(version===listVersion)status('Content workflow requires the updated owner-private Site backend.');}
  }
  async function open(id){
   if(busy)return;busy=true;render();
@@ -50,6 +52,16 @@ export function initContentWorkspace(){
   if(!job?.draft||busy)return;busy=true;render();
   try{const payload=await request('/api/content/'+job.id+'/poster');download('gs-pen-poster-draft.json',JSON.stringify(payload,null,2));status('Poster draft fields exported. Poster is not connected here; this draft has not been sent.');}
   catch(e){status('Could not prepare Poster fields. '+e.message);}
+  finally{busy=false;render();}
+ });
+ $('content-delete').addEventListener('click',()=>{
+  if(!job||busy)return;pendingDelete=job.id;busy=true;render();const dialog=$('content-delete-dialog');dialog.returnValue='';dialog.showModal();
+ });
+ $('content-delete-dialog').addEventListener('close',async()=>{
+  const id=pendingDelete;pendingDelete=null;
+  if($('content-delete-dialog').returnValue!=='delete'||!id){busy=false;render();return;}
+  try{await request('/api/content/'+encodeURIComponent(id),{method:'DELETE'});job=null;sourceId=null;$('content-response').value='';$('content-idea').value='';$('content-constraints').value='';render();status('Content job deleted, including its brief, source excerpt and saved draft. The original extraction remains in Recent.');await list();}
+  catch(e){status('Could not delete the content job. Your open content has been kept. '+e.message);}
   finally{busy=false;render();}
  });
  $('content-clear-source').addEventListener('click',()=>{if(busy)return;sourceId=null;job=null;$('content-response').value='';render();status('Source cleared. Prepare a new brief to use the current idea.');});

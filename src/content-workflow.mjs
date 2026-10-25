@@ -40,6 +40,8 @@ export function draftContent(raw,format){
  if(!Array.isArray(hashtags)||hashtags.length>8||hashtags.some(x=>typeof x!=='string'||!/^#[\p{L}\p{N}_]{1,60}$/u.test(x)))fail('INVALID_HASHTAGS');
  if(!Array.isArray(images)||images.length>10||images.some(value=>{try{const u=new URL(value);return typeof value!=='string'||value.length>2048||u.protocol!=='https:'||u.username||u.password||u.port||u.search||u.hash||!['github.com','raw.githubusercontent.com'].includes(u.hostname)||!/^\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/.+\.(png|jpe?g|gif)$/i.test(u.pathname);}catch{return true;}}))fail('INVALID_ASSET_LINKS');
  const post=message+'\n\n'+[...new Set(hashtags)].join(' ');
+ // House-rule source of truth: GSGrimoire/gs-poster src/validate.ts (68d452f).
+ // Keep this preflight in sync; Poster must still validate every submitted draft.
  if(/[\u2014]/.test(post)||/\b(suno|midjourney|wanderer|grand archivist)\b|a bargain,? really/i.test(post)||/[$€£]\s?\d|\b\d+(?:[.,]\d+)?\s?(?:kr\.?|dkk|usd|eur|dollars?|kroner)(?![a-z])/i.test(post))fail('POSTER_HOUSE_RULES');
  return {title,message,hashtags:[...new Set(hashtags)],visualBrief,...(script?{script}:{}),images:[...new Set(images)]};
 }
