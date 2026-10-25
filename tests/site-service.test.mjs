@@ -34,14 +34,18 @@ test('Database automatically persists sanitized browser events, ignores identity
  assert.equal((await (await handleSiteRequest(req('diagnostics'),env)).json()).events.length,1);
  assert.equal((await handleSiteRequest(req('health'),env)).headers.get('cache-control'),'private, no-store');
 });
-test('Thirty-day expiry physically deletes rows on reads and housekeeping without user interaction',async()=>{
+test('Legacy-expired diagnostics survive health, reads, writes and the paused housekeeping route',async()=>{
  const {env,sql}=setup(),now=Date.now();await handleSiteRequest(req('diagnostics','POST',data),env,{now});
- assert.equal((await (await handleSiteRequest(req('diagnostics'),env,{now:now+RETENTION_MS-1})).json()).events.length,1);
- await handleSiteRequest(req('retention','POST'),env,{now:now+RETENTION_MS});
- assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,0);
- await handleSiteRequest(req('diagnostics','POST',data),env,{now});
- assert.equal((await (await handleSiteRequest(req('diagnostics'),env,{now:now+RETENTION_MS+1})).json()).events.length,0);
- assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,0);
+ sql.prepare('UPDATE diagnostic_events SET expires_at=?').run(now);
+ await handleSiteRequest(req('health'),env,{now:now+RETENTION_MS});
+ const listed=await (await handleSiteRequest(req('diagnostics'),env,{now:now+RETENTION_MS})).json();
+ assert.equal(listed.events.length,1);assert.equal(listed.retentionPaused,true);assert.equal(listed.retentionDays,null);
+ await handleSiteRequest(req('diagnostics','POST',data),env,{now:now+RETENTION_MS});
+ const retention=await(await handleSiteRequest(req('retention','POST',undefined,null),env,{now:now+RETENTION_MS})).json();
+ assert.equal(retention.expiredDeleted,false);assert.equal(retention.retentionPaused,true);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,2);
+ assert.equal((await handleSiteRequest(req('retention','POST',undefined,'other@example.test'),env)).status,403);
+ assert.equal((await handleSiteRequest(req('retention','POST',undefined,null,{origin:'https://foreign.test'}),env)).status,403);
 });
 test('Owner delete physically clears records',async()=>{
  const {env,sql}=setup();await handleSiteRequest(req('diagnostics','POST',data),env);await handleSiteRequest(req('diagnostics','DELETE'),env);
@@ -51,7 +55,7 @@ test('Authenticated storage check exercises real SQL without changing existing r
  const {env,sql}=setup();await handleSiteRequest(req('diagnostics','POST',data),env);
  assert.equal((await handleSiteRequest(req('storage-check','POST',{},null),env)).status,403);
  const response=await (await handleSiteRequest(req('storage-check','POST',{}),env)).json();
- for(const k of ['writePassed','privacyPassed','deletePassed','expiryPassed','historyWritePassed','historyIsolationPassed','historyDeletePassed','historyExpiryPassed'])assert.equal(response[k],true);
+ for(const k of ['writePassed','privacyPassed','deletePassed','retentionPausedPassed','historyWritePassed','historyIsolationPassed','historyDeletePassed','historyRetentionPausedPassed'])assert.equal(response[k],true);
  assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,1);
 });
 test('Site caption resolver returns native timed cues; stores only technical events',async()=>{
@@ -100,15 +104,29 @@ test('Automatically saved extractions reopen only for their owner, independently
  await handleSiteRequest(req('diagnostics','DELETE'),env);assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,1);
  assert.equal((await handleSiteRequest(req('history/'+response.historyId,'DELETE'),env)).status,200);assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,0);
 });
-test('History enforces 50 newest results per owner and physically expires at thirty days',async()=>{
- const {saveExtraction}=await import('../server/history.mjs');const {env,sql}=setup();const now=Date.now();const result={ok:false,code:'CAPTIONS_NOT_FOUND',cues:[],post:{status:'succeeded',text:'Fixture post'},metadata:{status:'unavailable'}};
+test('History preserves more than 50 results and old expiry values, with only a bounded list window',async()=>{
+ const {saveExtraction,readExtraction,listExtractions}=await import('../server/history.mjs');const {env,sql}=setup();const now=Date.now();const result={ok:false,code:'CAPTIONS_NOT_FOUND',cues:[],post:{status:'succeeded',text:'Fixture post'},metadata:{status:'unavailable'}};
  const source='https://www.facebook.com/watch/?v=123456789012345&tracking=private';
  await saveExtraction(env.DB,'different-owner',source,result,now);
- for(let i=0;i<52;i++)await saveExtraction(env.DB,'trusted-test-id',source,result,now+i);
- assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions WHERE owner_id=?').get('trusted-test-id').n,50);
- assert.equal(sql.prepare('SELECT min(created_at) AS t FROM extractions WHERE owner_id=?').get('trusted-test-id').t,now+2);
- const items=(await (await handleSiteRequest(req('history'),env,{now:now+52})).json()).items;assert.equal(items.length,50);assert.equal(items[0].sourceUrl,'https://www.facebook.com/watch/?v=123456789012345');
- await handleSiteRequest(req('retention','POST'),env,{now:now+RETENTION_MS+52});assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,0);
+ let oldest;
+ for(let i=0;i<52;i++){const id=await saveExtraction(env.DB,'trusted-test-id',source,result,now+i);oldest??=id;}
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions WHERE owner_id=?').get('trusted-test-id').n,52);
+ sql.prepare('UPDATE extractions SET expires_at=?').run(now);
+ const items=(await (await handleSiteRequest(req('history'),env,{now:now+RETENTION_MS+52})).json()).items;
+ assert.equal(items.length,50);assert.equal(items[0].sourceUrl,'https://www.facebook.com/watch/?v=123456789012345');assert.equal(items[0].expiresAt,null);
+ const opened=await readExtraction(env.DB,'trusted-test-id',oldest,now+RETENTION_MS+52);assert.equal(opened.result.post.text,'Fixture post');
+ assert.equal(await readExtraction(env.DB,'different-owner',oldest,now+RETENTION_MS+52),null);
+ assert.equal((await listExtractions(env.DB,'different-owner',now+RETENTION_MS+52)).length,1);
+ await handleSiteRequest(req('retention','POST'),env,{now:now+RETENTION_MS+52});assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,53);
+ assert.equal((await handleSiteRequest(req('history/'+oldest,'DELETE'),env)).status,200);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,52);
+});
+test('The diagnostic listing cap does not delete stored records',async()=>{
+ const {env,sql}=setup(),now=Date.now();const insert=sql.prepare('INSERT INTO diagnostic_events (id,created_at,expires_at,payload) VALUES (?,?,?,?)');
+ sql.exec('BEGIN');for(let i=0;i<10001;i++)insert.run('fixture_'+i,now+i,now,JSON.stringify(data));sql.exec('COMMIT');
+ await handleSiteRequest(req('diagnostics','POST',data),env,{now:now+RETENTION_MS});
+ const listed=await(await handleSiteRequest(req('diagnostics'),env,{now:now+RETENTION_MS})).json();assert.equal(listed.events.length,10000);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,10002);
 });
 test('History outages never block available content and failed/empty results are not saved',async()=>{
  const {env,sql}=setup();const r=await (await handleSiteRequest(req('captions','POST',{url:'https://www.facebook.com/reel/123456789012345'}),env,{fetchImpl:async()=>new Response('',{status:403})})).json();assert.equal(r.historyStatus,'empty');assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,0);
@@ -119,4 +137,10 @@ test('History endpoints reject foreign-origin deletion and unsupported client wr
  const {env}=setup();assert.equal((await handleSiteRequest(req('history/00000000-0000-4000-8000-000000000001','DELETE',undefined,undefined,{origin:'https://evil.test'}),env)).status,403);
  assert.equal((await handleSiteRequest(req('history','POST',{result:{text:'client supplied'}}),env)).status,404);
  assert.equal((await handleSiteRequest(req('history/not-a-uuid'),env)).status,404);
+});
+
+
+test('Health detects an unavailable history table without relying on expiry side effects',async()=>{
+ const {env,sql}=setup();sql.exec('DROP TABLE extractions');
+ const health=await(await handleSiteRequest(req('health'),env)).json();assert.equal(health.historyAvailable,false);assert.equal(health.centralSiteStorage,true);assert.equal(health.retentionPaused,true);
 });

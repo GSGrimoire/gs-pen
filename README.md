@@ -2,13 +2,15 @@
 
 GS Pen Test Lab is deployed owner-private at https://gs-pen-test-lab.goofyspook.chatgpt.site. Exact version, source and verification receipts are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). This experimental service keeps native platform captions separate from independent speech transcription, which is not implemented.
 
+**Branch status:** automatic record deletion is paused in this proposed change (issue #14), not yet deployed. The currently published version 10 still expires records during normal use until this branch is reviewed and released. Its separate scheduled cleanup task was paused on 25 October 2026.
+
 ## Hosted application
 
-The Sites worker uses `app/`, `worker/` and `server/site-service.mjs`, with trusted dispatcher identity and an owner-restricted database. Both `GS_PEN_OWNER_EMAIL` and `GS_PEN_OWNER_ID` are required. Keep the Site owner-private. Diagnostic records exclude extracted content and expire after 30 days; hourly housekeeping physically removes expired rows. Hosting infrastructure logs have separate platform-controlled retention.
+The Sites worker uses `app/`, `worker/` and `server/site-service.mjs`, with trusted dispatcher identity and an owner-restricted database. Both `GS_PEN_OWNER_EMAIL` and `GS_PEN_OWNER_ID` are required. Keep the Site owner-private. Diagnostic records exclude extracted content. Automatic age-based deletion and count-based pruning are paused; explicit owner deletion remains available. Legacy expiry timestamps are ignored without a destructive migration. Hosting infrastructure logs have separate platform-controlled retention.
 
 The canonical public TikTok adapter uses bounded requests with no redirects, social-account cookies, media downloading or proxy evasion. Two documented live examples returned 15 and 12 native caption cues. These samples do not establish universal reliability or retrieval rights. Facebook public-preview post text and creator/metadata retrieval are also implemented, with explicit shortening warnings. Facebook captions, YouTube and Instagram retrieval, independent Whisper and frame-text recognition remain unavailable.
 
-The orange workspace provides Extract, Recent and Diagnostics. Successful and partial results save in a separate owner-scoped content store, newest 50 per owner for 30 days, with search/reopen/delete and copy/export controls. Complete assistant handoffs copy all outputs and open Claude or ChatGPT, with optional bounded Claude desktop links. Native app delivery remains unverified.
+The orange workspace provides Extract, Recent and Diagnostics. Successful and partial results save in a separate owner-scoped content store, with the latest 50 displayed per owner and all stored records retained until explicit deletion, with search/reopen/delete and copy/export controls. Complete assistant handoffs copy all outputs and open Claude or ChatGPT, with optional bounded Claude desktop links. Native app delivery remains unverified.
 
 ## Local research server
 

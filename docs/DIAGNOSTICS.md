@@ -28,9 +28,9 @@ Events are built by `sanitizeDiagnostic()`, with allowlisted enumerable properti
 
 ## Storage modes actually implemented
 
-- **Browser:** automatic localStorage log capped at 1,000 events; on read/write, events older than 30 days are discarded. Browser diagnostics can be viewed, filtered, exported and cleared.
-- **Loopback backend:** `server/local-server.mjs` listens only on 127.0.0.1 and writes sanitized events to ignored `.local/diagnostics.json`, capped at 2,500 entries. Each read/write enforces the 30-day cutoff. The file has user-only write permissions where the operating system supports them.
-- **Private ChatGPT Site database:** implemented in `server/site-service.mjs`, restricted to one configured owner by trusted dispatcher identity. Sanitized events are capped at 10,000 rows, expire after 30 days, and are physically deleted on access and hourly housekeeping. Physical deletion can lag until the next successful task. Diagnostic rows have no owner column; add row ownership before allowing a second user. The loopback server remains unsuitable for public hosting.
+- **Browser:** automatic localStorage cache capped at 1,000 events; age alone does not discard events. Cache eviction is separate from server record retention. Browser diagnostics can be viewed, filtered, exported and cleared.
+- **Loopback backend:** `server/local-server.mjs` listens only on 127.0.0.1 and writes sanitized events to ignored `.local/diagnostics.json`, with a 2,500-event response window. Stored records are not deleted by age or list-window limits. The file has user-only write permissions where the operating system supports them.
+- **Private ChatGPT Site database:** implemented in `server/site-service.mjs`, restricted to one configured owner by trusted dispatcher identity. Automatic diagnostic deletion is paused. The latest 10,000 rows are returned as a bounded list window; older stored rows are retained. Legacy expiry timestamps no longer exclude rows. The scheduled cleanup task was paused. Diagnostic rows have no owner column; add row ownership before allowing a second user. The loopback server remains unsuitable for public hosting.
 
 The interface distinguishes browser-only, local-backend and hosted database diagnostics and reports save failures. In test mode, copy or export produces sanitized JSON. A video transcript never enters the automatically saved events.
 
@@ -49,7 +49,7 @@ Diagnostic data is useful for seeing systematic failure patterns. It cannot prov
 
 
 ## PEN-010 saved extraction history
-User-approved history is intentionally content-bearing and stored in `extractions`, scoped to the trusted Sites visitor identifier. It contains canonical source links and supported output fields, never diagnostic traces or provider resource URLs. It is not diagnostic telemetry. Latest 50 per owner, 30-day expiry, individual physical deletion. Diagnostic-clear does not clear extraction history. History status is returned to the interface without sending stored content to logging.
+User-approved history is intentionally content-bearing and stored in `extractions`, scoped to the trusted Sites visitor identifier. It contains canonical source links and supported output fields, never diagnostic traces or provider resource URLs. It is not diagnostic telemetry. Latest 50 displayed per owner, with no automatic expiry or count-based deletion. Explicit individual physical deletion remains available. Diagnostic-clear does not clear extraction history. History status is returned to the interface without sending stored content to logging.
 ## Infrastructure logging
 
 Sites infrastructure request metadata is separate from application diagnostics and has platform-controlled retention. Disabling worker application logging does not remove all hosting metadata. The application does not claim 30-day control over platform logs.

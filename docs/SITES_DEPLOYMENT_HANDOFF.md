@@ -13,8 +13,8 @@ Run `npm run install:ci`, `npm run check`, `npm run build`, `npm run lint`, `pnp
 
 - Require trusted dispatcher user identity and configured `GS_PEN_OWNER_EMAIL` plus `GS_PEN_OWNER_ID`. Reject missing or mismatched identity on all content and diagnostic endpoints.
 - Keep exactly one allowed owner. Diagnostics intentionally have no owner column: reads and deletion cover the single owner's store. Add ownership isolation before permitting a second user.
-- Sanitized diagnostics have a 10,000-record cap and 30-day expiry. Expired records are excluded on access and physically deleted by housekeeping. Hourly cleanup depends on the separate configured automation; verify that automation when releasing.
-- The identity-less service retention route can only delete already expired rows using server time. It returns no records and depends on the private dispatcher boundary. It is not a general data service.
+- Automatic deletion is paused in issue #14. Diagnostic listing returns at most 10,000 records without pruning storage; history lists the latest 50 without deleting older results. Ignore legacy expiry timestamps. Keep the cleanup automation paused. Before this branch is reviewed and deployed, version 10 still has the old read/write expiry behavior.
+- The legacy identity-less retention route is a harmless no-op while paused. It returns retentionPaused true and expiredDeleted false and exposes no records. Preserve the private dispatcher boundary.
 - Hosting request metadata has independent platform retention. Application diagnostic privacy does not promise control of those logs.
 - Keep platform captions, post text, metadata and independent transcripts distinct. Preserve partial-result and provenance warnings.
 
