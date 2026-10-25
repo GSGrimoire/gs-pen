@@ -1,9 +1,10 @@
+import {initContentWorkspace} from './content-workflow.mjs';
 // GS Pen Test Lab user interface v1. Telemetry uses the same-origin backend; hosted diagnostics are owner-restricted.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v02_sites_4", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const BUILD="workspace_v03_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
@@ -86,6 +87,7 @@ function renderTab(){
   const panel=$("tab-panel");panel.replaceChildren();
   const result=state.result;
   $("tab-panel").setAttribute("aria-labelledby","tab-"+state.tab);
+  $("create-from-result").disabled=!result?.historyId;
   const hasContent=!!result&&(result.cues?.length||result.post?.text||result.metadata?.status==='succeeded');
   $("copy-output").disabled=!result||!tabText(result,state.tab);
   $("export-text").disabled=!hasContent;$("export-json").disabled=!hasContent;
@@ -257,7 +259,7 @@ restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkCon
 
 
 function navigate(){
-  const view=['extract','recent','diagnostics'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
+  const view=['extract','recent','create','diagnostics'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
   document.querySelectorAll('[data-page]').forEach(p=>p.hidden=p.dataset.page!==view);
   document.querySelectorAll('[data-view]').forEach(a=>{const active=a.dataset.view===view;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
   $('view-label').textContent=view[0].toUpperCase()+view.slice(1);
@@ -324,3 +326,6 @@ $('delete-dialog').addEventListener('close',async()=>{
  try{const response=await fetch('/api/history/'+id,{method:'DELETE',headers:authHeaders()});if(!response.ok)throw Error('delete');state.history=state.history.filter(x=>x.id!==id);drawHistory();$('history-status').textContent='Extraction deleted.';if(state.result?.historyId===id)$('history-save-status').textContent='Deleted from Recent. Current result remains open until you leave.';}
  catch{$('history-status').textContent='Could not delete the extraction. Your saved content has not been cleared.';}
 });
+
+const contentWorkspace=initContentWorkspace();
+$('create-from-result').addEventListener('click',()=>{if(state.result?.historyId)contentWorkspace.useExtraction(state.result.historyId);});

@@ -7,8 +7,11 @@ Updated 25 October 2026. The owner-private Site is live. Historical deployment-p
 - PEN-009 / issue #8 / pull request #9: TikTok captions, post text/hashtags and metadata; initial Facebook public-preview post/creator/metadata retrieval are deployed. Facebook text may be shortened.
 - PEN-007 / pull request #7: authenticated Sites backend, sanitized automatic diagnostics, owner-private database and hourly physical expiration are deployed. Independent review completed by Claude; required corrections, all four main merges and private version 10 publication are complete. Receipt: docs/DEPLOYMENT.md.
 
+## Current content workflow implementation
+- Issue #16: Create workspace, bounded deterministic briefs, owner-private jobs, validated creative responses, authenticated assistant tools and exact unsent Poster draft payloads are implemented on `chatgpt/pen-idea-to-draft`, stacked on #15. Plan and verification boundaries: docs/IDEA_TO_DRAFT_PLAN.md. No model calls, model service, paid generation or live Poster write has been added. Claude reviewed #17 and required explicit content-job deletion (C1); corrected on the branch. #15 merged and #17 now targets main; fresh verification and private release remain pending.
+
 ## Current change
-- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes are on `chatgpt/pen-retention-pause`, pending independent review and release; the live version 10 still expires data during normal use until then.
+- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes passed Claude review and merged in #15, pending private release; the live version 10 still expires data during normal use until then.
 
 ## Proposed next integration
 The user's new goal is source link → Pen extraction → assistant creates an original GS Grimoire post or reel brief → Poster draft → owner approval. Prioritize a first complete text/image Facebook draft flow once Poster is working. Add authenticated Pen extraction/read tools, a shared content brief with source/provenance and missing-output flags, and a tested connection to Poster's existing draft tools. Preserve Poster's separate approval requirement. Never treat a shortened preview or post description as a verified video transcript. Generate fresh wording and approved/original assets rather than copying source footage or narration.
@@ -44,3 +47,10 @@ Other previously agreed priorities remain:
 PEN-105 release completed on 25 October 2026. Native mobile app delivery and real second-account access remain verification follow-ups.
 
 - Add pagination/search for retained history older than the latest-50 display window; do not reintroduce deletion as a pagination shortcut.
+
+## Claude review follow-ups, 25 October 2026
+- Add retained-record totals and pagination for history/content jobs beyond the latest-50 window, including access to older records for manual deletion.
+- Add a diagnostic created_at index and report storage use/row counts; document the supported Sites D1 size limit from an authoritative runtime source. Retention stays paused; do not silently prune data.
+- Caption rate-budget database errors currently fail open. Assess a separate fix without blocking extraction diagnostics or restoring record deletion.
+- The loopback diagnostic file is rewritten in full and unbounded. Assess append/storage strategy separately from hosted storage.
+- Consider accepting additional assistant notifications with 202; no protocol expansion was needed for C1.

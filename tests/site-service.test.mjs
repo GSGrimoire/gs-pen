@@ -144,3 +144,68 @@ test('Health detects an unavailable history table without relying on expiry side
  const {env,sql}=setup();sql.exec('DROP TABLE extractions');
  const health=await(await handleSiteRequest(req('health'),env)).json();assert.equal(health.historyAvailable,false);assert.equal(health.centralSiteStorage,true);assert.equal(health.retentionPaused,true);
 });
+
+test('Content jobs are owner-scoped, reuse identical briefs and reject stale creative edits',async()=>{
+ const {env,sql}=setup();const input={idea:'A lighthouse key',sourceChars:2000};
+ const create=async()=> (await(await handleSiteRequest(req('content','POST',input),env)).json());
+ const first=await create(),again=await create();assert.equal(first.reused,false);assert.equal(again.reused,true);assert.equal(first.job.id,again.job.id);assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,1);
+ const job=first.job;const content={title:'The Lighthouse Key',message:'A key that glows near lost sailors.',hashtags:['#DnD'],visualBrief:'A brass key in fog.'};
+ const foreign={...env,GS_PEN_OWNER_ID:'different-owner'};const isolated=req('content/'+job.id);isolated.headers.set('oai-authenticated-user-id','different-owner');assert.equal((await handleSiteRequest(isolated,foreign)).status,404);
+ const saved=await handleSiteRequest(req('content/draft','POST',{id:job.id,inputHash:job.inputHash,version:job.version,draft:content}),env);assert.equal(saved.status,200);assert.equal((await saved.json()).job.version,2);
+ assert.equal((await handleSiteRequest(req('content/draft','POST',{id:job.id,inputHash:job.inputHash,version:1,draft:content}),env)).status,409);
+ const exported=await(await handleSiteRequest(req('content/'+job.id+'/poster'),env)).json();assert.equal(exported.submissionStatus,'not_sent');assert.equal(exported.arguments.message,content.message+'\n\n#DnD');
+ const rows=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());assert.ok(!rows.includes('lighthouse'));
+});
+test('Content source ownership and request bounds cannot be bypassed with client result uploads',async()=>{
+ const {env}=setup();const input={idea:'New idea',extractionId:'00000000-0000-4000-8000-000000000099'};
+ assert.equal((await handleSiteRequest(req('content','POST',input),env)).status,404);
+ assert.equal((await handleSiteRequest(req('content','POST',{idea:'x',source:{text:'arbitrary'}}),env)).status,400);
+ assert.equal((await handleSiteRequest(req('content','POST',{idea:'x'.repeat(33000)}),env)).status,413);
+ for(const identity of [null,'other@example.test'])for(const [path,method,body] of [['content','GET'],['content','POST',{idea:'x'}],['content/draft','POST',{}]])assert.equal((await handleSiteRequest(req(path,method,body,identity),env)).status,403);
+ assert.equal((await handleSiteRequest(req('content','POST',{idea:'x'},undefined,{origin:'https://foreign.test'}),env)).status,403);
+});
+test('The authenticated assistant interface exposes bounded workflow tools without publishing or model calls',async()=>{
+ const {env}=setup();const mcp=(method,params,identity='owner@example.test')=>{const r=req('ignored','POST',{jsonrpc:'2.0',id:1,method,params},identity);return handleSiteRequest(new Request('https://pen.test/mcp',r),env);};
+ assert.equal((await mcp('tools/list',{},null)).status,403);
+ const listed=await(await mcp('tools/list',{})).json();assert.equal(listed.result.tools.length,5);assert.ok(listed.result.tools.every(t=>!t.name.includes('publish')));
+ const created=await(await mcp('tools/call',{name:'create_content_job',arguments:{idea:'A compact creative job'}})).json();const job=JSON.parse(created.result.content[0].text);assert.ok(job.prompt);assert.equal(job.brief,undefined);
+ const brief=await(await mcp('tools/call',{name:'get_content_brief',arguments:{id:job.jobId}})).json();const compact=JSON.parse(brief.result.content[0].text);assert.equal(compact.budget.serverModelCalls,0);assert.ok(compact.prompt.includes('quoted data'));
+ const save=await(await mcp('tools/call',{name:'save_content_draft',arguments:{id:job.jobId,inputHash:job.inputHash,version:job.version,draft:{title:'An item',message:'An original item for your next adventure.'}}})).json();const receipt=JSON.parse(save.result.content[0].text);assert.equal(receipt.status,'draft_ready');assert.equal(receipt.prompt,undefined);assert.equal(receipt.brief,undefined);assert.equal(receipt.draft,undefined);
+ const cached=await(await mcp('tools/call',{name:'create_content_job',arguments:{idea:'A compact creative job'}})).json();const reused=JSON.parse(cached.result.content[0].text);assert.equal(reused.reused,true);assert.equal(reused.status,'draft_ready');assert.equal(reused.prompt,undefined);assert.equal(reused.draft.title,'An item');
+ const unsafe=await(await mcp('tools/call',{name:'publish',arguments:{}})).json();assert.equal(unsafe.result.isError,true);assert.ok(!JSON.stringify(unsafe).includes('stack'));
+ const initialized=await(await mcp('initialize',{protocolVersion:'2025-06-18'})).json();assert.equal(initialized.result.protocolVersion,'2025-06-18');
+});
+
+
+test('Creative sources cannot be borrowed from another owner and full originals stay in history',async()=>{
+ const {env,sql}=setup();const {saveExtraction}=await import('../server/history.mjs');const content={ok:false,code:'PARTIAL_RESULT',cues:[],post:{text:'A long original source. '.repeat(400),status:'succeeded',provenance:'Synthetic fixture',completeness:'page_preview_may_be_truncated'},metadata:{status:'unavailable'}};
+ const other=await saveExtraction(env.DB,'other-owner','https://www.facebook.com/reel/123456789012345',content);
+ assert.equal((await handleSiteRequest(req('content','POST',{idea:'New magic',extractionId:other}),env)).status,404);
+ const own=await saveExtraction(env.DB,'trusted-test-id','https://www.facebook.com/reel/123456789012345',content);
+ const created=await(await handleSiteRequest(req('content','POST',{idea:'New magic',extractionId:own,sourceChars:2000}),env)).json();assert.equal(created.job.brief.source.truncated,true);assert.equal(created.job.brief.source.selectedCharacters,2000);assert.equal(created.job.brief.source.provenance.postCompleteness,'page_preview_may_be_truncated');
+ const archived=JSON.parse(sql.prepare('SELECT payload FROM extractions WHERE id=?').get(own).payload);assert.equal(archived.post.text,content.post.text);
+});
+
+test('Owners can explicitly delete content jobs and their source copies without deleting the original extraction',async()=>{
+ const {env,sql}=setup();const {saveExtraction}=await import('../server/history.mjs');
+ const source=await saveExtraction(env.DB,'trusted-test-id','https://www.facebook.com/reel/123456789012345',{cues:[],post:{text:'Synthetic source excerpt',status:'succeeded'}});
+ const create=await(await handleSiteRequest(req('content','POST',{idea:'A new creation',extractionId:source}),env)).json();const job=create.job;
+ const deletion=()=>req('content/'+job.id,'DELETE');
+ for(const identity of [null,'other@example.test'])assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE',undefined,identity),env)).status,403);
+ assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE',undefined,undefined,{origin:'https://foreign.test'}),env)).status,403);
+ const other=deletion();other.headers.set('oai-authenticated-user-id','other-owner');assert.equal((await handleSiteRequest(other,{...env,GS_PEN_OWNER_ID:'other-owner'})).status,404);
+ assert.equal((await handleSiteRequest(req('content/not-a-uuid','DELETE'),env)).status,404);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,1);
+ // Source deletion retains separately saved work, as the confirmation dialog explains.
+ assert.equal((await handleSiteRequest(req('history/'+source,'DELETE'),env)).status,200);
+ assert.equal((await handleSiteRequest(req('content/'+job.id),env)).status,200);
+ assert.equal((await handleSiteRequest(deletion(),env)).status,200);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,0);
+ assert.equal((await handleSiteRequest(req('content/'+job.id),env)).status,404);
+ assert.equal((await handleSiteRequest(req('content/'+job.id+'/poster'),env)).status,404);
+ assert.equal((await handleSiteRequest(deletion(),env)).status,404);
+ const original=await saveExtraction(env.DB,'trusted-test-id','https://www.facebook.com/reel/123456789012345',{cues:[],post:{text:'Original remains',status:'succeeded'}});
+ const standalone=await(await handleSiteRequest(req('content','POST',{idea:'Another job',extractionId:original}),env)).json();
+ await handleSiteRequest(req('content/'+standalone.job.id,'DELETE'),env);
+ assert.equal((await handleSiteRequest(req('history/'+original),env)).status,200);
+});

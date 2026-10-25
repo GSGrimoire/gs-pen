@@ -1,7 +1,9 @@
+import {ContentError} from '../src/content-workflow.mjs';
+import {contentAction,contentMcp,readContentJson,readContentJob,listContentJobs,deleteContentJob} from './content-service.mjs';
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v02_sites_4';
+export const BUILD = 'workspace_v03_sites_2';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -55,6 +57,23 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
   if(request.method!=='GET' && ((origin && origin!==new URL(request.url).origin) || request.headers.get('sec-fetch-site')==='cross-site'))return json({code:'AUTH_DENIED'},403);
   try {
     const ownerId=request.headers.get('oai-authenticated-user-id');
+    if(path==='/mcp'){
+      if(request.method!=='POST')return json({code:'NOT_IMPLEMENTED'},405);
+      const result=await contentMcp(request,env,ownerId,now);
+      return result.notification?new Response(null,{status:202,headers:securityHeaders()}):json(result);
+    }
+    if(path==='/api/content'&&request.method==='GET')return json({jobs:await listContentJobs(env.DB,ownerId)});
+    if(path==='/api/content'&&request.method==='POST')return json(await contentAction('create_content_job',await readContentJson(request),env,ownerId,now));
+    if(path==='/api/content/draft'&&request.method==='POST')return json(await contentAction('save_content_draft',await readContentJson(request),env,ownerId,now));
+    if(path.startsWith('/api/content/')&&['GET','DELETE'].includes(request.method)){
+      const parts=path.slice('/api/content/'.length).split('/');
+      if(request.method==='DELETE')return parts.length===1?json(await deleteContentJob(env.DB,ownerId,parts[0])):json({code:'CONTENT_NOT_FOUND'},404);
+      if(parts.length===2&&parts[1]==='brief')return json(await contentAction('get_content_brief',{id:parts[0]},env,ownerId,now));
+      if(parts.length===2&&parts[1]==='poster')return json(await contentAction('get_poster_draft',{id:parts[0]},env,ownerId,now));
+      if(parts.length===1)return json({job:await readContentJob(env.DB,ownerId,parts[0])});
+      return json({code:'CONTENT_NOT_FOUND'},404);
+    }
+
     if(path==='/api/history' && request.method==='GET')return json({items:await listExtractions(env.DB,ownerId,now),retentionDays:null,retentionPaused:true,limit:50});
     if(path.startsWith('/api/history/')){
       const id=path.slice('/api/history/'.length);
@@ -69,7 +88,8 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     if(path==='/api/health' && request.method==='GET') {
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
       let history=false;try{await env.DB.prepare('SELECT id FROM extractions LIMIT 1').first();history=true;}catch{}
-      return json({build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
+      let contentWorkflowAvailable=false;try{await env.DB.prepare('SELECT id FROM content_jobs LIMIT 1').first();contentWorkflowAvailable=true;}catch{}
+      return json({contentWorkflowAvailable,build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);
@@ -129,5 +149,5 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     let historyId=null,historyStatus='not_saved';
     try{historyId=await saveExtraction(env.DB,ownerId,data.url,result,now);historyStatus=historyId?'saved':'empty';}catch{historyStatus='failed';}
     return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus});
-  } catch {return json({code:'STORAGE_FAILED'},503);}
+  } catch(e) {return json({code:e instanceof ContentError?e.code:'STORAGE_FAILED'},e instanceof ContentError?e.status:503);}
 }
