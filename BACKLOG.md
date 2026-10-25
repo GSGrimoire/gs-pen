@@ -1,31 +1,38 @@
 # GS Pen backlog
-Status: feasibility only; no completed social-video transcription or deployed Site.
+Updated 24 October 2026. **The owner-only remote Test Site is NOT published.**
 
-## Priority 0: validation gates
-- PEN-001 [research complete; runtime validation pending] Host on owner-private ChatGPT Sites if available. Static GitHub Pages alone is not acceptable for private access. Confirm deployed access, storage, quotas and cost.
-- PEN-002 [research completed; audiovisual retrieval BLOCKED] Official interfaces provide selected metadata/embed capabilities, not a verified general audio path for arbitrary public URLs. See docs/PLATFORM_ACCESS_RESEARCH.md.
-- PEN-002A [synthetic prototype passed; two real TikTok tracks retrieved] Try permitted extraction of existing platform-generated captions independently of Whisper. Compare TokScript's published mechanism without assuming access to its proprietary implementation. See docs/DUAL_TRANSCRIPTION_RESEARCH.md and docs/LIVE_CAPTION_RESULTS.md; 10 offline pipeline tests passed; 15 and 12 WebVTT cues retrieved live from distinct TikTok videos.
-- PEN-002B [live TikTok sample passed; multi-platform coverage pending] Rights-cleared platform-caption retrieval matrix, 10 videos per platform on two dates, and real browser cross-origin validation. GitHub runner confirms 15 and 12 cues on two distinct TikTok videos; YouTube blocked; Meta not tested.
-- PEN-003 [planned] Benchmark Danish/English recognition on 1, 5 and 30 minute rights-cleared clips with verified reference transcripts.
-- PEN-004 [planned] Validate Sites owner-only authentication, synchronized history, 50-entry cap and deletion.
-- PEN-005 [partial] Provider policy/rights, privacy, retention and data processing assessment.
-- PEN-006 [blocked] Go / changed scope / stop decision once permitted input feasibility is resolved.
+## Priority 0: feasibility
+- PEN-001 [partially resolved] Private ChatGPT Sites selected over ordinary public GitHub Pages. Sites runtime, authentication, private storage and deployed request egress are not yet validated.
+- PEN-002 [partial] General arbitrary-audio retrieval remains blocked/unverified. Keep independent Whisper as a future path.
+- PEN-002A [verified on two samples only] Native TikTok WebVTT caption extraction worked from Python and JavaScript GitHub runners. No blanket availability or permission claim.
+- PEN-002B [ongoing] Repeat provider access against 10 permitted samples across two separate dates, plus real browser and Site deployment verification. YouTube cloud runner blocked; Meta caption endpoints not verified.
+- PEN-003 [planned] Danish and English Whisper accuracy, speed and 30-minute processing benchmarks on rights-cleared recordings.
+- PEN-004 [planned] Verify owner-only Site authentication, synchronized 50-result history and delete/retention.
+- PEN-005 [partial] Review permitted platform retrieval, rights, privacy and external services.
+- PEN-006 [blocked] Full-product go/no-go follows platform and privacy testing.
 
-## Priority 1: implementation after gates
-- PEN-100 Private Site, link input and truthful failure states
-- PEN-101 Provider metadata and subtitles adapters with clearly labeled provenance; parallel execution with speech pipeline
-- PEN-102 Independent browser-worker Danish/English Whisper speech transcription
-- PEN-103 Four output tabs and text/structured exports; independently display captions when Whisper is unavailable
-- PEN-104 IndexedDB cache plus owner-only 50-item synchronized history
-- PEN-105 Integration tests, security and accessibility review, verified deployment receipt
+## Priority 1: test laboratory
+- PEN-007 [code built, independent review pending] Responsive Test Lab static frontend, local TikTok caption research adapter, trace timeline, output tabs and automated diagnostics. Implementation in PR #7, requires private Site deployment work.
+- PEN-007A [local proof complete] Strict v2 diagnostic allowlist including domain and video type, sanitization tests, local browser and loopback backend diagnostics storage with 30-day read/write expiry.
+- PEN-007B [Work Sites execution required; deployment not started] Owner-only Sites preview, authenticated backend port, Site database storage, authentication/retention test, real Site caption access and deployment receipt.
+- PEN-007C [browser regression automated; visual/real Site accessibility pending] Playwright headless Chromium desktop and mobile suite is passing 22/22 in GitHub Actions, including diagnostics sanitization, error messages, access-key UI and responsive layout. Real Sites browser/runtime test remains pending.
+- PEN-007D [prepared, actual Codespaces run pending] Temporary owner-private GitHub Codespaces preview with private port 4173 and ephemeral development access key. Docs: docs/CODESPACES_TEST.md. No Codespace provisioned yet.
+- PEN-100 [pending] Private Site production readiness, release labels and error safety.
 
-## Priority 2: future proposals
-- PEN-200 Manually verified GS Scribe reference transcripts and export-only benchmark format
-- PEN-201 GS Scribe model comparisons, word error rates and terminology evaluations, using platform captions as unverified reference candidates only
-- PEN-210 Rights-cleared voice snippets for GS VoiceStudio with explicit speaker consent
+## Priority 2: actual product and future GS features
+- PEN-101 Permitted provider caption/metadata adapters and accurate provenance
+- PEN-102 Browser-local Whisper transcription where authorized audio exists
+- PEN-103 Final four-tab outputs and structured export
+- PEN-104 Account-scoped 50-result transcript history
+- PEN-105 Production access security, accessibility, monitoring and release receipts
+- PEN-200 GS Scribe verified benchmark exports, manual reference corpus and model error analysis
+- PEN-201 Model speed/word-error comparisons, Danish and English technical vocabulary
+- PEN-210 Consent-based GS VoiceStudio audio/voice reference workflows
 - PEN-220 On-screen text extraction
-- PEN-221 Translation, summaries and search
-- PEN-222 Timed subtitles and batch jobs
-- PEN-223 Optional browser extension for consent-based tab audio capture, only if user agrees to interaction change
+- PEN-221 Translation, summaries, full text search
+- PEN-222 Batch processing and timestamped subtitles
+- PEN-223 Optional browser extension with explicit tab audio capture
 
-All functionality must pass real-data acceptance tests before being marked complete. Never commit personal media, tokens, cookies or private transcripts.
+Never commit personal media, transcripts, signed asset URLs, credentials or raw diagnostic payloads. A passing synthetic test does not establish rights to process real videos.
+
+- PEN-008 [completed for GitHub test environment] Browser regression automation: 22/22 desktop/mobile Playwright tests on 24 October 2026, run https://github.com/GSGrimoire/gs-pen/actions/runs/40113533641. Work deployment brief: docs/SITES_DEPLOYMENT_HANDOFF.md.

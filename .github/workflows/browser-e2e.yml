@@ -1,0 +1,39 @@
+name: GS Pen browser acceptance
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install pinned browser test tooling
+        run: corepack enable && pnpm install --frozen-lockfile
+      - name: Install Chromium and Linux dependencies
+        run: npx playwright install --with-deps chromium
+      - name: Build Test Lab and check source
+        run: npm run check
+      - name: Run desktop and mobile Chromium acceptance tests
+        run: npm run test:e2e
+      - name: Store failing test traces for engineering review
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gs-pen-e2e-failure
+          path: |
+            test-results/
+            playwright-report/
+          retention-days: 3
+          if-no-files-found: ignore
