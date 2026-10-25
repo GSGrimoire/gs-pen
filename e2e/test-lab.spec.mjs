@@ -367,7 +367,7 @@ async function stubContentJobs(page){
   if(route.request().method()==='POST')return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job(),reused:!!saved})});
   return route.fulfill({contentType:'application/json',body:JSON.stringify({jobs:[{id,title:saved?.title||brief.idea,status:saved?'draft_ready':'awaiting_creative'}]})});
  });
- await page.route('**/api/content/*',async route=>{
+ await page.route('**/api/content/**',async route=>{
   if(route.request().url().endsWith('/draft')){saved=route.request().postDataJSON().draft;version++;return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job()})});}
   if(route.request().url().endsWith('/poster'))return route.fulfill({contentType:'application/json',body:JSON.stringify({tool:'draft_post',submissionStatus:'not_sent',requiresOwnerApproval:true,arguments:{message:saved.message,images:[],label:saved.title,release:'Pen '+id}})});
   return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job()})});
