@@ -1,3 +1,9 @@
+# Pending paging release, 28 October 2026
+
+PEN-018 / issue #18 adds paging/counts and compact history summaries using ordinary code. It has not been deployed. Pen's signed-in list_content_jobs call succeeded on 26 October, returning jobs: []; prior version-11 uncertainty about that owner read path is superseded. Record the final main/source tree, version, deployment and new hosted list contract after publication. Keep owner-private access and paused retention.
+
+---
+
 # Published version 11, 25 October 2026
 
 Owner-private version **11** deployed successfully at **13:07:41 Europe/Copenhagen (UTC+01:00)**. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site

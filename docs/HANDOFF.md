@@ -1,3 +1,13 @@
+# Pending retained-work paging, 28 October 2026
+
+PEN-018 / issue #18, branch chatgpt/pen-retained-pages, based on main cc564637. Work resumed after the temporary workspace was reset; implementation checkpoints are now preserved in GitHub. Recent and Create can browse older summaries in pages of 50, with owner-scoped totals and validated cursors. History lists avoid loading full caption/post payloads. No migration, owner-guard change, retention change or Poster write is included. Candidate build: workspace_v03_sites_3.
+
+Creator self-review and test scope: docs/REVIEW_PEN_018.md. Follow the owner's risk-based policy recorded in AGENTS.md; routine work does not automatically invoke Claude. Required checks and a reviewable pull request precede merge; publish once from final main and record the exact receipt. The installed Pen connector's owner read path succeeded on 26 October, superseding the version-11 read-path uncertainty below. No other GS repository was changed.
+
+Version 11 remains live until a newer deployment receipt is recorded. Earlier notes below are historical.
+
+---
+
 # Current release: owner-private version 11
 
 25 October 2026. #15 and #17 are merged, in order. Final main application commit 4a7d271af142a1d48affc994a9da4b42a178410a, tree 5029510bdafbd025b6d23ced233f952b652dd5a5, is deployed as private version 11. Read docs/DEPLOYMENT.md first for the exact receipt and verification limits. All 100 unit tests, 62 desktop/mobile checks, production build, lint and types pass; fresh hosted storage, draft persistence/reuse/export/deletion and private-access checks passed.

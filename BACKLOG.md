@@ -1,6 +1,9 @@
 # GS Pen backlog
 Updated 25 October 2026. The owner-private Site is live. Historical deployment-pending statements have been superseded.
 
+## Pending PEN-018
+- Issue #18: older retained-work browsing, owner-scoped totals and compact history summaries are implemented on chatgpt/pen-retained-pages. Review: docs/REVIEW_PEN_018.md. Publication is pending. Pen's signed-in list connector was verified on 26 October; no Poster delivery was attempted.
+
 ## Current delivery
 - Version 11: reviewed #15 and #17 merged in order and published owner-private from main 4a7d271 on 25 October 2026. Retention is paused in the live application. Create workflow and confirmed owner job deletion are live. All 100 unit and 62 desktop/mobile tests plus build/lint/types pass; fresh hosted checks and limits are in docs/DEPLOYMENT.md. Assistant tools are provisioned/installed but need a live call in a fresh chat; Poster delivery remains pending.
 
