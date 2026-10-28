@@ -4,8 +4,8 @@ import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v03_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000;
-const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
+const BUILD="workspace_v03_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
@@ -266,7 +266,7 @@ function navigate(){
   if(view==='recent')void refreshHistory();
 }
 function drawHistory(){
-  $('history-count').textContent=String(state.history.length);
+  $('history-count').textContent=String(state.historyTotal??state.history.length);$('history-more').hidden=!state.historyCursor;$('history-more').disabled=state.historyLoading;
   const query=$('history-search').value.trim().toLowerCase(),platform=$('history-platform').value;
   const list=$('history-items');list.replaceChildren();
   const items=state.history.filter(x=>(platform==='all'||x.platform===platform)&&(!query||[x.title,x.creator,x.platform].join(' ').toLowerCase().includes(query)));
@@ -284,10 +284,15 @@ function drawHistory(){
     const a=node('a',undefined,'preview-item');a.href='#extract';a.append(node('strong',item.title),node('small',item.platform+' · '+(item.creator||'Saved extraction')));a.addEventListener('click',e=>{e.preventDefault();void openExtraction(item.id);});preview.append(a);
   }
 }
-async function refreshHistory(){
-  if(!state.site||!state.historyAvailable){$('history-status').textContent=state.site?'Private history is unavailable. New extractions can still be copied or exported.':'Private history is available on the hosted Site.';drawHistory();return;}
-  try{const response=await fetch('/api/history',{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('history');const data=await response.json();state.history=data.items||[];$('history-status').textContent=state.history.length+' saved '+(state.history.length===1?'extraction':'extractions')+' · Latest 50 shown · Automatic deletion paused';drawHistory();}
-  catch{$('history-status').textContent='Could not load Recent. Refresh to try again.';}
+async function refreshHistory({older=false}={}){
+ if(!state.site||!state.historyAvailable){$('history-status').textContent=state.site?'Private history is unavailable. New extractions can still be copied or exported.':'Private history is available on the hosted Site.';drawHistory();return;}
+ if(older&&(!state.historyCursor||state.historyLoading))return;
+ const seq=++state.historySeq,cursor=older?state.historyCursor:null;state.historyLoading=true;drawHistory();
+ try{const response=await fetch('/api/history'+(cursor?'?cursor='+encodeURIComponent(cursor):''),{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('history');const data=await response.json();if(seq!==state.historySeq)return;
+  const merged=older?[...state.history,...(data.items||[])]:data.items||[];state.history=[...new Map(merged.map(item=>[item.id,item])).values()];state.historyTotal=Number.isSafeInteger(data.total)?data.total:null;state.historyCursor=data.nextCursor||null;
+  $('history-status').textContent=state.history.length+' loaded'+(state.historyTotal!==null?' of '+state.historyTotal+' stored extractions':' extractions')+' · Search filters loaded items · Automatic deletion paused';drawHistory();
+ }catch{if(seq===state.historySeq)$('history-status').textContent=older?'Could not load older extractions. Your loaded items are kept; try again.':'Could not load Recent. Your loaded items are kept; refresh to try again.';}
+ finally{if(seq===state.historySeq){state.historyLoading=false;drawHistory();}}
 }
 async function openExtraction(id){
   if(state.busy)return;const seq=++state.openSeq;
@@ -296,7 +301,7 @@ async function openExtraction(id){
 }
 function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}
 window.addEventListener('hashchange',navigate);
-$('history-search').addEventListener('input',drawHistory);$('history-platform').addEventListener('change',drawHistory);$('refresh-history').addEventListener('click',refreshHistory);
+$('history-search').addEventListener('input',drawHistory);$('history-platform').addEventListener('change',drawHistory);$('refresh-history').addEventListener('click',refreshHistory);$('history-more').addEventListener('click',()=>void refreshHistory({older:true}));
 $('copy-output').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(tabText(state.result,state.tab));$('output-action-status').textContent='Copied to clipboard.';}catch{$('output-action-status').textContent='Clipboard unavailable. Use Export text instead.';}});
 async function openAssistant(provider){
   if(!state.result)return;
@@ -323,7 +328,7 @@ $('export-text').addEventListener('click',()=>{if(state.result)downloadOutput('g
 $('export-json').addEventListener('click',()=>{if(state.result)downloadOutput('gs-pen-extraction.json',JSON.stringify(exportRecord(state.result,state.sourceUrl),null,2),'application/json');});
 $('delete-dialog').addEventListener('close',async()=>{
  const id=state.pendingDelete;state.pendingDelete=null;if($('delete-dialog').returnValue!=='delete'||!id)return;
- try{const response=await fetch('/api/history/'+id,{method:'DELETE',headers:authHeaders()});if(!response.ok)throw Error('delete');state.history=state.history.filter(x=>x.id!==id);drawHistory();$('history-status').textContent='Extraction deleted.';if(state.result?.historyId===id)$('history-save-status').textContent='Deleted from Recent. Current result remains open until you leave.';}
+ try{const response=await fetch('/api/history/'+id,{method:'DELETE',headers:authHeaders()});if(!response.ok)throw Error('delete');++state.historySeq;state.historyLoading=false;state.history=state.history.filter(x=>x.id!==id);if(state.historyTotal!==null)state.historyTotal=Math.max(0,state.historyTotal-1);drawHistory();$('history-status').textContent='Extraction deleted.';if(state.result?.historyId===id)$('history-save-status').textContent='Deleted from Recent. Current result remains open until you leave.';}
  catch{$('history-status').textContent='Could not delete the extraction. Your saved content has not been cleared.';}
 });
 

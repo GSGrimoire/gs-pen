@@ -1,7 +1,7 @@
 // Owner-private workflow controls. Creative work is performed in the chosen assistant.
 import {creativePrompt} from './modules/content-workflow.mjs';
 export function initContentWorkspace(){
- const $=id=>document.getElementById(id);let job=null,sourceId=null,busy=false,pendingDelete=null,listVersion=0;
+ const $=id=>document.getElementById(id);let job=null,sourceId=null,busy=false,pendingDelete=null,listVersion=0,jobs=[],nextCursor=null,listLoading=false;
  const status=message=>{$('content-status').textContent=message;};
  async function request(path,options){
   const response=await fetch(path,{cache:'no-store',...options});let data;try{data=await response.json();}catch{throw Error('CONTENT_BACKEND_UNAVAILABLE');}
@@ -19,13 +19,23 @@ export function initContentWorkspace(){
   $('content-prompt').textContent=job?creativePrompt(job.brief):'';
   $('content-preview').textContent=job?.draft?[job.draft.title,job.draft.message,job.draft.hashtags.join(' '),job.draft.visualBrief,job.draft.script].filter(Boolean).join('\n\n'):'';
  }
- async function list(){
-  const version=++listVersion;
-  try{const data=await request('/api/content');if(version!==listVersion)return;const container=$('content-jobs');container.replaceChildren();
-   for(const item of data.jobs){const button=document.createElement('button');button.type='button';button.className='outline';button.textContent=item.title+' · '+item.status;button.addEventListener('click',()=>open(item.id));container.append(button);}
-   if(!data.jobs.length)container.textContent='Your content jobs will appear here.';
-  }catch{if(version===listVersion)status('Content workflow requires the updated owner-private Site backend.');}
+ function renderJobs(){
+  const container=$('content-jobs');container.replaceChildren();
+  for(const item of jobs){const button=document.createElement('button');button.type='button';button.className='outline';button.textContent=item.title+' · '+item.status;button.addEventListener('click',()=>open(item.id));container.append(button);}
+  if(!jobs.length)container.textContent='Your content jobs will appear here.';
+  $('content-more').hidden=!nextCursor;$('content-more').disabled=listLoading;
  }
+ async function list({older=false}={}){
+  if(older&&(!nextCursor||listLoading))return;
+  const version=++listVersion,cursor=older?nextCursor:null;listLoading=true;renderJobs();
+  try{const data=await request('/api/content'+(cursor?'?cursor='+encodeURIComponent(cursor):''));if(version!==listVersion)return;
+   const merged=older?[...jobs,...data.jobs]:data.jobs;jobs=[...new Map(merged.map(item=>[item.id,item])).values()];nextCursor=data.nextCursor||null;
+   $('content-list-status').textContent=jobs.length+' loaded'+(Number.isSafeInteger(data.total)?' of '+data.total+' stored jobs':' jobs');renderJobs();
+  }catch{if(version===listVersion)$('content-list-status').textContent='Could not load '+(older?'older ':'')+'content jobs. Loaded items are kept; try again.';}
+  finally{if(version===listVersion){listLoading=false;renderJobs();}}
+ }
+ $('content-more').addEventListener('click',()=>void list({older:true}));
+ $('content-refresh').addEventListener('click',()=>void list());
  async function open(id){
   if(busy)return;busy=true;render();
   try{const data=await request('/api/content/'+encodeURIComponent(id));job=data.job;sourceId=job.brief.source.extractionId;$('content-idea').value=job.brief.idea;$('content-constraints').value=job.brief.constraints;$('content-format').value=job.brief.format;$('content-budget').value=String(job.brief.source.characterBudget);$('content-response').value=job.draft?JSON.stringify(job.draft,null,2):'';status('Saved job opened. Draft preparation and validation use ordinary code.');}
@@ -60,9 +70,9 @@ export function initContentWorkspace(){
  $('content-delete-dialog').addEventListener('close',async()=>{
   const id=pendingDelete;pendingDelete=null;
   if($('content-delete-dialog').returnValue!=='delete'||!id){busy=false;render();return;}
-  try{await request('/api/content/'+encodeURIComponent(id),{method:'DELETE'});job=null;sourceId=null;$('content-response').value='';$('content-idea').value='';$('content-constraints').value='';render();status('Content job deleted, including its brief, source excerpt and saved draft. The original extraction remains in Recent.');await list();}
+  try{++listVersion;listLoading=false;await request('/api/content/'+encodeURIComponent(id),{method:'DELETE'});job=null;sourceId=null;jobs=jobs.filter(item=>item.id!==id);$('content-response').value='';$('content-idea').value='';$('content-constraints').value='';render();status('Content job deleted, including its brief, source excerpt and saved draft. The original extraction remains in Recent.');await list();}
   catch(e){status('Could not delete the content job. Your open content has been kept. '+e.message);}
-  finally{busy=false;render();}
+  finally{busy=false;render();renderJobs();}
  });
  $('content-clear-source').addEventListener('click',()=>{if(busy)return;sourceId=null;job=null;$('content-response').value='';render();status('Source cleared. Prepare a new brief to use the current idea.');});
  window.addEventListener('hashchange',()=>{if(location.hash==='#create')void list();});

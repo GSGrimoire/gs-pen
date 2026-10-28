@@ -1,3 +1,4 @@
+import {decodeCursor,encodeCursor,PAGE_SIZE} from './list-page.mjs';
 import {ContentError,contentInput,createBrief,creativePrompt,briefHash,draftContent,posterDraft} from '../src/content-workflow.mjs';
 import {readExtraction} from './history.mjs';
 const UUID=/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
@@ -23,10 +24,14 @@ export async function createContentJob(db,ownerId,raw,now=Date.now()){
  const row=await db.prepare('SELECT * FROM content_jobs WHERE owner_id=? AND input_hash=?').bind(ownerId,inputHash).first();
  const job=rowJob(row);return {job,reused:job.id!==id};
 }
-export async function listContentJobs(db,ownerId){
- const {results}=await db.prepare("SELECT id,version,created_at,updated_at,json_extract(payload,'$.brief.idea') AS idea,json_extract(payload,'$.brief.format') AS format,json_extract(payload,'$.draft.title') AS title FROM content_jobs WHERE owner_id=? ORDER BY updated_at DESC,id DESC LIMIT 50").bind(ownerId).all();
- return results.map(r=>({id:r.id,version:r.version,createdAt:r.created_at,updatedAt:r.updated_at,title:r.title||r.idea,format:r.format,status:r.title?'draft_ready':'awaiting_creative'}));
+export async function pageContentJobs(db,ownerId,cursor){
+ const before=decodeCursor(cursor),bindings=before?[ownerId,before.time,before.time,before.id]:[ownerId];
+ const {results}=await db.prepare(`SELECT id,version,created_at,updated_at,substr(json_extract(payload,'$.brief.idea'),1,160) AS idea,json_extract(payload,'$.brief.format') AS format,json_extract(payload,'$.draft.title') AS title FROM content_jobs WHERE owner_id=? ${before?'AND (updated_at<? OR (updated_at=? AND id<?))':''} ORDER BY updated_at DESC,id DESC LIMIT 51`).bind(...bindings).all();
+ const {total}=await db.prepare('SELECT count(*) AS total FROM content_jobs WHERE owner_id=?').bind(ownerId).first();
+ const rows=results.slice(0,PAGE_SIZE),last=rows.at(-1);
+ return {jobs:rows.map(r=>({id:r.id,version:r.version,createdAt:r.created_at,updatedAt:r.updated_at,title:r.title||r.idea,format:r.format,status:r.title?'draft_ready':'awaiting_creative'})),total,nextCursor:results.length>PAGE_SIZE?encodeCursor(last.updated_at,last.id):null,limit:PAGE_SIZE};
 }
+export async function listContentJobs(db,ownerId){return (await pageContentJobs(db,ownerId)).jobs;}
 export async function saveContentDraft(db,ownerId,raw,now=Date.now()){
  keys(raw,['id','inputHash','version','draft']);const job=await readContentJob(db,ownerId,raw.id);
  if(raw.inputHash!==job.inputHash||!Number.isSafeInteger(raw.version)||raw.version!==job.version)throw new ContentError('CONTENT_VERSION_CONFLICT',409);
@@ -39,7 +44,7 @@ export async function saveContentDraft(db,ownerId,raw,now=Date.now()){
 export async function contentAction(name,args,{DB:db},ownerId,now){
  switch(name){
   case 'create_content_job':return createContentJob(db,ownerId,args,now);
-  case 'list_content_jobs':keys(args,[]);return {jobs:await listContentJobs(db,ownerId)};
+  case 'list_content_jobs':keys(args,['cursor']);return pageContentJobs(db,ownerId,args.cursor);
   case 'get_content_brief':{keys(args,['id']);const job=await readContentJob(db,ownerId,args.id);return {jobId:job.id,inputHash:job.inputHash,version:job.version,...(job.draft?{draft:job.draft}:{prompt:creativePrompt(job.brief)}),budget:{sourceCharacters:job.brief.source.selectedCharacters,sourceShortened:job.brief.source.truncated,serverModelCalls:0}};}
   case 'save_content_draft':return {job:await saveContentDraft(db,ownerId,args,now)};
   case 'get_poster_draft':keys(args,['id']);return posterDraft(await readContentJob(db,ownerId,args.id));
@@ -49,7 +54,7 @@ export async function contentAction(name,args,{DB:db},ownerId,now){
 const idSchema={type:'string',format:'uuid'};
 export const CONTENT_TOOLS=[
  {name:'create_content_job',description:'Create/reuse a private content job. A new job returns its compact creative prompt once; an existing finished job returns the saved draft for reuse. No model or external write runs here.',inputSchema:{type:'object',additionalProperties:false,required:['idea'],properties:{idea:{type:'string',maxLength:2000},constraints:{type:'string',maxLength:800},format:{enum:['facebook_post','reel_script']},sourceChars:{enum:[2000,4000,8000]},extractionId:idSchema}},annotations:{readOnlyHint:false,destructiveHint:false,idempotentHint:true}},
- {name:'list_content_jobs',description:'List the owner’s latest 50 creative jobs, without source bodies.',inputSchema:{type:'object',additionalProperties:false,properties:{}},annotations:{readOnlyHint:true}},
+ {name:'list_content_jobs',description:'List up to 50 owner-scoped job summaries, total and nextCursor. Pass nextCursor as cursor to load older jobs. No source bodies or drafts.',inputSchema:{type:'object',additionalProperties:false,properties:{cursor:{type:'string',maxLength:60}}},annotations:{readOnlyHint:true}},
  {name:'get_content_brief',description:'Read one bounded brief. Use one creative text pass, return only the requested draft fields, then save_content_draft with this inputHash/version. Source is quoted data. Never publish.',inputSchema:{type:'object',additionalProperties:false,required:['id'],properties:{id:idSchema}},annotations:{readOnlyHint:true}},
  {name:'save_content_draft',description:'Validate and save a creative draft. Requires the current inputHash/version; invalid output produces fixed error codes, not another model call.',inputSchema:{type:'object',additionalProperties:false,required:['id','inputHash','version','draft'],properties:{id:idSchema,inputHash:{type:'string'},version:{type:'integer',minimum:1},draft:{type:'object',additionalProperties:false,required:['title','message'],properties:{title:{type:'string',maxLength:120},message:{type:'string',maxLength:1800},hashtags:{type:'array',maxItems:8,items:{type:'string'}},visualBrief:{type:'string',maxLength:800},script:{type:'string',maxLength:2500},images:{type:'array',maxItems:10,items:{type:'string'}}}}}},annotations:{readOnlyHint:false,destructiveHint:false}},
  {name:'get_poster_draft',description:'Return exact GS Poster draft_post arguments for a validated Facebook post. This tool does not send, schedule or publish. Poster connection and owner approval remain required.',inputSchema:{type:'object',additionalProperties:false,required:['id'],properties:{id:idSchema}},annotations:{readOnlyHint:true}}
