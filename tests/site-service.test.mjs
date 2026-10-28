@@ -209,3 +209,34 @@ test('Owners can explicitly delete content jobs and their source copies without 
  await handleSiteRequest(req('content/'+standalone.job.id,'DELETE'),env);
  assert.equal((await handleSiteRequest(req('history/'+original),env)).status,200);
 });
+
+test('Retained lists traverse tied timestamps and deleted cursor rows without loading source bodies',async()=>{
+ const {env,sql}=setup(),ids=[],now=Date.now();
+ const payload=JSON.stringify({code:'OK',cues:[{text:'PRIVATE_CAPTION_SENTINEL'}],post:{text:'PRIVATE_POST_SENTINEL'.repeat(1000)},metadata:{status:'succeeded',fields:{title:'Fixture title',creator:'Fixture creator'}}});
+ const ex=sql.prepare('INSERT INTO extractions (id,owner_id,source_url,platform,created_at,expires_at,payload) VALUES (?,?,?,?,?,?,?)');
+ const job=sql.prepare('INSERT INTO content_jobs (id,owner_id,input_hash,version,created_at,updated_at,payload) VALUES (?,?,?,1,?,?,?)');
+ for(let i=0;i<103;i++){const id=crypto.randomUUID(),time=now+Math.floor(i/5);ids.push(id);ex.run(id,'trusted-test-id','https://www.facebook.com/reel/123456789012345','facebook',time,0,payload);job.run(id,'trusted-test-id','hash_'+i,time,time,JSON.stringify({brief:{idea:'Fixture idea',format:'facebook_post',source:{text:'PRIVATE_SOURCE_SENTINEL'}},draft:null}));}
+ const foreign=crypto.randomUUID();ex.run(foreign,'other-owner','https://www.facebook.com/reel/123456789012345','facebook',now+1000,0,payload);job.run(foreign,'other-owner','foreign_hash',now+1000,now+1000,JSON.stringify({brief:{idea:'Foreign idea'},draft:null}));
+ for(const [path,key,table] of [['history','items','extractions'],['content','jobs','content_jobs']]){
+  const queries=[],prepare=env.DB.prepare;env.DB.prepare=q=>{queries.push(q);return prepare(q);};const first=await(await handleSiteRequest(req(path),env)).json();env.DB.prepare=prepare;
+  assert.equal(first[key].length,50);assert.equal(first.total,103);assert.equal(first.limit,50);assert.ok(first.nextCursor);assert.ok(queries.every(q=>!q.includes('SELECT *')));assert.ok(!JSON.stringify(first).includes('PRIVATE_'));assert.ok(!JSON.stringify(first).includes('Foreign idea'));
+  sql.prepare('DELETE FROM '+table+' WHERE id=?').run(first[key].at(-1).id);
+  const second=await(await handleSiteRequest(req(path+'?cursor='+encodeURIComponent(first.nextCursor)),env)).json();assert.equal(second[key].length,50);assert.equal(second.total,102);
+  const third=await(await handleSiteRequest(req(path+'?cursor='+encodeURIComponent(second.nextCursor)),env)).json();assert.equal(third[key].length,3);assert.equal(third.nextCursor,null);
+  const seen=[...first[key],...second[key],...third[key]].map(x=>x.id);assert.equal(new Set(seen).size,103);assert.ok(ids.every(id=>seen.includes(id)));assert.ok(!seen.includes(foreign));
+  const other=req(path+'?cursor='+encodeURIComponent(first.nextCursor));other.headers.set('oai-authenticated-user-id','other-owner');const isolated=await(await handleSiteRequest(other,{...env,GS_PEN_OWNER_ID:'other-owner'})).json();assert.equal(isolated.total,1);assert.equal(isolated[key].length,0);
+ }
+ assert.ok(JSON.stringify(await(await handleSiteRequest(req('history/'+ids[0]),env)).json()).includes('PRIVATE_CAPTION_SENTINEL'));
+});
+test('List cursors are bounded and cannot bypass owner authentication or widen page size',async()=>{
+ const {env}=setup();for(const path of ['history','content']){
+  for(const cursor of ['', 'x'.repeat(200), '123:bad-id', '-1:00000000-0000-4000-8000-000000000001', '9999999999999999:00000000-0000-4000-8000-000000000001', "0:'); DROP TABLE extractions;--"]){const r=await handleSiteRequest(req(path+'?cursor='+encodeURIComponent(cursor)),env);assert.equal(r.status,400);assert.equal((await r.json()).code,'INVALID_PAGE_CURSOR');}
+  for(const identity of [null,'other@example.test'])assert.equal((await handleSiteRequest(req(path+'?cursor=forged','GET',undefined,identity),env)).status,403);
+  const empty=await(await handleSiteRequest(req(path+'?limit=999999'),env)).json();assert.equal(empty.limit,50);assert.equal(empty.total,0);assert.equal(empty.nextCursor,null);
+ }
+});
+test('The assistant list contract exposes summaries and an optional bounded cursor only',async()=>{
+ const {env}=setup();const call=async args=>{const r=req('ignored','POST',{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'list_content_jobs',arguments:args}});return(await(await handleSiteRequest(new Request('https://pen.test/mcp',r),env)).json()).result;};
+ assert.deepEqual(JSON.parse((await call({})).content[0].text),{jobs:[],total:0,nextCursor:null,limit:50});
+ const invalid=await call({cursor:42});assert.equal(invalid.isError,true);assert.equal(JSON.parse(invalid.content[0].text).code,'INVALID_PAGE_CURSOR');assert.equal((await call({ownerId:'other-owner'})).isError,true);
+});

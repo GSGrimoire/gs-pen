@@ -1,9 +1,9 @@
 import {ContentError} from '../src/content-workflow.mjs';
-import {contentAction,contentMcp,readContentJson,readContentJob,listContentJobs,deleteContentJob} from './content-service.mjs';
+import {contentAction,contentMcp,readContentJson,readContentJob,pageContentJobs,deleteContentJob} from './content-service.mjs';
 import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
-import { expireHistory,saveExtraction,listExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v03_sites_2';
+import { expireHistory,saveExtraction,pageExtractions,readExtraction,deleteExtraction } from './history.mjs';
+export const BUILD = 'workspace_v03_sites_3';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -62,7 +62,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       const result=await contentMcp(request,env,ownerId,now);
       return result.notification?new Response(null,{status:202,headers:securityHeaders()}):json(result);
     }
-    if(path==='/api/content'&&request.method==='GET')return json({jobs:await listContentJobs(env.DB,ownerId)});
+    if(path==='/api/content'&&request.method==='GET')return json(await pageContentJobs(env.DB,ownerId,new URL(request.url).searchParams.get('cursor')));
     if(path==='/api/content'&&request.method==='POST')return json(await contentAction('create_content_job',await readContentJson(request),env,ownerId,now));
     if(path==='/api/content/draft'&&request.method==='POST')return json(await contentAction('save_content_draft',await readContentJson(request),env,ownerId,now));
     if(path.startsWith('/api/content/')&&['GET','DELETE'].includes(request.method)){
@@ -74,7 +74,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       return json({code:'CONTENT_NOT_FOUND'},404);
     }
 
-    if(path==='/api/history' && request.method==='GET')return json({items:await listExtractions(env.DB,ownerId,now),retentionDays:null,retentionPaused:true,limit:50});
+    if(path==='/api/history' && request.method==='GET')return json({...await pageExtractions(env.DB,ownerId,new URL(request.url).searchParams.get('cursor')),retentionDays:null,retentionPaused:true});
     if(path.startsWith('/api/history/')){
       const id=path.slice('/api/history/'.length);
       if(!UUID.test(id))return json({code:'NOT_FOUND'},404);
