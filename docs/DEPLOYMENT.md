@@ -1,3 +1,13 @@
+# Pending short-link reliability publication, 30 October 2026
+
+**GitHub source updated but private Site NOT published.** TikTok PEN-020 / pull request #21 merged to main as `9a72051cddb225c00830dd97023f405e257827f4`. Facebook/TikTok reliability PEN-023 / pull request #24 merged next as `33f87171f275467763c428359abf7826d3b0bb0a`. The latter is the merged application-code commit for this pair. The final source includes bounded TikTok/Facebook short-link resolution, additional TikTok public state parsing and up to three validated native caption candidates. It does not provide independent speech transcription or Facebook native captions.
+
+Creator self-review: `docs/REVIEW_PEN_020.md`, `docs/REVIEW_PEN_023.md`. Final pull-request head `17766cfa7e0da0cc25cc016f9dd245cf87576be0` passed 126 unit tests and 68 desktop/mobile browser tests; hosted production build/lint/type checks passed (GitHub runs 41045679478 and 41045679530, retargeted runs 41045843453 and 41045843553). Browser/provider fixtures are synthetic, not real hosted TikTok/Facebook proof. Main push checks and real hosted acceptance should be checked separately.
+
+**Publication blocker:** this chat has GitHub source-control access but no ChatGPT Sites source, save, deploy or private-browser publication tool. No Sites saved version, deployment identifier, source tree verification or new live version is claimed. Published version 11 remains the last verified live deployment in this ledger. Before telling the owner to retry the published Site, the next authorized Site maintainer must synchronize the exact merged main application tree, build/package, privately save and deploy, then verify owner/private access, anonymous rejection, the actual supplied TikTok short link and representative Facebook share links. Record the exact source commit/tree, package digest, version/deployment identifiers and test outcomes below. Never weaken owner identity or upload secrets to GitHub to work around missing Sites capabilities.
+
+---
+
 # Pending paging release, 28 October 2026
 
 PEN-018 / issue #18 adds paging/counts and compact history summaries using ordinary code. It has not been deployed. Pen's signed-in list_content_jobs call succeeded on 26 October, returning jobs: []; prior version-11 uncertainty about that owner read path is superseded. Record the final main/source tree, version, deployment and new hosted list contract after publication. Keep owner-private access and paused retention.
