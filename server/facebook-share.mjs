@@ -79,7 +79,9 @@ export async function resolveFacebookShareUrl(source,fetchImpl=fetch) {
       return resultError(error?.name==='AbortError'?'TIMEOUT':'NETWORK_ERROR',count);
     }finally{clearTimeout(timeout);}
     if(response.status===200){
-      const canonical=await canonicalHint(response,current);
+      let canonical;
+      try{canonical=await canonicalHint(response,current);}
+      catch{return resultError('NETWORK_ERROR',count,200);}
       return canonical?{ok:true,url:canonical,redirectCount:count}:resultError('SHORT_LINK_UNRESOLVED',count,200);
     }
     const location=response.headers?.get('location');
