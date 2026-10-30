@@ -53,6 +53,16 @@ test('TikTok /t/ links are supported, while direct canonical videos need no reso
   assert.deepEqual(direct,{ok:true,url:canonical,redirectCount:0});
 });
 
+test('TikTok 200 public share page can resolve an explicit canonical video hint',async()=>{
+  const html='<meta property="og:url" content="'+canonical+'?tracking=discard">';
+  const r=await resolveTikTokShareUrl(share,async()=>new Response(html));
+  assert.deepEqual(r,{ok:true,url:canonical,redirectCount:0});
+  const fake=await resolveTikTokShareUrl(share,async()=>new Response('<meta property="og:url" content="https://www.tiktok.com/@other">'));
+  assert.equal(fake.code,'SHORT_LINK_UNRESOLVED');
+  const generic=await resolveTikTokShareUrl(share,async()=>new Response('<html>Sign in</html>'));
+  assert.equal(generic.code,'SHORT_LINK_UNRESOLVED');
+});
+
 test('bad redirect targets are rejected without fetching those locations',async()=>{
   for(const destination of [
     'http://www.tiktok.com/@fixture/video/'+id,
