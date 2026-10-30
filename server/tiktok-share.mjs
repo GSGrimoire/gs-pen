@@ -25,6 +25,34 @@ function verifiedHop(candidate) {
   return null;
 }
 
+// Some public share pages return 200 with a canonical video hint rather
+// than a redirect. Inspect only a bounded public HTML response, never scripts
+// or unrelated recommendation objects.
+async function canonicalHint(response) {
+  if(!response.body)return null;
+  const reader=response.body.getReader();let size=0;const chunks=[];
+  try{
+    while(true){
+      const {value,done}=await reader.read();if(done)break;
+      size+=value.length;
+      if(size>131072){await reader.cancel();return null;}
+      chunks.push(value);
+    }
+  }finally{reader.releaseLock();}
+  const bytes=new Uint8Array(size);let offset=0;
+  for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.length;}
+  const html=new TextDecoder().decode(bytes);
+  for(const tag of (html.match(/<(?:meta|link)\b[^>]*>/gi)||[]).slice(0,250)){
+    const attrs={};
+    for(const a of tag.matchAll(/([\w:-]+)\s*=\s*(?:"([^"]*)"|'([^']*)')/g))attrs[a[1].toLowerCase()]=a[2]??a[3];
+    const raw=(attrs.property||'').toLowerCase()==='og:url'?attrs.content:
+      (attrs.rel||'').toLowerCase()==='canonical'?attrs.href:null;
+    if(!raw)continue;
+    const item=verifiedHop(raw.replace(/&amp;/g,'&'));
+    if(item?.canonical)return item.canonical;
+  }
+  return null;
+}
 function failure(code, redirectCount, httpStatus) {
   return { ok: false, code, redirectCount, ...(httpStatus ? { httpStatus } : {}) };
 }
@@ -55,11 +83,17 @@ export async function resolveTikTokShareUrl(source, fetchImpl = fetch) {
     }
 
     const { status } = response;
-    // Do not read or retain HTML, cookies or signed media from share pages.
+    // Only an explicit canonical hint on a bounded public HTML share page
+    // can resolve a 200 response; a generic login shell remains unavailable.
+    if (status === 200) {
+      const canonical = await canonicalHint(response);
+      return canonical ? { ok:true, url:canonical, redirectCount:redirects } :
+        failure('SHORT_LINK_UNRESOLVED',redirects,200);
+    }
     const location = response.headers?.get('location');
     try { await response.body?.cancel(); } catch { /* no response body is needed */ }
     if (!REDIRECTS.has(status)) {
-      return failure(status === 200 ? 'SHORT_LINK_UNRESOLVED' : 'PROVIDER_BLOCKED', redirects, status);
+      return failure('PROVIDER_BLOCKED', redirects, status);
     }
     if (!location) return failure('SHORT_LINK_UNRESOLVED', redirects + 1, status);
 
