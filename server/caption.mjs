@@ -3,6 +3,7 @@
 import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
 import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
+import { resolveTikTokShareUrl } from './tiktok-share.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
@@ -99,8 +100,18 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
     return fail("NOT_IMPLEMENTED","unavailable");
   }
   report("provider_identify","succeeded","OK");
-  const u=new URL(verdict.url);
-  if(verdict.requiresRedirectResolution || (verdict.platform==='tiktok' && (!['www.tiktok.com','tiktok.com'].includes(u.hostname)||!/^\/@[^/]+\/video\/\d{8,30}\/?$/.test(u.pathname)))){
+  let u=new URL(verdict.url);
+  if (verdict.platform==='tiktok' && verdict.requiresRedirectResolution) {
+    report('share_link_resolution','started','STARTED');
+    const resolved=await resolveTikTokShareUrl(verdict.url,fetchImpl);
+    if (!resolved.ok) {
+      report('share_link_resolution','failed',resolved.code,{redirectCount:resolved.redirectCount,httpStatus:resolved.httpStatus});
+      return fail(resolved.code);
+    }
+    u=new URL(resolved.url);
+    report('share_link_resolution','succeeded','OK',{redirectCount:resolved.redirectCount});
+  }
+  if((verdict.requiresRedirectResolution && verdict.platform!=='tiktok') || (verdict.platform==='tiktok' && (!['www.tiktok.com','tiktok.com'].includes(u.hostname)||!/^\/@[^/]+\/video\/\d{8,30}\/?$/.test(u.pathname)))){
     report("provider_identify","failed","UNSUPPORTED_LINK_TYPE");
     return fail("UNSUPPORTED_LINK_TYPE");
   }
