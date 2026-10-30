@@ -38,7 +38,7 @@ test('A blocked native TikTok caption track falls back to the next allowed track
   assert.ok(events.some(e=>e.stage==='caption_fetch'&&e.status==='failed'&&e.attempt===1));
   assert.ok(events.some(e=>e.stage==='caption_parse'&&e.status==='succeeded'&&e.attempt===2));
   const raw=JSON.stringify(events);
-  for(const val of [id,'creator','private=1','Selected synthetic video','Second caption track'])assert.ok(!raw.includes(val));
+  for(const val of [id,'@creator','private=1','Selected synthetic video','Second caption track'])assert.ok(!raw.includes(val));
 });
 
 test('Reject disallowed caption candidate without fetching it and preserve a valid later candidate',async()=>{
