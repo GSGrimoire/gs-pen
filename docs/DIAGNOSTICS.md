@@ -53,3 +53,14 @@ User-approved history is intentionally content-bearing and stored in `extraction
 ## Infrastructure logging
 
 Sites infrastructure request metadata is separate from application diagnostics and has platform-controlled retention. Disabling worker application logging does not remove all hosting metadata. The application does not claim 30-day control over platform logs.
+
+
+## PEN-020 TikTok share-link attempts
+
+Recognized public TikTok share tokens (vm.tiktok.com, vt.tiktok.com and TikTok /t/ links) may be resolved using up to three manual HTTPS redirects. Every destination is validated as an exact supported TikTok short-link or public video URL before any follow-up request. Query strings and fragments do not reach subsequent page fetches. No browser cookies, arbitrary redirect following, media downloads or third-party hosts are involved.
+
+Diagnostics now distinguish `share_link_resolution` events and the codes `SHORT_LINK_UNRESOLVED` (no valid video target reached) and `SHORT_LINK_TARGET_REJECTED` (an unsafe/unrecognized destination). `PROVIDER_BLOCKED`, `TIMEOUT` and `NETWORK_ERROR` remain distinct. Redirect counts and permitted HTTP response codes may be logged, but no share tokens, destination URLs, video IDs, creator handles or caption text. A rate-limited request creates one sanitized `RATE_LIMITED` event when its minute window is first exceeded; later rejected requests in that same window are not stored individually to prevent unbounded diagnostic writes. Malformed JSON and unauthenticated requests are not extraction telemetry.
+
+A resolved video without a native published caption track still returns `CAPTIONS_NOT_FOUND`, potentially alongside post text and metadata. It must not be described as an audio transcript. TokScript's published speech-recognition fallback is a separate capability that GS Pen does not currently implement.
+
+The user's reported real short URL is not part of regression fixtures, diagnostics or source code. Unit tests use fabricated TikTok identifiers and responses. Live provider resolution and the hosted deployment must be verified separately; code or browser fixture success does not imply that the provider currently permits real-world retrieval.
