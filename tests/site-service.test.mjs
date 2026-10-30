@@ -78,7 +78,7 @@ test('Durable request budget restricts repeated provider calls',async()=>{
  assert.equal((await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl,now:60000})).status,429);assert.equal(count,10);
 });
 test('Rate-limited extraction attempts create one sanitized diagnostic event per minute',async()=>{
- const {env,sql}=setup();const short='https://vm.tiktok.com/ZN8U9kugR/?tracking=sensitive';
+ const {env,sql}=setup();const short='https://vm.tiktok.com/ZFixture123/?tracking=sensitive';
  let providerCalls=0;
  for(let n=0;n<14;n++){
   const response=await handleSiteRequest(req('captions','POST',{url:short}),env,{fetchImpl:async()=>{providerCalls++;return new Response(null,{status:403});},now:60000});
@@ -92,7 +92,7 @@ test('Rate-limited extraction attempts create one sanitized diagnostic event per
  assert.equal(denied[0].requiresRedirect,true);
  assert.equal(denied[0].stage,'finished');
  const raw=JSON.stringify(events);
- assert.ok(!raw.includes('ZN8U9kugR'));
+ assert.ok(!raw.includes('ZFixture123'));
  assert.ok(!raw.includes('tracking=sensitive'));
 });
 
@@ -102,9 +102,9 @@ test('Site resolves short links and stores real partial/full results without log
  const item={id,desc:'Private synthetic post',video:{caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=secret'}]}};
  const markup='<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:item}}}})+'</script>';
  let calls=0;
- const response=await (await handleSiteRequest(req('captions','POST',{url:'https://vm.tiktok.com/ZN8U9kugR/'}),env,{fetchImpl:async()=>++calls===1?
+ const response=await (await handleSiteRequest(req('captions','POST',{url:'https://vm.tiktok.com/ZFixture123/'}),env,{fetchImpl:async()=>++calls===1?
   new Response(null,{status:302,headers:{location:canonical}}):calls===2?
-  new Response(markup):new Response('WEBVTT\\n\\n00:00:01.000 --> 00:00:02.000\\nPrivate speech\\n')
+  new Response(markup):new Response('WEBVTT\n\n00:00:01.000 --> 00:00:02.000\nPrivate speech\n')
  })).json();
  assert.equal(response.ok,true);
  assert.equal(response.cues.length,1);
@@ -113,7 +113,7 @@ test('Site resolves short links and stores real partial/full results without log
  assert.equal(calls,3);
  assert.ok(response.events.some(e=>e.stage==='share_link_resolution'&&e.redirectCount===1));
  const raw=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());
- for(const privateValue of [id,'ZN8U9kugR','@fixture','signature=secret','Private speech'])assert.ok(!raw.includes(privateValue));
+ for(const privateValue of [id,'ZFixture123','@fixture','signature=secret','Private speech'])assert.ok(!raw.includes(privateValue));
 });
 
 test('Site returns TikTok post fields while database stores only availability and technical categories',async()=>{
