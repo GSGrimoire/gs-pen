@@ -77,6 +77,45 @@ test('Durable request budget restricts repeated provider calls',async()=>{
  for(let n=0;n<10;n++)assert.equal((await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl,now:60000})).status,200);
  assert.equal((await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl,now:60000})).status,429);assert.equal(count,10);
 });
+test('Rate-limited extraction attempts create one sanitized diagnostic event per minute',async()=>{
+ const {env,sql}=setup();const short='https://vm.tiktok.com/ZN8U9kugR/?tracking=sensitive';
+ let providerCalls=0;
+ for(let n=0;n<14;n++){
+  const response=await handleSiteRequest(req('captions','POST',{url:short}),env,{fetchImpl:async()=>{providerCalls++;return new Response(null,{status:403});},now:60000});
+  assert.equal(response.status,n<10?200:429);
+ }
+ assert.equal(providerCalls,10);
+ const events=sql.prepare('SELECT payload FROM diagnostic_events').all().map(r=>JSON.parse(r.payload));
+ const denied=events.filter(e=>e.code==='RATE_LIMITED');
+ assert.equal(denied.length,1);
+ assert.equal(denied[0].linkType,'short_link');
+ assert.equal(denied[0].requiresRedirect,true);
+ assert.equal(denied[0].stage,'finished');
+ const raw=JSON.stringify(events);
+ assert.ok(!raw.includes('ZN8U9kugR'));
+ assert.ok(!raw.includes('tracking=sensitive'));
+});
+
+test('Site resolves short links and stores real partial/full results without logging the video identity',async()=>{
+ const {env,sql}=setup();const id='1234567890123456789';
+ const canonical='https://www.tiktok.com/@fixture/video/'+id;
+ const item={id,desc:'Private synthetic post',video:{caption_infos:[{url:'https://v.tiktokcdn.com/subtitle?signature=secret'}]}};
+ const markup='<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({__DEFAULT_SCOPE__:{'webapp.video-detail':{itemInfo:{itemStruct:item}}}})+'</script>';
+ let calls=0;
+ const response=await (await handleSiteRequest(req('captions','POST',{url:'https://vm.tiktok.com/ZN8U9kugR/'}),env,{fetchImpl:async()=>++calls===1?
+  new Response(null,{status:302,headers:{location:canonical}}):calls===2?
+  new Response(markup):new Response('WEBVTT\\n\\n00:00:01.000 --> 00:00:02.000\\nPrivate speech\\n')
+ })).json();
+ assert.equal(response.ok,true);
+ assert.equal(response.cues.length,1);
+ assert.equal(response.historyStatus,'saved');
+ assert.equal(response.diagnosticsStored,true);
+ assert.equal(calls,3);
+ assert.ok(response.events.some(e=>e.stage==='share_link_resolution'&&e.redirectCount===1));
+ const raw=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());
+ for(const privateValue of [id,'ZN8U9kugR','@fixture','signature=secret','Private speech'])assert.ok(!raw.includes(privateValue));
+});
+
 test('Site returns TikTok post fields while database stores only availability and technical categories',async()=>{
  const {env,sql}=setup();const id='1234567890123456789';
  const item={id,desc:'Private post sentinel #secret',author:{nickname:'Private creator sentinel',uniqueId:'private_handle'},video:{duration:5},stats:{playCount:99}};
