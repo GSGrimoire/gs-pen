@@ -1,6 +1,6 @@
 import {ContentError} from '../src/content-workflow.mjs';
 import {contentAction,contentMcp,readContentJson,readContentJob,pageContentJobs,deleteContentJob} from './content-service.mjs';
-import { sanitizeDiagnostic } from '../src/diagnostics.mjs';
+import { sanitizeDiagnostic,diagnosticLinkContext } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,pageExtractions,readExtraction,deleteExtraction } from './history.mjs';
 export const BUILD = 'workspace_v03_sites_3';
@@ -40,7 +40,7 @@ async function boundedJson(request) {
 async function budget(db, now) {
   const window=Math.floor(now/60000);
   const r=await db.prepare('INSERT INTO request_budget (scope,window,used) VALUES (?, ?, 1) ON CONFLICT(scope) DO UPDATE SET window=excluded.window, used=CASE WHEN request_budget.window=excluded.window THEN request_budget.used+1 ELSE 1 END RETURNING used').bind('captions',window).first();
-  return r.used<=10;
+  return {allowed:r.used<=10,firstDenied:r.used===11};
 }
 export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.now()}={}) {
   const path=new URL(request.url).pathname;
@@ -137,9 +137,21 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       const event=sanitizedSiteEvent(data,{traceId,source:'browser',now});
       await storeEvents(env.DB,[event],now);return json({saved:true,storage:'site_database'});
     }
-    let budgetAvailable=true;
-    try{budgetAvailable=await budget(env.DB,now);}catch{/* logging database failure must not block caption retrieval */}
-    if(!budgetAvailable)return json({ok:false,code:'RATE_LIMITED',cues:[],diagnosticsStored:false},429);
+    let allowance={allowed:true,firstDenied:false};
+    try{allowance=await budget(env.DB,now);}catch{/* logging database failure must not block caption retrieval */}
+    if(!allowance.allowed){
+      // One sanitized rate-limit event per budget window. Do not permit
+      // a flood of rejected requests to fill the owner's diagnostic store.
+      let diagnosticsStored=false;
+      if(allowance.firstDenied){
+        try{
+          const event=sanitizedSiteEvent({...diagnosticLinkContext(data.url),stage:'finished',status:'failed',code:'RATE_LIMITED'}, {traceId,now});
+          await storeEvents(env.DB,[event],now);
+          diagnosticsStored=true;
+        }catch{/* telemetry must not become an alternate failure mode */}
+      }
+      return json({ok:false,code:'RATE_LIMITED',cues:[],traceId,diagnosticsStored},429);
+    }
     if(typeof data.url!=='string' || data.url.length>2048)return json({code:'INVALID_URL'},400);
     const events=[];
     let result;
