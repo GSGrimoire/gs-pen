@@ -59,6 +59,15 @@ test('Reject malicious, cross-provider, login, unsupported and credentialed redi
   }
 });
 
+test('Interrupted public share-page body is a sanitized network failure',async()=>{
+ const r=await resolveFacebookShareUrl(share,async()=>new Response(new ReadableStream({
+  pull(c){c.error(new Error('private backend read detail')); }
+ }),{status:200}));
+ assert.equal(r.ok,false);
+ assert.equal(r.code,'NETWORK_ERROR');
+ assert.ok(!JSON.stringify(r).includes('private backend read detail'));
+});
+
 test('Missing redirect target, redirect loop, rate block and hop limit stop safely',async()=>{
   let count=0;
   const noLocation=await resolveFacebookShareUrl(fb,async()=>new Response(null,{status:302}));
