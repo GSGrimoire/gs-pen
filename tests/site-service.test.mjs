@@ -116,6 +116,28 @@ test('Site resolves short links and stores real partial/full results without log
  for(const privateValue of [id,'ZFixture123','@fixture','signature=secret','Private speech'])assert.ok(!raw.includes(privateValue));
 });
 
+test('Facebook short-share link resolves to a saved, provenance-labeled public preview without captions',async()=>{
+ const {env,sql}=setup(),id='123456789012345';
+ let calls=0;
+ const result=await (await handleSiteRequest(req('captions','POST',{url:'https://fb.watch/Synthetic123/?mibextid=private'}),env,{fetchImpl:async(url,options)=>{
+  calls++;
+  assert.equal(options.redirect,'manual');
+  if(calls===1)return new Response(null,{status:302,headers:{location:'https://www.facebook.com/reel/'+id+'?secret=discard'}});
+  assert.equal(url,'https://www.facebook.com/reel/'+id);
+  return new Response('<meta property="og:title" content="10 views | Synthetic Facebook post #test | Fixture Author">');
+ }})).json();
+ assert.equal(calls,2);
+ assert.equal(result.ok,false);
+ assert.equal(result.code,'NOT_IMPLEMENTED');
+ assert.equal(result.post.status,'succeeded');
+ assert.equal(result.post.completeness,'page_preview_may_be_truncated');
+ assert.equal(result.historyStatus,'saved');
+ assert.deepEqual(result.cues,[]);
+ assert.ok(result.events.some(e=>e.stage==='share_link_resolution'&&e.status==='succeeded'));
+ const raw=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());
+ for(const x of ['Synthetic123','mibextid','Fixture Author',id,'Synthetic Facebook post'])assert.ok(!raw.includes(x));
+});
+
 test('Site returns TikTok post fields while database stores only availability and technical categories',async()=>{
  const {env,sql}=setup();const id='1234567890123456789';
  const item={id,desc:'Private post sentinel #secret',author:{nickname:'Private creator sentinel',uniqueId:'private_handle'},video:{duration:5},stats:{playCount:99}};
