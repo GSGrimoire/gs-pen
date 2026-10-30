@@ -5,7 +5,7 @@ import { retrievePublicCaptions } from '../server/caption.mjs';
 
 const id='1234567890123456789';
 const canonical='https://www.tiktok.com/@fixture/video/'+id;
-const share='https://vm.tiktok.com/ZN8U9kugR/';
+const share='https://vm.tiktok.com/ZFixture123/';
 const post='Synthetic private post #example';
 function page(captions=true) {
   return '<script id="__UNIVERSAL_DATA_FOR_REHYDRATION__">'+JSON.stringify({
@@ -32,7 +32,7 @@ test('vm.tiktok.com share link resolves to exact video and extracts post plus na
   assert.ok(calls.every(x=>x.redirect==='manual'&&x.method==='GET'));
   assert.ok(events.some(e=>e.stage==='share_link_resolution'&&e.status==='succeeded'&&e.redirectCount===1));
   const logged=JSON.stringify(events);
-  for(const secret of [id,'ZN8U9kugR','@fixture','tracking=private','signature=secret','Synthetic timed words'])assert.ok(!logged.includes(secret),secret);
+  for(const secret of [id,'ZFixture123','@fixture','tracking=private','signature=secret','Synthetic timed words'])assert.ok(!logged.includes(secret),secret);
 });
 
 test('vt links may traverse another recognized short link, with a strict hop count',async()=>{
