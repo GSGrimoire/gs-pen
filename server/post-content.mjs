@@ -11,10 +11,22 @@ export function unavailableContent(code='CONTENT_NOT_FOUND') {
   return {post:{status:'unavailable',code,text:null,hashtags:[]},metadata:{status:'unavailable',code,fields:{}}};
 }
 export function matchedTikTokItem(markup, expectedId) {
-  const match=markup.match(/<script\b[^>]*\bid=["']__UNIVERSAL_DATA_FOR_REHYDRATION__["'][^>]*>([\s\S]*?)<\/script>/i);
-  if(!match)return null;
-  let item;try{item=JSON.parse(match[1]).__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct;}catch{return null;}
-  return item && String(item.id)===String(expectedId) ? item : null;
+  // Try only public embedded page-state formats and select the exact requested
+  // video identifier. Never use a recommended video's metadata or captions.
+  for(const [name,pick] of [
+    ['__UNIVERSAL_DATA_FOR_REHYDRATION__',data=>data?.__DEFAULT_SCOPE__?.['webapp.video-detail']?.itemInfo?.itemStruct],
+    ['SIGI_STATE',data=>data?.ItemModule?.[expectedId]],
+    ['__NEXT_DATA__',data=>data?.props?.pageProps?.itemInfo?.itemStruct]
+  ]){
+    const scripts=markup.matchAll(/<script\b[^>]*\bid=["']([^"']+)["'][^>]*>([\s\S]*?)<\/script>/gi);
+    for(const match of scripts){
+      if(match[1]!==name)continue;
+      let item;
+      try{item=pick(JSON.parse(match[2]));}catch{continue;}
+      if(item && String(item.id)===String(expectedId))return item;
+    }
+  }
+  return null;
 }
 export function tiktokContent(input, expectedId) {
   const missing=unavailableContent();
