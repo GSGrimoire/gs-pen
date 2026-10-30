@@ -86,7 +86,9 @@ export async function resolveTikTokShareUrl(source, fetchImpl = fetch) {
     // Only an explicit canonical hint on a bounded public HTML share page
     // can resolve a 200 response; a generic login shell remains unavailable.
     if (status === 200) {
-      const canonical = await canonicalHint(response);
+      let canonical;
+      try{canonical=await canonicalHint(response);}
+      catch{return failure('NETWORK_ERROR',redirects,200);}
       return canonical ? { ok:true, url:canonical, redirectCount:redirects } :
         failure('SHORT_LINK_UNRESOLVED',redirects,200);
     }
