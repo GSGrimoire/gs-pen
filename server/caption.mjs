@@ -4,6 +4,7 @@ import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
 import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
 import { resolveTikTokShareUrl } from './tiktok-share.mjs';
+import { resolveFacebookShareUrl } from './facebook-share.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
@@ -111,7 +112,17 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
     u=new URL(resolved.url);
     report('share_link_resolution','succeeded','OK',{redirectCount:resolved.redirectCount});
   }
-  if((verdict.requiresRedirectResolution && verdict.platform!=='tiktok') || (verdict.platform==='tiktok' && (!['www.tiktok.com','tiktok.com'].includes(u.hostname)||!/^\/@[^/]+\/video\/\d{8,30}\/?$/.test(u.pathname)))){
+  if (verdict.platform==='facebook' && verdict.requiresRedirectResolution) {
+    report('share_link_resolution','started','STARTED');
+    const resolved=await resolveFacebookShareUrl(verdict.url,fetchImpl);
+    if (!resolved.ok) {
+      report('share_link_resolution','failed',resolved.code,{redirectCount:resolved.redirectCount,httpStatus:resolved.httpStatus});
+      return fail(resolved.code);
+    }
+    u=new URL(resolved.url);
+    report('share_link_resolution','succeeded','OK',{redirectCount:resolved.redirectCount});
+  }
+  if(verdict.platform==='tiktok' && (!['www.tiktok.com','tiktok.com'].includes(u.hostname)||!/^\/@[^/]+\/video\/\d{8,30}\/?$/.test(u.pathname))){
     report("provider_identify","failed","UNSUPPORTED_LINK_TYPE");
     return fail("UNSUPPORTED_LINK_TYPE");
   }
@@ -139,19 +150,50 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   const candidates=findCaptionUrls(item);
   if(!candidates.length){report("caption_track_discovery","unavailable","CAPTIONS_NOT_FOUND");return fail("CAPTIONS_NOT_FOUND","unavailable");}
   report("caption_track_discovery","succeeded","OK",{captionTrackCount:candidates.length});
-  const asset=validateCaptionAsset(candidates[0]);
-  if(!asset){report("caption_host_validation","failed","CAPTION_HOST_REJECTED",{captionTrackCount:candidates.length});let host;try{host=new URL(candidates[0]).hostname;}catch{}return {...fail("CAPTION_HOST_REJECTED"),unpersistedCaptionHost:host};}
-  report("caption_host_validation","succeeded","OK",{cdnFamily:asset.cdnFamily});
-  let track;
-  report("caption_fetch","started","STARTED",{cdnFamily:asset.cdnFamily});
-  try {track=await fetchBounded(asset.url,LIMIT_VTT,fetchImpl);}
-  catch(e){const code=e?.name==="AbortError"?"TIMEOUT":"NETWORK_ERROR";report("caption_fetch","failed",code,{cdnFamily:asset.cdnFamily});return fail(code);}
-  if(track.status!==200){report("caption_fetch","failed","PROVIDER_BLOCKED",{cdnFamily:asset.cdnFamily,httpStatus:track.status});return fail("PROVIDER_BLOCKED");}
-  if(track.body?.tooLarge){report("caption_fetch","failed","RESPONSE_TOO_LARGE",{cdnFamily:asset.cdnFamily});return fail("RESPONSE_TOO_LARGE");}
-  if(!track.body){report("caption_fetch","failed","NETWORK_ERROR",{cdnFamily:asset.cdnFamily});return fail("NETWORK_ERROR");}
-  report("caption_fetch","succeeded","OK",{cdnFamily:asset.cdnFamily,contentType:"vtt",responseBucket:responseSizeBucket(track.body.size)});
-  const cues=parseWebVtt(track.body.text);
-  if(!cues.length){report("caption_parse","failed","CAPTION_PARSE_FAILED",{cdnFamily:asset.cdnFamily});return fail("CAPTION_PARSE_FAILED");}
-  report("caption_parse","succeeded","OK",{captionCueCount:cues.length,captionTrackCount:candidates.length,cdnFamily:asset.cdnFamily});
-  return {ok:true,status:"succeeded",code:"OK",cues,captionTrackCount:candidates.length,captionType:"platform",language:"unknown",trackType:"unknown",...content};
+  // A video may expose several native tracks. The first can be expired,
+  // malformed or unavailable even when another is usable. Only try a small
+  // fixed number of already-discovered, explicitly allowlisted caption assets.
+  let lastCode='CAPTION_HOST_REJECTED',attempt=0;
+  for(const candidate of candidates.slice(0,3)){
+    attempt++;
+    const asset=validateCaptionAsset(candidate);
+    if(!asset){
+      report('caption_host_validation','failed','CAPTION_HOST_REJECTED',{captionTrackCount:candidates.length,attempt});
+      lastCode='CAPTION_HOST_REJECTED';continue;
+    }
+    report('caption_host_validation','succeeded','OK',{cdnFamily:asset.cdnFamily,attempt});
+    let track;
+    report('caption_fetch','started','STARTED',{cdnFamily:asset.cdnFamily,attempt});
+    try{track=await fetchBounded(asset.url,LIMIT_VTT,fetchImpl);}
+    catch(e){
+      lastCode=e?.name==='AbortError'?'TIMEOUT':'NETWORK_ERROR';
+      report('caption_fetch','failed',lastCode,{cdnFamily:asset.cdnFamily,attempt});
+      continue;
+    }
+    if(track.status!==200){
+      lastCode='PROVIDER_BLOCKED';
+      report('caption_fetch','failed',lastCode,{cdnFamily:asset.cdnFamily,httpStatus:track.status,attempt});
+      continue;
+    }
+    if(track.body?.tooLarge){
+      lastCode='RESPONSE_TOO_LARGE';
+      report('caption_fetch','failed',lastCode,{cdnFamily:asset.cdnFamily,attempt});
+      continue;
+    }
+    if(!track.body){
+      lastCode='NETWORK_ERROR';
+      report('caption_fetch','failed',lastCode,{cdnFamily:asset.cdnFamily,attempt});
+      continue;
+    }
+    report('caption_fetch','succeeded','OK',{cdnFamily:asset.cdnFamily,contentType:'vtt',responseBucket:responseSizeBucket(track.body.size),attempt});
+    const cues=parseWebVtt(track.body.text);
+    if(!cues.length){
+      lastCode='CAPTION_PARSE_FAILED';
+      report('caption_parse','failed',lastCode,{cdnFamily:asset.cdnFamily,attempt});
+      continue;
+    }
+    report('caption_parse','succeeded','OK',{captionCueCount:cues.length,captionTrackCount:candidates.length,cdnFamily:asset.cdnFamily,attempt});
+    return {ok:true,status:'succeeded',code:'OK',cues,captionTrackCount:candidates.length,captionType:'platform',language:'unknown',trackType:'unknown',...content};
+  }
+  return fail(lastCode);
 }

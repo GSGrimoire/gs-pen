@@ -64,3 +64,14 @@ Diagnostics now distinguish `share_link_resolution` events and the codes `SHORT_
 A resolved video without a native published caption track still returns `CAPTIONS_NOT_FOUND`, potentially alongside post text and metadata. It must not be described as an audio transcript. GS Pen does not currently implement audio speech recognition. TokScript advertises broader video transcription, but its publicly available documentation is inconsistent about whether it uses only embedded transcripts or also recognizes audio; that difference needs an empirical comparison.
 
 The user's reported real short URL is not part of regression fixtures, diagnostics or source code. Unit tests use fabricated TikTok identifiers and responses. Live provider resolution and the hosted deployment must be verified separately; code or browser fixture success does not imply that the provider currently permits real-world retrieval.
+
+
+## PEN-023 Facebook short links and multiple native captions
+
+The TikTok link resolver from PEN-020 remains capped at three manually validated TikTok-only redirects. The Facebook resolver permits public `fb.watch` and `facebook.com/share/v/` or `/share/r/` links. It follows at most three HTTPS redirects by checking every individual destination against an exact Facebook short-link or video-link pattern, and drops tracking parameters. A 200 HTML share page is inspected for a bounded explicit `og:url` or `rel=canonical` video URL; arbitrary URLs, creator profile links, login shells, unsupported post types and unrelated domains do not qualify. Redirects never fetch third-party destinations. The sanitized diagnostic stage and `redirectCount` are preserved.
+
+A Facebook resolved link may provide publicly visible post/creator metadata, but Facebook native captions and speech transcription are **not** implemented. A preview is labeled `page_preview_may_be_truncated`, not a complete post or spoken transcript. A blocked or sign-in-only page reports unavailable rather than manufacturing a transcript.
+
+TikTok extraction also examines additional publicly embedded page-state fields (`SIGI_STATE` and `__NEXT_DATA__`) with exact requested-video identifier matching, and attempts at most three separately validated published caption URLs when earlier tracks fail. The allowlist, response byte cap, read timeout, and content/diagnostic separation remain unchanged. Attempts record safe numeric indices without storing signed asset URLs.
+
+Synthetic tests can demonstrate supported parsing and failure semantics. They do not prove live public access for every social platform link. Real owner-private hosted checks and a deployment receipt are separate release requirements.

@@ -32,11 +32,14 @@ test('Facebook structured video fields are scoped to the requested video',()=>{
  assert.equal(r.post.text,'Synthetic complete post');assert.equal(r.metadata.fields.creator,'Fixture author');
  assert.equal(facebookContent('<script type="application/json">'+JSON.stringify({__typename:'Video',id:'another',description:'unrelated'})+'</script>',id).post.status,'unavailable');
 });
-test('Facebook retrieval strips tracking, rejects short links without following redirects and returns partial outputs',async()=>{
+test('Facebook retrieval strips tracking, attempts only bounded share redirects and returns partial outputs',async()=>{
  let calls=0;const events=[];
  const r=await retrievePublicCaptions('https://m.facebook.com/reel/'+id+'?tracking=private',{traceId:'fixture',onEvent:e=>events.push(e),fetchImpl:async(u,options)=>{calls++;assert.equal(u,'https://www.facebook.com/reel/'+id);assert.equal(options.redirect,'manual');return new Response('<meta property="og:title" content="3 views | Synthetic post #test | Synthetic Author">');}});
  assert.equal(calls,1);assert.equal(r.post.status,'succeeded');assert.equal(r.ok,false);assert.equal(r.code,'NOT_IMPLEMENTED');assert.equal(r.cues.length,0);assert.ok(events.some(e=>e.stage==='metadata_parse'));
- await retrievePublicCaptions('https://fb.watch/fixture/',{fetchImpl:async()=>{throw Error('must not fetch');}});
+ let shortCalls=0;
+ const short=await retrievePublicCaptions('https://fb.watch/fixture/',{fetchImpl:async()=>{shortCalls++;throw Error('synthetic network failure');}});
+ assert.equal(shortCalls,1);
+ assert.equal(short.code,'NETWORK_ERROR');
 });
 test('Network and provider failures propagate to post and metadata availability without inventing missing content',async()=>{
  const r=await retrievePublicCaptions(url,{fetchImpl:async()=>new Response('',{status:403})});assert.equal(r.post.code,'PROVIDER_BLOCKED');assert.equal(r.metadata.code,'PROVIDER_BLOCKED');
