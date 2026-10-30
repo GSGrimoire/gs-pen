@@ -195,5 +195,5 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
     report('caption_parse','succeeded','OK',{captionCueCount:cues.length,captionTrackCount:candidates.length,cdnFamily:asset.cdnFamily,attempt});
     return {ok:true,status:'succeeded',code:'OK',cues,captionTrackCount:candidates.length,captionType:'platform',language:'unknown',trackType:'unknown',...content};
   }
-  return fail(lastCode,lastCode==='CAPTION_PARSE_FAILED'?'failed':'unavailable');
+  return fail(lastCode);
 }
