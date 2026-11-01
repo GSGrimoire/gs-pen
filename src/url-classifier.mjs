@@ -2,6 +2,8 @@
 const VIDEO_ID = /^[A-Za-z0-9_-]{11}$/;
 const TOKEN = /^[A-Za-z0-9_-]+$/;
 const NUMERIC_ID = /^\d{8,30}$/;
+const FB_PUBLIC_ID = /^[A-Za-z0-9_-]{6,200}$/;
+const FB_PAGE = /^[A-Za-z0-9._-]{1,100}$/;
 const allowedHosts = Object.freeze({
   "youtube.com": "youtube", "www.youtube.com": "youtube", "m.youtube.com": "youtube", "youtu.be": "youtube",
   "tiktok.com": "tiktok", "www.tiktok.com": "tiktok", "m.tiktok.com": "tiktok", "vm.tiktok.com": "tiktok", "vt.tiktok.com": "tiktok",
@@ -57,9 +59,20 @@ export function classifyPublicVideoUrl(input) {
       valid = ids.length === 1 && NUMERIC_ID.test(ids[0]);
     } else if (parts.length >= 3 && parts.length <= 4 && parts[1] === "videos") {
       valid = NUMERIC_ID.test(parts.at(-1));
-    } else if (parts.length === 3 && parts[0] === "share" && ["v", "r"].includes(parts[1])) {
+    } else if (parts.length === 3 && parts[0] === "share" && ["v", "r", "p"].includes(parts[1])) {
       valid = TOKEN.test(parts[2]);
       requiresRedirectResolution = valid;
+    } else if (parts.length === 2 && parts[0] === "share") {
+      valid = TOKEN.test(parts[1]);
+      requiresRedirectResolution = valid;
+    } else if (parts.length === 3 && parts[1] === "posts") {
+      valid = FB_PAGE.test(parts[0]) && FB_PUBLIC_ID.test(parts[2]);
+    } else if (parts.length === 1 && ["story.php", "permalink.php"].includes(parts[0])) {
+      const story = url.searchParams.getAll("story_fbid"), owner = url.searchParams.getAll("id");
+      valid = story.length === 1 && owner.length === 1 && FB_PUBLIC_ID.test(story[0]) && FB_PUBLIC_ID.test(owner[0]);
+    } else if (parts.length === 1 && parts[0] === "photo.php") {
+      const photos = url.searchParams.getAll("fbid");
+      valid = photos.length === 1 && FB_PUBLIC_ID.test(photos[0]);
     }
   }
   if (!valid) return { ok: false, error: "URL is not a supported public video format" };
