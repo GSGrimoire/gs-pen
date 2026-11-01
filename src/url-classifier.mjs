@@ -63,7 +63,9 @@ export function classifyPublicVideoUrl(input) {
       valid = TOKEN.test(parts[2]);
       requiresRedirectResolution = valid;
     } else if (parts.length === 2 && parts[0] === "share") {
-      valid = TOKEN.test(parts[1]);
+      // A route such as /share/p/ is an incomplete typed share link, not
+      // an independent generic share token.
+      valid = FB_PUBLIC_ID.test(parts[1]);
       requiresRedirectResolution = valid;
     } else if (parts.length === 3 && parts[1] === "posts") {
       valid = FB_PAGE.test(parts[0]) && FB_PUBLIC_ID.test(parts[2]);
@@ -75,6 +77,6 @@ export function classifyPublicVideoUrl(input) {
       valid = photos.length === 1 && FB_PUBLIC_ID.test(photos[0]);
     }
   }
-  if (!valid) return { ok: false, error: "URL is not a supported public video format" };
+  if (!valid) return { ok: false, error: "URL is not a supported public post or video format" };
   return { ok: true, platform, url: url.href, requiresRedirectResolution, mediaAccessVerified: false };
 }
