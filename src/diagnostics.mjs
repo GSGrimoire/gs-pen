@@ -7,7 +7,7 @@ const choices = {
   status: ["started", "succeeded", "failed", "unavailable", "skipped"],
   source: ["browser", "site", "retrieval_service", "local_backend"],
   code: ["PARTIAL_RESULT", "CONTENT_NOT_FOUND", "OK", "STARTED", "INVALID_URL", "UNSUPPORTED_PLATFORM", "UNSUPPORTED_LINK_TYPE", "SHORT_LINK_UNRESOLVED", "SHORT_LINK_TARGET_REJECTED", "AUTH_DENIED", "NETWORK_ERROR", "PROVIDER_BLOCKED", "CAPTIONS_NOT_FOUND", "CAPTION_HOST_REJECTED", "CAPTION_PARSE_FAILED", "CORS_DENIED", "TIMEOUT", "AUDIO_UNAVAILABLE", "STORAGE_FAILED", "BACKEND_UNAVAILABLE", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "RATE_LIMITED", "RESPONSE_TOO_LARGE"],
-  linkType: ["watch", "shorts", "short_link", "reel", "creator_video", "share", "video", "unknown"],
+  linkType: ["watch", "shorts", "short_link", "reel", "creator_video", "share", "video", "post", "unknown"],
   queryShape: ["none", "video_id_only", "additional_parameters", "unknown"],
   cdnFamily: ["tiktokcdn", "tiktokcdn_us", "tiktokcdn_eu", "tiktokv", "byteoversea", "ibytedtos", "tiktok", "unknown", "none"],
   transport: ["browser_direct", "site_backend", "local_backend", "none"],
@@ -47,6 +47,7 @@ export function diagnosticLinkContext(input) {
   else if (p.includes("shorts")) linkType = "shorts";
   else if (p.includes("reel")) linkType = "reel";
   else if (p.includes("share") || p.includes("t")) linkType = "share";
+  else if (verdict.platform === "facebook" && (p.includes("posts") || p.includes("story.php") || p.includes("permalink.php") || p.includes("photo.php"))) linkType = "post";
   else if (u.pathname.startsWith("/watch")) linkType = "watch";
   else if (verdict.platform === "tiktok") linkType = "creator_video";
   const queryShape = !u.search ? "none" :

@@ -101,7 +101,7 @@ function renderTab(){
   }
   if(state.tab==="whisper"){panel.append(plainEmpty("Independent Whisper is not active","Audio capture and speech recognition are planned for a future release. This tab never displays platform captions as Whisper output."));return;}
   if(state.tab==="post"){
-    if(!result){panel.append(plainEmpty('No post request yet','Inspect a TikTok or Facebook video to retrieve public post text and hashtags.'));return;}
+    if(!result){panel.append(plainEmpty('No post request yet','Inspect a supported TikTok video or public Facebook post to retrieve available text and hashtags.'));return;}
     if(!result.post?.text){panel.append(plainEmpty('Post text unavailable',explain(result.post?.code||result.code)));return;}
     panel.append(node('p',result.post.provenance,'output-note'),node('div',result.post.text,'post-output'));
     if(result.post.hashtags?.length)panel.append(node('p',result.post.hashtags.join(' '),'output-note'));
@@ -109,7 +109,7 @@ function renderTab(){
     return;
   }
   if(state.tab==="metadata"){
-    if(!result){panel.append(plainEmpty('No metadata request yet','Inspect a TikTok or Facebook video to retrieve available public metadata.'));return;}
+    if(!result){panel.append(plainEmpty('No metadata request yet','Inspect a supported TikTok video or public Facebook post to retrieve available metadata.'));return;}
     if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('Metadata unavailable',explain(result.metadata?.code||result.code)));return;}
     const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook'};
     const list=node('dl',undefined,'detail-list');for(const [key,value] of Object.entries(result.metadata.fields))list.append(node('dt',labels[key]||key),node('dd',value));
@@ -126,9 +126,11 @@ const errorText={
   CONTENT_NOT_FOUND:"The public page did not expose this information in a supported format. It may still be visible on the platform.",
   AUTH_DENIED:"Owner authentication was rejected. Sign in again to this private Site.",
   RATE_LIMITED:"The research request limit was reached. Wait one minute and retry.",
-  INVALID_URL:"The link is invalid or outside the supported video formats.",
+  INVALID_URL:"The link is invalid or outside the supported public post and video formats.",
   NOT_IMPLEMENTED:"Native caption retrieval is not implemented for this platform or link style. Post text and metadata may still be available in their tabs.",
-  UNSUPPORTED_LINK_TYPE:"The link is recognized, but the experimental caption resolver requires a canonical public video URL.",
+  UNSUPPORTED_LINK_TYPE:"The platform link is recognized but cannot be resolved to a supported public post or video.",
+  SHORT_LINK_UNRESOLVED:"The shared link did not expose a supported public post or video target. It may require sign-in, have expired, or be unavailable publicly.",
+  SHORT_LINK_TARGET_REJECTED:"The shared link pointed outside supported public post and video formats, so it was not followed.",
   PROVIDER_BLOCKED:"The platform or caption asset rejected the request. Captions might still exist.",
   CAPTIONS_NOT_FOUND:"The page was retrieved, but no caption track was discovered. This is not proof that captions do not exist.",
   CAPTION_HOST_REJECTED:"A caption track was found, but its delivery domain was not on our narrowly reviewed list.",
@@ -139,7 +141,7 @@ const errorText={
   INTERNAL_ERROR:"The research backend encountered a safe, unclassified internal failure."
 };
 function explain(code){return (errorText[code]||"The request did not return an available caption track.")+" Error code: "+code+".";}
-function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Extract video ↗";}
+function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Extract link ↗";}
 async function doProbe(event){
   event.preventDefault();if(state.busy)return;state.openSeq++;
   const input=$("video-url").value.trim(),context=diagnosticLinkContext(input);
@@ -239,7 +241,7 @@ async function clearDiagnostics(){
 }
 document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{state.tab=button.dataset.tab;renderTab();}));
 document.querySelectorAll("[data-example]").forEach(button=>button.addEventListener("click",()=>{$("video-url").value=button.dataset.example;$("source-summary").textContent="Example ready";$("video-url").focus();}));
-$("video-url").addEventListener("input",()=>{const c=diagnosticLinkContext($("video-url").value);$("source-summary").textContent=c.platform==="unknown"?"Paste a supported public video link":c.platform+" · "+c.linkType+" · "+c.sourceDomain;});
+$("video-url").addEventListener("input",()=>{const c=diagnosticLinkContext($("video-url").value);$("source-summary").textContent=c.platform==="unknown"?"Paste a supported public post or video link":c.platform+" · "+c.linkType+" · "+c.sourceDomain;});
 $("probe-form").addEventListener("submit",doProbe);
 $("connect-backend").addEventListener("click",connectBackend);
 $("filter-search").addEventListener("input",drawEvents);

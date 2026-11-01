@@ -4,7 +4,7 @@ import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
 import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
 import { resolveTikTokShareUrl } from './tiktok-share.mjs';
-import { resolveFacebookShareUrl } from './facebook-share.mjs';
+import { resolveFacebookShareUrl, canonicalFacebookContentUrl } from './facebook-share.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
@@ -127,8 +127,11 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
     return fail("UNSUPPORTED_LINK_TYPE");
   }
   // Do not forward tracking parameters or arbitrary query strings to the provider.
-  const canonical=verdict.platform==='tiktok'?"https://www.tiktok.com"+u.pathname:
-    'https://www.facebook.com'+u.pathname+(u.pathname.startsWith('/watch')?'?v='+u.searchParams.get('v'):'');
+  const canonical=verdict.platform==='tiktok'?"https://www.tiktok.com"+u.pathname:canonicalFacebookContentUrl(u.href);
+  if (!canonical) {
+    report("provider_identify","failed","UNSUPPORTED_LINK_TYPE");
+    return fail("UNSUPPORTED_LINK_TYPE");
+  }
   let page;
   report("provider_page_fetch","started","STARTED");
   try {page=await fetchBounded(canonical,LIMIT_PAGE,fetchImpl);}
@@ -137,13 +140,16 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   if(page.body?.tooLarge){report("provider_page_fetch","failed","RESPONSE_TOO_LARGE");return fail("RESPONSE_TOO_LARGE");}
   if(!page.body){report("provider_page_fetch","failed","NETWORK_ERROR");return fail("NETWORK_ERROR");}
   report("provider_page_fetch","succeeded","OK",{responseBucket:responseSizeBucket(page.body.size),contentType:"html",httpStatus:200});
-  const videoId=u.pathname.startsWith('/watch')?u.searchParams.get('v'):u.pathname.split('/').filter(Boolean).at(-1);
+  const source=new URL(canonical);
+  const videoId=source.searchParams.get('v')||source.searchParams.get('story_fbid')||
+    source.searchParams.get('fbid')||source.pathname.split('/').filter(Boolean).at(-1);
   const item=verdict.platform==='tiktok'?matchedTikTokItem(page.body.text,videoId):null;
   content=verdict.platform==='tiktok'?tiktokContent(item,videoId):facebookContent(page.body.text,videoId);
   contentParsed=true;
   for(const [key,stage] of [['post','post_parse'],['metadata','metadata_parse']])report(stage,content[key].status,content[key].code,{...(key==='post'?{postTextFound:!!content.post.text}:{metadataFound:content.metadata.status==='succeeded'})});
   if(verdict.platform==='facebook'){
-    // First Facebook increment reads public post fields only. No audio download or hidden APIs.
+    // Facebook exposes public post previews, but no caption or audio retrieval.
+    // Returning NOT_IMPLEMENTED preserves any authentic partial post/metadata result.
     report('caption_track_discovery','unavailable','NOT_IMPLEMENTED');
     return fail('NOT_IMPLEMENTED','unavailable');
   }

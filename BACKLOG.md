@@ -27,7 +27,7 @@ GS Poster source inspected on 25 October 2026: `src/mcp.ts` provides draft_post/
 Other previously agreed priorities remain:
 1. Google Drive saving: explicit durable text export containing every output, source and availability/provenance warnings, with a confirmed file link. Reuse Scribe patterns where suitable, but authorize Pen separately.
 2. Asana task creation: editable title, selected project and optional due date, with source and a durable saved-content link. Do not rely only on expiring Pen history.
-3. PEN-101: Facebook ordinary shared/short links and broader video formats, safe canonical resolution, more reliable partial results, and permitted native caption feasibility.
+3. PEN-101 / PEN-024 issue #25: Facebook ordinary post share formats and safe canonical resolution are prepared for review on `chatgpt/pen-024-facebook-post-share`; provider live checks and release remain pending. Broader video formats, reliability measurements and permitted native caption feasibility remain open.
 4. PEN-101: YouTube Shorts and standard-video hosted feasibility, then captions, descriptions and metadata where permitted. Earlier cloud-runner access was blocked; no hosted support promised.
 5. PEN-101: Instagram Reels public caption/post/metadata feasibility. Currently recognized only.
 6. PEN-002B / PEN-005 / PEN-006: Broader permitted provider sample testing across dates, availability measurements, retrieval rights/privacy review and full-product feasibility decision. Current live examples do not establish universal compatibility.

@@ -1,3 +1,9 @@
+# Pending PEN-024 ordinary Facebook post-share release, 1 November 2026
+
+The owner reports continued extraction failures and requires the copy/share URLs provided by TikTok and Facebook to work. TikTok short-link and Facebook video/reel changes from 30 October are already merged in main but are **not published to the private Site**. PEN-024 issue #25 and branch `chatgpt/pen-024-facebook-post-share` add ordinary Facebook post-share resolution and clearer user-facing error messages. Do not treat a recognized URL as evidence that Facebook/TikTok allows a public data fetch. Real sample access and any new Site version remain unverified. This branch requires the normal review/checks and a merge before the Sites release handoff below.
+
+---
+
 # Pending short-link reliability publication, 30 October 2026
 
 **GitHub source updated but private Site NOT published.** TikTok PEN-020 / pull request #21 merged to main as `9a72051cddb225c00830dd97023f405e257827f4`. Facebook/TikTok reliability PEN-023 / pull request #24 merged next as `33f87171f275467763c428359abf7826d3b0bb0a`. The latter is the merged application-code commit for this pair. The final source includes bounded TikTok/Facebook short-link resolution, additional TikTok public state parsing and up to three validated native caption candidates. It does not provide independent speech transcription or Facebook native captions.

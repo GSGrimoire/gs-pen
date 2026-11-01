@@ -7,7 +7,7 @@ const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const HOSTS = new Set(['www.facebook.com','facebook.com','m.facebook.com']);
 const MAX_HOPS = 3, HTML_LIMIT = 131072;
 
-export function canonicalFacebookVideoUrl(input) {
+export function canonicalFacebookContentUrl(input) {
   const v=classifyPublicVideoUrl(input);
   if(!v.ok || v.platform!=='facebook' || v.requiresRedirectResolution) return null;
   const u=new URL(v.url), host=u.hostname;
@@ -19,7 +19,25 @@ export function canonicalFacebookVideoUrl(input) {
     return 'https://www.facebook.com/watch/?v='+u.searchParams.get('v');
   if(p.length>=3&&p.length<=4&&p[1]==='videos'&&/^\d{8,30}$/.test(p.at(-1)))
     return 'https://www.facebook.com/'+p.join('/');
+  if(p.length===3&&p[1]==='posts'&&/^[A-Za-z0-9._-]{1,100}$/.test(p[0])&&/^[A-Za-z0-9_-]{6,200}$/.test(p[2]))
+    return 'https://www.facebook.com/'+p.join('/');
+  if(p.length===1&&['story.php','permalink.php'].includes(p[0])) {
+    const story=u.searchParams.get('story_fbid'),owner=u.searchParams.get('id');
+    if(story&&owner)return 'https://www.facebook.com/'+p[0]+'?story_fbid='+encodeURIComponent(story)+'&id='+encodeURIComponent(owner);
+  }
+  if(p.length===1&&p[0]==='photo.php') {
+    const id=u.searchParams.get('fbid');
+    if(id)return 'https://www.facebook.com/photo.php?fbid='+encodeURIComponent(id);
+  }
   return null;
+}
+// Backward-compatible video-only export for callers that inspect this narrower
+// format. Link resolution below supports public post URLs as well.
+export function canonicalFacebookVideoUrl(input) {
+  const url=canonicalFacebookContentUrl(input);
+  if(!url)return null;
+  const p=new URL(url).pathname;
+  return p.startsWith('/reel/')||p.startsWith('/watch')||p.includes('/videos/')?url:null;
 }
 function classifiedShare(input) {
   const v=classifyPublicVideoUrl(input);
@@ -55,13 +73,13 @@ async function canonicalHint(response,base) {
       (attrs.rel||'').toLowerCase()==='canonical'?attrs.href:null;
     if(!candidate)continue;
     let target;try{target=new URL(candidate.replace(/&amp;/g,'&'),base).href;}catch{continue;}
-    const canonical=canonicalFacebookVideoUrl(target);
+    const canonical=canonicalFacebookContentUrl(target);
     if(canonical)return canonical;
   }
   return null;
 }
 export async function resolveFacebookShareUrl(source,fetchImpl=fetch) {
-  const start=canonicalFacebookVideoUrl(source);
+  const start=canonicalFacebookContentUrl(source);
   if(start)return {ok:true,url:start,redirectCount:0};
   let current=classifiedShare(source);
   if(!current)return resultError('SHORT_LINK_TARGET_REJECTED',0);
@@ -95,7 +113,7 @@ export async function resolveFacebookShareUrl(source,fetchImpl=fetch) {
         return resultError('SHORT_LINK_TARGET_REJECTED',count+1,response.status);
       dest=u.href;
     }catch{return resultError('SHORT_LINK_TARGET_REJECTED',count+1,response.status);}
-    const canonical=canonicalFacebookVideoUrl(dest);
+    const canonical=canonicalFacebookContentUrl(dest);
     if(canonical)return {ok:true,url:canonical,redirectCount:count+1};
     const share=classifiedShare(dest);
     if(!share)return resultError('SHORT_LINK_TARGET_REJECTED',count+1,response.status);
