@@ -75,3 +75,9 @@ A Facebook resolved link may provide publicly visible post/creator metadata, but
 TikTok extraction also examines additional publicly embedded page-state fields (`SIGI_STATE` and `__NEXT_DATA__`) with exact requested-video identifier matching, and attempts at most three separately validated published caption URLs when earlier tracks fail. The allowlist, response byte cap, read timeout, and content/diagnostic separation remain unchanged. Attempts record safe numeric indices without storing signed asset URLs.
 
 Synthetic tests can demonstrate supported parsing and failure semantics. They do not prove live public access for every social platform link. Real owner-private hosted checks and a deployment receipt are separate release requirements.
+
+## PEN-024 ordinary Facebook post-share links (pending deployment)
+
+Recognize `facebook.com/share/p/<token>` and `facebook.com/share/<token>` as public share links requiring bounded validated resolution. Permit exact public Facebook post targets `/<page>/posts/<id>`, `/story.php?story_fbid=<id>&id=<owner>`, `/permalink.php?story_fbid=<id>&id=<owner>`, and `/photo.php?fbid=<id>`. Strip nonessential query parameters; never follow arbitrary hosts, credentials, ports, insecure URLs or login destinations. HTML canonical hints are only accepted if they point to those supported targets. Public post previews remain potentially truncated. A Facebook post never implies native video captions or independent speech transcription.
+
+Add the `post` diagnostic link category; share tokens, canonical post identifiers, text, authors and tracking fields remain excluded. This is a GitHub branch change, not a verified live Site release. All unit/browser fixtures must be distinguished from provider and authenticated hosted tests.
