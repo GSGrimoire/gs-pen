@@ -49,7 +49,7 @@ test('Reject malicious, cross-provider, login, unsupported and credentialed redi
     'https://www.facebook.com:444/reel/'+id,
     'https://www.facebook.com@evil.test/reel/'+id,
     'https://www.facebook.com/login',
-    'https://www.facebook.com/share/p/something/',
+    'https://www.facebook.com/share/unsupported/something/',
     'https://www.tiktok.com/@creator/video/1234567890123456789'
   ]){
     let calls=0;
