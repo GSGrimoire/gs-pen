@@ -49,6 +49,7 @@ test('known caption result shows original timed cues and sanitized stage timelin
   await expect(page.locator('#trace-status')).toHaveText('Captions retrieved');
   await expect(page.locator('#tab-panel')).toContainText('First synthetic line');
   await expect(page.locator('#tab-panel')).toContainText('2 caption cues');
+  await expect(page.locator('#recovery-guidance')).toBeHidden();
   await expect(page.locator('#timeline')).toContainText('caption parse');
   await expect(page.locator('#context-details')).toContainText('creator_video');
   await expect(page.locator('#storage-indicator')).not.toHaveText('Local only (server write failed)');
@@ -73,6 +74,8 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
   await page.locator('#probe-button').click();
   await expect(page.locator('#trace-status')).toHaveText('Retrieval failed');
   await expect(page.locator('#tab-panel')).toContainText('Captions might still exist');
+  await expect(page.locator('#recovery-guidance')).toContainText('platform refused the request');
+  await expect(page.locator('#recovery-guidance')).toContainText('open Create');
   await expect(page.locator('#timeline')).toContainText('PROVIDER_BLOCKED');
   await expect(page.locator('#diagnostic-rows')).toContainText('PROVIDER_BLOCKED');
 });
@@ -227,6 +230,9 @@ test('Facebook reaches the backend and displays partial post information without
  await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',code:'OK',text:'Synthetic Facebook story #magic',hashtags:['#magic'],provenance:'Facebook public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',code:'OK',fields:{platform:'Facebook',creator:'Synthetic Studio'},provenance:'Synthetic fixture'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
  await openConnected(page);await page.locator('#video-url').fill('https://www.facebook.com/reel/123456789012345');await page.locator('#probe-button').click();
  await expect(page.locator('#trace-status')).toHaveText('Post information retrieved; captions unavailable');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
+ await expect(page.locator('#recovery-guidance')).toContainText('Partial result');
+ await expect(page.locator('#recovery-guidance')).toContainText('not an independent speech transcript');
+ await expect(page.locator('#recovery-guidance')).not.toContainText('Synthetic Facebook story');
  await page.getByRole('tab',{name:'Original captions',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Native captions unavailable');
  await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
 });
