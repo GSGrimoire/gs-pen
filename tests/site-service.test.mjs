@@ -217,6 +217,43 @@ test('Content jobs are owner-scoped, reuse identical briefs and reject stale cre
  const exported=await(await handleSiteRequest(req('content/'+job.id+'/poster'),env)).json();assert.equal(exported.submissionStatus,'not_sent');assert.equal(exported.arguments.message,content.message+'\n\n#DnD');
  const rows=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());assert.ok(!rows.includes('lighthouse'));
 });
+
+test('Owner-provided text is stored only as an explicit bounded private brief excerpt',async()=>{
+ const {env,sql}=setup();const privateText='Manual synthetic source '+('quiet lighthouse '.repeat(240))+'PRIVATE_UNSELECTED_TAIL';
+ const input={idea:'Invent a new magical compass',sourceText:privateText,sourceChars:2000};
+ const response=await handleSiteRequest(req('content','POST',input),env);
+ assert.equal(response.status,200);
+ const {job,reused}=await response.json();
+ assert.equal(reused,false);
+ assert.equal(job.brief.source.kind,'user_supplied_text');
+ assert.equal(job.brief.source.selectedCharacters,2000);
+ assert.equal(job.brief.source.truncated,true);
+ assert.equal(job.brief.source.provenance.verification,'not_verified_by_pen');
+ assert.equal(job.brief.source.extractionId,null);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM extractions').get().n,0);
+ const stored=sql.prepare('SELECT payload FROM content_jobs WHERE id=?').get(job.id).payload;
+ assert.ok(stored.includes('Manual synthetic source'));
+ assert.ok(!stored.includes('PRIVATE_UNSELECTED_TAIL'));
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM diagnostic_events').get().n,0);
+ const clone=await(await handleSiteRequest(req('content','POST',input),env)).json();
+ assert.equal(clone.reused,true);assert.equal(clone.job.id,job.id);
+ const invalid=await handleSiteRequest(req('content','POST',{...input,extractionId:'00000000-0000-4000-8000-000000000001'}),env);
+ assert.equal(invalid.status,400);
+ assert.equal((await invalid.json()).code,'CONTENT_SOURCE_CONFLICT');
+ assert.equal((await handleSiteRequest(req('content','POST',{idea:'x',sourceText:'a'.repeat(8001)}),env)).status,400);
+ for(const identity of [null,'other@example.test']){
+  assert.equal((await handleSiteRequest(req('content/'+job.id,'GET',undefined,identity),env)).status,403);
+  assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE',undefined,identity),env)).status,403);
+  assert.equal((await handleSiteRequest(req('content','POST',input,identity),env)).status,403);
+ }
+ const foreign=req('content/'+job.id);
+ foreign.headers.set('oai-authenticated-user-id','other-owner');
+ assert.equal((await handleSiteRequest(foreign,{...env,GS_PEN_OWNER_ID:'other-owner'})).status,404);
+ assert.equal((await handleSiteRequest(req('content/'+job.id,'DELETE'),env)).status,200);
+ assert.equal(sql.prepare('SELECT count(*) AS n FROM content_jobs').get().n,0);
+ assert.equal((await handleSiteRequest(req('content/'+job.id),env)).status,404);
+});
+
 test('Content source ownership and request bounds cannot be bypassed with client result uploads',async()=>{
  const {env}=setup();const input={idea:'New idea',extractionId:'00000000-0000-4000-8000-000000000099'};
  assert.equal((await handleSiteRequest(req('content','POST',input),env)).status,404);
