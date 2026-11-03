@@ -497,6 +497,23 @@ async function stubContentJobs(page){
   return route.fulfill({contentType:'application/json',body:JSON.stringify({job:job()})});
  });
 }
+test('Create distinguishes deterministic brief preparation from assistant generation and account costs',async({page})=>{
+ await stubContentJobs(page);
+ const external=[];page.on('request',request=>{
+  if(/api\\.(openai|anthropic)\\.com|\/v1\/(responses|chat\/completions|messages)/i.test(request.url()))external.push(request.url());
+ });
+ await page.goto('/#create');
+ await expect(page.getByRole('heading',{name:/Prepare your creative brief/})).toBeVisible();
+ const disclosure=page.locator('#creative-cost-note');
+ await expect(disclosure).toContainText('makes no language-model calls');
+ await expect(disclosure).toContainText('your chosen assistant account');
+ await expect(disclosure).toContainText('Nothing is sent to an assistant automatically');
+ await page.locator('#content-idea').fill('An original lighthouse compass');
+ await page.locator('#content-create').click();
+ await expect(page.locator('#content-status')).toContainText('Brief saved');
+ expect(external).toEqual([]);
+});
+
 test('Idea workflow prepares a compact brief and saves a creative response without automatic generation',async({page})=>{
  await stubContentJobs(page);await page.goto('/');await chooseView(page,'Create');
  await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();

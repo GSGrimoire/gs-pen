@@ -76,3 +76,7 @@
  .top .drawer-open{order:1}
 }
 @media(prefers-reduced-motion:reduce){.shell>.rail{transition:none!important}}
+
+/* PEN-031: disclose generation responsibility before owner prepares a brief. */
+.creative-cost-note{border:1px solid #eadfd0;border-left:3px solid var(--orange);background:#fffaf3;color:#5d5043;border-radius:9px;padding:13px 15px;font-size:12px;line-height:1.75;margin:14px 0 18px;overflow-wrap:anywhere}
+.creative-cost-note strong{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
