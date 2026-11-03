@@ -360,5 +360,6 @@ $('recovery-create').addEventListener('click',()=>{
   const available=!!(state.result.cues?.length||state.result.post?.text||state.result.metadata?.status==='succeeded');
   if(available&&state.result.historyId)contentWorkspace.useExtraction(state.result.historyId);
   else location.hash='create'; // Do not attach an unsaved extraction or clear existing creative work.
-  requestAnimationFrame(()=>{if(location.hash==='#create')$('content-idea').focus();});
+  navigate(); // Make the Create panel visible before moving keyboard focus.
+  if(location.hash==='#create')$('content-idea').focus();
 });
