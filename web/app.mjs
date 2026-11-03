@@ -298,8 +298,13 @@ function initWorkspaceRail(){
  opener.addEventListener('click',()=>{
   if(!compact.matches)return;
   open=true;render();
-  // In some mobile browsers the newly revealed rail cannot take focus until the next frame.
+  // Touch-device click focus may settle after the reveal begins. Re-focus when the
+  // transform reaches its visible endpoint, not while the rail is transitioning.
   requestAnimationFrame(()=>{if(open&&compact.matches)closer.focus({preventScroll:true});});
+ });
+ rail.addEventListener('transitionend',event=>{
+  if(event.target===rail&&event.propertyName==='transform'&&open&&compact.matches)
+   closer.focus({preventScroll:true});
  });
  closer.addEventListener('click',()=>dismiss());
  scrim.addEventListener('click',()=>dismiss());
