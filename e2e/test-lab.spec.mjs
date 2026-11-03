@@ -320,6 +320,10 @@ test('Responsive right rail keeps extractor alongside navigation and saved histo
   await expect(rail).toBeVisible();
   await expect(opener).toHaveAttribute('aria-expanded','true');
   await expect(rail).toHaveAttribute('aria-modal','true');
+  await expect.poll(()=>page.evaluate(()=>{
+   const rail=document.getElementById('workspace-rail').getBoundingClientRect();
+   return Math.abs(rail.right-window.innerWidth);
+  })).toBeLessThanOrEqual(1);
   const size=await page.evaluate(()=>{
    const width=window.innerWidth,rail=document.getElementById('workspace-rail').getBoundingClientRect();
    return {width,railWidth:rail.width,railRight:rail.right};
