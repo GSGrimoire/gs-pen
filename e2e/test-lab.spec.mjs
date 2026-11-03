@@ -525,6 +525,58 @@ test('Idea workflow prepares a compact brief and saves a creative response witho
  expect(payload.submissionStatus).toBe('not_sent');expect(payload.arguments.message).toBe(draft.message);await expect(page.locator('#content-status')).toContainText('has not been sent');
  const dims=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,width:document.documentElement.clientWidth}));expect(dims.scroll).toBeLessThanOrEqual(dims.width+2);
 });
+test('Manual source text stays local until an explicit brief, then remains distinct from the idea',async({page})=>{
+ await stubContentJobs(page);let writes=0,submitted=null;
+ await page.route('**/api/content',async route=>{
+  if(route.request().method()==='POST'){writes++;submitted=route.request().postDataJSON();}
+  await route.fallback();
+ });
+ await page.goto('/#create');
+ const source='Synthetic permitted source. '+('A useful illustration '.repeat(140));
+ await page.locator('#content-idea').fill('An original item in a lighthouse');
+ await page.locator('#content-manual-source').fill(source);
+ await expect(page.locator('#content-source')).toContainText('user-provided, not verified by Pen');
+ await expect(page.locator('#content-source-count')).toContainText('will be stored after Prepare brief');
+ await page.locator('#content-budget').selectOption('2000');
+ await expect(page.locator('#content-source-count')).toContainText('2000 of');
+ await expect(page.locator('#content-source-count')).toContainText('remaining text will not be stored');
+ expect(writes).toBe(0);
+ await page.locator('#content-create').click();
+ await expect(page.locator('#content-status')).toContainText('Brief saved');
+ expect(writes).toBe(1);
+ expect(submitted.sourceText).toBe(source.trim());
+ expect(submitted.extractionId).toBeUndefined();
+ expect(submitted.idea).toBe('An original item in a lighthouse');
+ await page.locator('#content-clear-source').click();
+ await expect(page.locator('#content-manual-source')).toHaveValue('');
+ await expect(page.locator('#content-idea')).toHaveValue('An original item in a lighthouse');
+ expect(writes).toBe(1);
+ const size=await page.evaluate(()=>({scroll:document.documentElement.scrollWidth,client:document.documentElement.clientWidth}));
+ expect(size.scroll).toBeLessThanOrEqual(size.client+2);
+});
+test('Selecting a saved extraction excludes prior pasted text until source is cleared',async({page})=>{
+ await stubHistory(page);await stubContentJobs(page);let submitted=null;
+ await page.route('**/api/content',async route=>{
+  if(route.request().method()==='POST')submitted=route.request().postDataJSON();
+  await route.fallback();
+ });
+ await page.goto('/#create');
+ await page.locator('#content-idea').fill('Original angle retained');
+ await page.locator('#content-manual-source').fill('Private synthetic manual text');
+ await chooseView(page,'Recent');
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await page.locator('#create-from-result').click();
+ await expect(page.locator('#content-manual-source')).toBeDisabled();
+ await expect(page.locator('#content-source-count')).toContainText('excluded');
+ await page.locator('#content-create').click();
+ expect(submitted.extractionId).toBe('00000000-0000-4000-8000-000000000010');
+ expect(submitted.sourceText).toBeUndefined();
+ await page.locator('#content-clear-source').click();
+ await expect(page.locator('#content-manual-source')).toBeEnabled();
+ await expect(page.locator('#content-manual-source')).toHaveValue('');
+ await expect(page.locator('#content-idea')).toHaveValue('Original angle retained');
+});
+
 test('Invalid creative JSON remains editable and never reaches the save endpoint',async({page})=>{
  await stubContentJobs(page);let writes=0;page.on('request',r=>{if(r.url().endsWith('/api/content/draft'))writes++;});await page.goto('/#create');await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();await expect(page.locator('#content-brief-panel')).toBeVisible();
  await page.locator('#content-response').fill('not JSON');await page.locator('#content-save-draft').click();await expect(page.locator('#content-status')).toContainText('INVALID_CONTENT_JSON');expect(writes).toBe(0);await expect(page.locator('#content-response')).toHaveValue('not JSON');

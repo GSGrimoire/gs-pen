@@ -23,3 +23,38 @@ test('Poster export is exact, deterministic and truthfully unsent; reel upload i
  const result=posterDraft({id,inputHash:'hash',brief:{format:'facebook_post'},draft});assert.equal(result.tool,'draft_post');assert.equal(result.submissionStatus,'not_sent');assert.equal(result.requiresOwnerApproval,true);assert.equal(result.arguments.message,draft.message+'\n\n#DnD');assert.equal(result.arguments.release,'Pen '+id);assert.ok(!('script' in result.arguments));assert.ok(!('publish_at' in result.arguments));
  assert.throws(()=>posterDraft({brief:{format:'facebook_post'}}));assert.throws(()=>posterDraft({id,brief:{format:'reel_script'},draft:{...draft,script:'A short script'}}));
 });
+
+
+test('User-provided source text is bounded and never represented as Pen-verified captions',async()=>{
+ const raw='Owner-provided notes: '+('synthetic '.repeat(350))+'UNSELECTED_PRIVATE_SENTINEL';
+ const input=contentInput({idea:'A new arc',sourceChars:2000,sourceText:raw});
+ const brief=createBrief(input);
+ assert.equal(brief.source.kind,'user_supplied_text');
+ assert.equal(brief.source.extractionId,null);
+ assert.equal(brief.source.provenance.verification,'not_verified_by_pen');
+ assert.equal(brief.source.provenance.independentTranscript,'not_verified');
+ assert.equal(brief.source.selectedCharacters,2000);
+ assert.equal(brief.source.truncated,true);
+ assert.ok(!JSON.stringify(brief).includes('UNSELECTED_PRIVATE_SENTINEL'));
+ const prompt=creativePrompt(brief);
+ assert.ok(prompt.includes('User-supplied text has not been verified'));
+ assert.ok(!prompt.includes('UNSELECTED_PRIVATE_SENTINEL'));
+ assert.equal(brief.source.text.length,2000);
+ assert.equal(await briefHash(brief),await briefHash(createBrief(input)));
+ assert.notEqual(await briefHash(brief),await briefHash(createBrief({...input,sourceText:'Other permitted source'})));
+});
+test('Manual source conflicts and oversized or unknown fields are rejected without source reflection',()=>{
+ const oversized='PRIVATE_SENTINEL'+ 'x'.repeat(8000);
+ for(const input of [
+  {idea:'A creation',sourceText:oversized},
+  {idea:'A creation',sourceText:[],sourceChars:2000},
+  {idea:'A creation',sourceText:'Owned text',extractionId:id},
+  {idea:'A creation',sourceText:'Owned text',sourceVerified:true}
+ ])assert.throws(()=>contentInput(input),e=>/^(INVALID_CONTENT_TEXT|CONTENT_SOURCE_CONFLICT|INVALID_CONTENT_FIELDS)$/.test(e.code)&&!e.message.includes('PRIVATE_SENTINEL'));
+ assert.equal(contentInput({idea:'An idea',sourceText:'    '}).sourceText,'');
+});
+test('Manual source uses Unicode code points for the selected character budget',()=>{
+ const brief=createBrief(contentInput({idea:'A story',sourceChars:2000,sourceText:'🗝️'.repeat(1000)}));
+ assert.equal(Array.from(brief.source.text).length,2000);
+ assert.equal(brief.source.truncated,false);
+});
