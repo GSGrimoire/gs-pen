@@ -1,11 +1,11 @@
 # GS Pen backlog
-Updated 25 October 2026. The owner-private Site is live. Historical deployment-pending statements have been superseded.
+Updated 3 November 2026. The last documented owner-private Site release remains version 11 from 25 October. Later changes have merged into GitHub but have no newer verified private deployment receipt; see `docs/DEPLOYMENT.md` and `docs/RELEASE_READINESS_2026-11-04.md`.
 
-## Pending PEN-018
-- Issue #18: older retained-work browsing, owner-scoped totals and compact history summaries are implemented on chatgpt/pen-retained-pages. Review: docs/REVIEW_PEN_018.md. Publication is pending. Pen's signed-in list connector was verified on 26 October; no Poster delivery was attempted.
+## Merged PEN-018, private publication pending
+- Issue #18 / pull request #19: owner-scoped paging of older extractions and content jobs, retained totals and compact summaries are merged in GitHub as `4b8add81e18075effa23229fd5a267d9491774b2`, but no later Site deployment is documented. Review: `docs/REVIEW_PEN_018.md`. The signed-in `list_content_jobs` read path has succeeded; no Poster delivery was attempted.
 
 ## Current delivery
-- Version 11: reviewed #15 and #17 merged in order and published owner-private from main 4a7d271 on 25 October 2026. Retention is paused in the live application. Create workflow and confirmed owner job deletion are live. All 100 unit and 62 desktop/mobile tests plus build/lint/types pass; fresh hosted checks and limits are in docs/DEPLOYMENT.md. Assistant tools are provisioned/installed but need a live call in a fresh chat; Poster delivery remains pending.
+- Version 11: reviewed #15 and #17 merged in order and published owner-private from main 4a7d271 on 25 October 2026. Retention is paused in the live application. Create workflow and confirmed owner job deletion are live. All 100 unit and 62 desktop/mobile tests plus build/lint/types pass; fresh hosted checks and limits are in docs/DEPLOYMENT.md. Assistant tools are provisioned/installed; the signed-in `list_content_jobs` read path has returned `{"jobs":[]}`. Other assistant operations and real provider results need separate hosted verification; Poster delivery remains pending.
 
 ### Historical version 10 delivery
 - PEN-011 / issue #12: complete assistant handoffs for Claude and ChatGPT, with clipboard-first web launch, optional bounded Claude desktop prefill, and explicit failure fallbacks. Deployed owner-private as reviewed main version 10. Final verification: 89 unit tests, 48 desktop/mobile browser checks, build/lint/types and fresh hosted checks passed. Required review corrections and sequential merges are complete.
@@ -16,8 +16,10 @@ Updated 25 October 2026. The owner-private Site is live. Historical deployment-p
 ## Current content workflow implementation
 - Issue #16: Create workspace, bounded deterministic briefs, owner-private jobs, validated creative responses, authenticated assistant tools and exact unsent Poster draft payloads are implemented on `chatgpt/pen-idea-to-draft`, stacked on #15. Plan and verification boundaries: docs/IDEA_TO_DRAFT_PLAN.md. No model calls, model service, paid generation or live Poster write has been added. Claude reviewed #17, C1 was corrected, and the change merged/published as version 11. Hosted owner workflow works; a live assistant tool call remains unverified in this chat.
 
-## Current change
-- Issue #14: pause automatic time-based deletion and count-based pruning of stored diagnostics/extractions. The cleanup schedule is paused. Application changes passed Claude review, merged in #15 and are live in version 11; normal-use expiry/count pruning is now paused.
+## Pending release and usability increments
+- Issue #27 / PEN-025: private publication and real provider/owner-access verification of merged PEN-018, PEN-020, PEN-023 and PEN-024. No live Site update until the publication gate. Prepare against `docs/RELEASE_READINESS_2026-11-04.md`.
+- Issue #28 / PEN-026, draft pull request #29: deterministic next-step guidance for failed/partial extractions. Only include after its final checks and review, and after it merges. No Site release is implied by a GitHub PR.
+- Issue #14 retention pause passed review, merged in #15 and has been live since version 11; scheduled cleanup remains paused.
 
 ## Proposed next integration
 The user's new goal is source link → Pen extraction → assistant creates an original GS Grimoire post or reel brief → Poster draft → owner approval. Prioritize a first complete text/image Facebook draft flow once Poster is working. Add authenticated Pen extraction/read tools, a shared content brief with source/provenance and missing-output flags, and a tested connection to Poster's existing draft tools. Preserve Poster's separate approval requirement. Never treat a shortened preview or post description as a verified video transcript. Generate fresh wording and approved/original assets rather than copying source footage or narration.
@@ -27,7 +29,7 @@ GS Poster source inspected on 25 October 2026: `src/mcp.ts` provides draft_post/
 Other previously agreed priorities remain:
 1. Google Drive saving: explicit durable text export containing every output, source and availability/provenance warnings, with a confirmed file link. Reuse Scribe patterns where suitable, but authorize Pen separately.
 2. Asana task creation: editable title, selected project and optional due date, with source and a durable saved-content link. Do not rely only on expiring Pen history.
-3. PEN-101 / PEN-024 issue #25: Facebook ordinary post share formats and safe canonical resolution are prepared for review on `chatgpt/pen-024-facebook-post-share`; provider live checks and release remain pending. Broader video formats, reliability measurements and permitted native caption feasibility remain open.
+3. PEN-101 / PEN-024 issue #25: Facebook ordinary post-share formats and safe canonical resolution merged as pull request #26 on 1 November 2026, but still await private Site publication and real provider verification under issue #27. Broader video formats, reliability measurements and permitted native caption feasibility remain open.
 4. PEN-101: YouTube Shorts and standard-video hosted feasibility, then captions, descriptions and metadata where permitted. Earlier cloud-runner access was blocked; no hosted support promised.
 5. PEN-101: Instagram Reels public caption/post/metadata feasibility. Currently recognized only.
 6. PEN-002B / PEN-005 / PEN-006: Broader permitted provider sample testing across dates, availability measurements, retrieval rights/privacy review and full-product feasibility decision. Current live examples do not establish universal compatibility.
@@ -52,7 +54,7 @@ Other previously agreed priorities remain:
 
 PEN-105 release completed on 25 October 2026. Native mobile app delivery and real second-account access remain verification follow-ups.
 
-- Add pagination/search for retained history older than the latest-50 display window; do not reintroduce deletion as a pagination shortcut.
+- Pagination for older retained history and content jobs is merged under PEN-018; verify it on the private Site after publication. Full-archive text search is still not implemented. Do not reintroduce deletion as a pagination shortcut.
 
 ## Claude review follow-ups, 25 October 2026
 - Add retained-record totals and pagination for history/content jobs beyond the latest-50 window, including access to older records for manual deletion.
