@@ -1,5 +1,5 @@
 import test from 'node:test';import assert from 'node:assert/strict';
-import {exportRecord,exportText,tabText} from '../src/extraction-export.mjs';
+import {exportRecord,exportText,tabText,exportSubRip} from '../src/extraction-export.mjs';
 const result={ok:true,code:'OK',cues:[{start:'00:00:01.000',text:'Synthetic platform caption'}],post:{text:'Fixture description',provenance:'Public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',provenance:'Public page',fields:{creator:'Fixture creator',likes:0}},events:[{secret:'diagnostic'}],unpersistedCaptionHost:'signed.test'};
 test('Text and structured exports retain provenance, partial outputs and transcript separation',()=>{
  const r=exportRecord(result,'https://www.facebook.com/reel/123456789012345');assert.equal(r.independentTranscript.status,'not_implemented');assert.equal(r.result.captionType,'platform');assert.equal(r.result.events,undefined);assert.ok(!JSON.stringify(r).includes('signed.test'));
@@ -42,4 +42,35 @@ test('Claude desktop link includes exactly 24000 encoded characters and excludes
   assert.equal(handoff.desktopUrl!==null,length===24000);
   if(handoff.desktopUrl)assert.equal(new URL(handoff.desktopUrl).searchParams.get('q'),handoff.prompt);
  }
+});
+
+
+test('SubRip exporter preserves native cue order and complete timestamps',()=>{
+ const cues=[
+  {start:'00:00:01.000',end:'00:00:02.500',text:'First synthetic caption'},
+  {start:'00:03.040',end:'00:05.210',text:'Second line\nMore text'}
+ ];
+ const actual=exportSubRip({ok:true,cues});
+ const expected='1\r\n00:00:01,000 --> 00:00:02,500\r\nFirst synthetic caption\r\n\r\n'
+  +'2\r\n00:00:03,040 --> 00:00:05,210\r\nSecond line\r\nMore text\r\n';
+ assert.equal(actual,expected);
+ assert.ok(!actual.includes('Whisper'));
+});
+test('SubRip refuses missing or invented timing and partial post-only results',()=>{
+ const valid={start:'00:00:01.000',end:'00:00:02.000',text:'Caption'};
+ for(const value of [null,{ok:false,cues:[valid]},{ok:true,cues:[]},
+  {ok:true,cues:[{...valid,end:undefined}]},
+  {ok:true,cues:[{...valid,start:'00:00:02.000'}]},
+  {ok:true,cues:[valid,{...valid,end:'01:xx:02.000'}]},
+  {ok:true,cues:[{...valid,text:'   '}]},
+  {ok:true,cues:[{...valid,start:'00:00:70.000'}]}]){
+  assert.equal(exportSubRip(value),'');
+ }
+ assert.equal(exportSubRip({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{text:'Public preview'}}),'');
+});
+test('SubRip preserves unusual source text as text and does not include diagnostics',()=>{
+ const output=exportSubRip({ok:true,cues:[{start:'01:02:03.004',end:'01:02:04.500',text:'<b>Quoted cue</b>\r\nMore text'}],events:[{secret:'DO_NOT_LOG'}]});
+ assert.ok(output.includes('01:02:03,004 --> 01:02:04,500'));
+ assert.ok(output.includes('<b>Quoted cue</b>\r\nMore text'));
+ assert.ok(!output.includes('DO_NOT_LOG'));
 });
