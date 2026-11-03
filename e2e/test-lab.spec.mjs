@@ -460,7 +460,7 @@ test('Manual source text stays local until an explicit brief, then remains disti
  await page.locator('#content-create').click();
  await expect(page.locator('#content-status')).toContainText('Brief saved');
  expect(writes).toBe(1);
- expect(submitted.sourceText).toBe(source);
+ expect(submitted.sourceText).toBe(source.trim());
  expect(submitted.extractionId).toBeUndefined();
  expect(submitted.idea).toBe('An original item in a lighthouse');
  await page.locator('#content-clear-source').click();
