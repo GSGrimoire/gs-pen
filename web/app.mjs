@@ -2,7 +2,7 @@ import {initContentWorkspace} from './content-workflow.mjs';
 // GS Pen Test Lab user interface v1. Telemetry uses the same-origin backend; hosted diagnostics are owner-restricted.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
-import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
+import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip} from "./modules/extraction-export.mjs";
 import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
 const BUILD="workspace_v03_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000;
@@ -91,7 +91,7 @@ function renderTab(){
   $("create-from-result").disabled=!result?.historyId;
   const hasContent=!!result&&(result.cues?.length||result.post?.text||result.metadata?.status==='succeeded');
   $("copy-output").disabled=!result||!tabText(result,state.tab);
-  $("export-text").disabled=!hasContent;$("export-json").disabled=!hasContent;
+  $("export-text").disabled=!hasContent;$("export-json").disabled=!hasContent;$("export-subrip").disabled=!exportSubRip(result);
   for(const id of ['open-claude','open-chatgpt'])$(id).disabled=!hasContent;
   $('assistant-action-status').textContent='';$('assistant-fallbacks').hidden=true;
   $('claude-desktop-link').removeAttribute('href');$('claude-desktop-link').hidden=true;
@@ -332,6 +332,7 @@ async function openAssistant(provider){
 }
 for(const provider of ['claude','chatgpt'])$('open-'+provider).addEventListener('click',()=>void openAssistant(provider));
 $('export-text').addEventListener('click',()=>{if(state.result)downloadOutput('gs-pen-extraction.txt',exportText(state.result,state.sourceUrl),'text/plain;charset=utf-8');});
+$('export-subrip').addEventListener('click',()=>{const subtitles=exportSubRip(state.result);if(subtitles)downloadOutput('gs-pen-native-captions.srt',subtitles,'text/plain;charset=utf-8');});
 $('export-json').addEventListener('click',()=>{if(state.result)downloadOutput('gs-pen-extraction.json',JSON.stringify(exportRecord(state.result,state.sourceUrl),null,2),'application/json');});
 $('delete-dialog').addEventListener('close',async()=>{
  const id=state.pendingDelete;state.pendingDelete=null;if($('delete-dialog').returnValue!=='delete'||!id)return;
