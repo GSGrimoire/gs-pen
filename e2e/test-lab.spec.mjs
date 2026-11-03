@@ -50,6 +50,15 @@ test('known caption result shows original timed cues and sanitized stage timelin
   await expect(page.locator('#trace-status')).toHaveText('Captions retrieved');
   await expect(page.locator('#tab-panel')).toContainText('First synthetic line');
   await expect(page.locator('#tab-panel')).toContainText('2 caption cues');
+  await expect(page.locator('#export-subrip')).toBeEnabled();
+  const [subtitleDownload]=await Promise.all([
+    page.waitForEvent('download'),page.locator('#export-subrip').click()
+  ]);
+  expect(subtitleDownload.suggestedFilename()).toBe('gs-pen-native-captions.srt');
+  const subtitles=await (await import('node:fs/promises')).readFile(await subtitleDownload.path(),'utf8');
+  expect(subtitles).toContain('1\r\n00:00:01,000 --> 00:00:02,000\r\nFirst synthetic line');
+  expect(subtitles).toContain('2\r\n00:00:03,000 --> 00:00:04,000\r\nSecond synthetic line');
+
   await expect(page.locator('#recovery-guidance')).toBeHidden();
   await expect(page.locator('#recovery-card')).toBeHidden();
   await expect(page.locator('#result-summary p.available')).toHaveCount(1);
@@ -78,6 +87,7 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
   await expect(page.locator('#trace-status')).toHaveText('Retrieval failed');
   await expect(page.locator('#tab-panel')).toContainText('Captions might still exist');
   await expect(page.locator('#recovery-guidance')).toContainText('platform refused the request');
+  await expect(page.locator('#export-subrip')).toBeDisabled();
   await expect(page.locator('#recovery-guidance')).toContainText('open Create');
   await expect(page.locator('#recovery-card')).toBeVisible();
   await expect(page.locator('#recovery-title')).toHaveText('This source could not be retrieved');
@@ -243,6 +253,7 @@ test('Facebook reaches the backend and displays partial post information without
  await openConnected(page);await page.locator('#video-url').fill('https://www.facebook.com/reel/123456789012345');await page.locator('#probe-button').click();
  await expect(page.locator('#trace-status')).toHaveText('Post information retrieved; captions unavailable');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
  await expect(page.locator('#recovery-guidance')).toContainText('Partial result');
+ await expect(page.locator('#export-subrip')).toBeDisabled();
  await expect(page.locator('#recovery-guidance')).toContainText('not an independent speech transcript');
  await expect(page.locator('#recovery-guidance')).not.toContainText('Synthetic Facebook story');
  await expect(page.locator('#recovery-card')).toHaveAttribute('data-state','partial');

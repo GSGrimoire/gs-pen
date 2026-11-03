@@ -21,3 +21,4 @@
 .recovery-primary:hover{background:#953913;border-color:#953913}
 .recovery-source-note{margin:0;flex:1;min-width:190px;max-width:60ch;color:#746b62;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
 @media(max-width:680px){.recovery-card{padding:17px 16px}.recovery-actions{align-items:stretch;flex-direction:column}.recovery-primary{width:100%}.recovery-source-note{min-width:0}}
+#export-subrip{min-height:44px;white-space:normal}
