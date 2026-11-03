@@ -297,7 +297,9 @@ function initWorkspaceRail(){
  }
  opener.addEventListener('click',()=>{
   if(!compact.matches)return;
-  open=true;render();closer.focus({preventScroll:true});
+  open=true;render();
+  // In some mobile browsers the newly revealed rail cannot take focus until the next frame.
+  requestAnimationFrame(()=>{if(open&&compact.matches)closer.focus({preventScroll:true});});
  });
  closer.addEventListener('click',()=>dismiss());
  scrim.addEventListener('click',()=>dismiss());
