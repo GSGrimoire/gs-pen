@@ -22,6 +22,64 @@
 .recovery-source-note{margin:0;flex:1;min-width:190px;max-width:60ch;color:#746b62;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
 @media(max-width:680px){.recovery-card{padding:17px 16px}.recovery-actions{align-items:stretch;flex-direction:column}.recovery-primary{width:100%}.recovery-source-note{min-width:0}}
 #export-subrip{min-height:44px;white-space:normal}
+
+/* PEN-030: unified navigation and saved history beside the extractor. */
+.drawer-open,.drawer-close{display:none}
+.rail-history{margin-top:24px;min-height:0;display:flex;flex-direction:column;flex:1}
+.rail-history-head{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-bottom:7px}
+.rail-history-head h2{font-size:13px;letter-spacing:-.2px;margin:0;font-weight:700}
+.rail-history .text-link{font-size:11px;text-decoration:underline;text-underline-offset:3px}
+.rail-history #recent-preview{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.rail-history .preview-item{padding:11px 4px;border-radius:6px}
+.rail-history .preview-item:hover{background:#faf6f0}
+.rail-history .preview-item:focus-visible{outline-offset:-2px}
+.rail-refresh{min-height:44px;align-self:stretch;margin-top:12px;border:1px solid var(--stroke);border-radius:8px;background:#fff;color:var(--accent);font-size:12px;font-weight:600}
+.rail-refresh:hover{background:var(--peach)}
+.workspace-scrim{display:none}
+@media(min-width:861px){
+ .shell{grid-template-columns:minmax(0,1fr) 312px}
+ .shell>main{grid-column:1;grid-row:1;width:100%;max-width:none;padding-inline:clamp(24px,4.2vw,72px)}
+ .shell>.rail{grid-column:2;grid-row:1;position:sticky;top:0;height:100vh;border-right:0;border-bottom:0;border-left:1px solid var(--stroke);padding:24px 20px 19px;display:flex;flex-direction:column;overflow:hidden}
+ .rail .logo{margin:0 4px 21px}
+ .rail .rail-section{margin-bottom:7px}
+ .rail .nav{margin:3px 0;min-height:45px}
+ .rail .rail-spacer{display:none}
+ .rail .rail-note{margin-top:13px}
+ .rail .foot-note{margin-top:12px}
+ .work-grid{display:block}
+ .work-grid .primary{width:100%}
+}
+@media(max-width:860px){
+ .shell{display:block;min-width:0}
+ .shell>main{width:100%;max-width:none;min-width:0;padding:17px clamp(15px,4.2vw,28px) 28px}
+ .work-grid{display:block}
+ .work-grid .primary{width:100%}
+ .shell>.rail{position:fixed;inset:0 0 0 auto;width:75vw;max-width:360px;height:100dvh;z-index:51;background:#fff;border:0;border-left:1px solid var(--stroke);padding:17px 17px 21px;display:flex;flex-direction:column;overflow:hidden;visibility:hidden;pointer-events:none;transform:translateX(100%);transition:transform .22s ease,visibility .22s}
+ .shell>.rail.is-open{visibility:visible;pointer-events:auto;transform:translateX(0)}
+ .drawer-open{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:8px 12px;border:1px solid var(--stroke);border-radius:10px;background:#fff;color:var(--accent);font-size:12px;font-weight:700;white-space:nowrap}
+ .drawer-open span:first-child{font-size:17px;line-height:1}
+ .drawer-close{display:flex;align-items:center;justify-content:center;align-self:flex-end;flex:0 0 auto;width:44px;height:44px;border:1px solid var(--stroke);border-radius:10px;background:var(--peach);color:var(--accent);font-size:25px;font-weight:600;margin:0 0 7px}
+ .rail .logo{margin:0 0 17px;display:flex}
+ .rail .logo small{display:block}
+ .rail .rail-section{display:block;padding:0 8px;margin-bottom:8px}
+ .rail nav{display:flex;flex-direction:column;gap:2px}
+ .rail .nav{display:flex;justify-content:flex-start;gap:12px;min-height:44px;padding:9px 10px;margin:1px 0;font-size:13px}
+ .rail .nav-icon{font-size:20px;width:22px}
+ .rail .nav-count{margin-left:auto;min-width:22px;font-size:10px}
+ .rail .rail-history{display:flex;margin-top:18px}
+ .rail .rail-spacer,.rail .rail-note,.rail .foot-note{display:none}
+ .workspace-scrim:not([hidden]){position:fixed;inset:0;z-index:50;display:block;background:rgba(24,19,15,.48)}
+ body.workspace-drawer-open{overflow:hidden}
+ .top{display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px}
+ .top .breadcrumb{order:2;flex:1;min-width:100px;padding:0;white-space:normal}
+ .top .top-right{order:3;flex:1 1 100%;justify-content:flex-start}
+ .top .drawer-open{order:1}
+}
+@media(prefers-reduced-motion:reduce){.shell>.rail{transition:none!important}}
+
+/* PEN-031: disclose generation responsibility before owner prepares a brief. */
+.creative-cost-note{border:1px solid #eadfd0;border-left:3px solid var(--orange);background:#fffaf3;color:#5d5043;border-radius:9px;padding:13px 15px;font-size:12px;line-height:1.75;margin:14px 0 18px;overflow-wrap:anywhere}
+.creative-cost-note strong{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
 /* Owner-supplied source stays visually distinct from the creative angle. */
 .manual-source{margin:18px 0 12px;border:1px solid var(--stroke);border-radius:12px;padding:15px;background:#fffcf7;min-width:0}
 .manual-source label{font-size:12px}
