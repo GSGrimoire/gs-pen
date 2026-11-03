@@ -13,7 +13,7 @@ export function tabText(result,tab) {
 // Invalid or missing end times reject the entire export rather than inventing timings.
 function subRipTimestamp(raw) {
   if(typeof raw!=='string')return null;
-  const match=/^(?:(\\d{2}):)?([0-5]\\d):([0-5]\\d)\\.(\\d{3})$/.exec(raw);
+  const match=/^(?:(\d{2}):)?([0-5]\d):([0-5]\d)\.(\d{3})$/.exec(raw);
   if(!match)return null;
   const hours=Number(match[1]||0),minutes=Number(match[2]),seconds=Number(match[3]),fraction=Number(match[4]);
   return {milliseconds:((hours*60+minutes)*60+seconds)*1000+fraction,
@@ -25,10 +25,10 @@ export function exportSubRip(result) {
   for(const cue of result.cues) {
     const start=subRipTimestamp(cue?.start),end=subRipTimestamp(cue?.end);
     if(!start||!end||end.milliseconds<=start.milliseconds||typeof cue?.text!=='string'||!cue.text.trim())return '';
-    const body=cue.text.replace(/\\r\\n?/g,'\\n').trim().replace(/\\n/g,'\\r\\n');
-    blocks.push(String(blocks.length+1)+'\\r\\n'+start.formatted+' --> '+end.formatted+'\\r\\n'+body);
+    const body=cue.text.replace(/\r\n?/g,'\n').trim().replace(/\n/g,'\r\n');
+    blocks.push(String(blocks.length+1)+'\r\n'+start.formatted+' --> '+end.formatted+'\r\n'+body);
   }
-  return blocks.join('\\r\\n\\r\\n')+'\\r\\n';
+  return blocks.join('\r\n\r\n')+'\r\n';
 }
 
 export function exportText(result,sourceUrl) {
