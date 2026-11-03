@@ -15,8 +15,8 @@
 | PEN-020 TikTok links | merged PR #21; **not documented live** |
 | PEN-023 Facebook video/reel shares | merged PR #24; **not documented live** |
 | PEN-024 Facebook ordinary post shares | merged PR #26, application merge commit `2a5fb303a83f232d04a6e1ff5a8532876187abca`, tree `03b45dca5f89670184e6d50f27dc93dce7b04654`; **not documented live** |
-| Current `main` when this plan was prepared | `c99b0a33f1e23ae229843654fcd2505115bd0434` (later documentation-only commits after PEN-024) |
-| PEN-026 recovery guidance | PR #29, unmerged at planning time; **must not be included unless approved, green and merged** |
+| Current application `main` after PEN-026 merge | `f2b4a7c0642f90c37b5c41f36d530f24de95eb22`, tree `49a7728ed59013fad9d135957df83e5946a17a40`. Recheck immediately before release; later documentation-only commits may advance `main`. |
+| PEN-026 recovery guidance | PR #29 passed 149 unit tests, 68 desktop/mobile browser tests and hosted checks; merged as `f2b4a7c0642f90c37b5c41f36d530f24de95eb22`; **not documented live** |
 | Pen connector evidence | owner-authenticated `list_content_jobs` returned `{"jobs":[]}`; proves only this read operation, not deployment version or provider access |
 
 **Release selection gate:** Re-read `main`, current PR states and required workflow conclusions immediately before packaging. Record the exact SHA and Git tree selected for publication. Do not use the old values above as a substitute for checking the actual approved HEAD. Never mix a draft branch with `main` or stage unreviewed code. Documentation-only commits can advance the commit SHA without changing application behavior; document that explicitly.
@@ -24,7 +24,7 @@
 ## 2. Preflight, before any Site action
 
 - [ ] Required tests pass on the final approved source: `npm run install:ci`, `npm run check`, `npm run build`, `npm run lint`, `pnpm exec tsc --noEmit`, `npm run test:e2e`. Prefer completed GitHub workflow evidence for the browser when running Chromium locally is unavailable. Record exact run URLs and test counts; a cancelled workflow is **not** a pass.
-- [ ] Complete the risk-based PR review for any change to be included, especially #29. Independent review is required if a change touches authentication, owner policy, secrets, destructive migrations, Site security or shared critical infrastructure. Do not merge a failing or unreviewed PR.
+- [ ] Confirm PR #29's recorded routine creator self-review, final green checks and merge receipt. Complete risk-based review for any **later** change included. Independent review is required if a change touches authentication, owner policy, secrets, destructive migrations, Site security or shared critical infrastructure. Do not merge a failing or unreviewed PR.
 - [ ] Confirm the approved application tree and the deployment's Sites source tree match. Preserve file modes and avoid injecting generated, untracked or personal files.
 - [ ] Verify existing project identifier, owner-only Site sharing (one allowed user), both configured trusted owner identifiers, and unchanged database binding. Do not print or copy secret values to GitHub, logs or assistant messages.
 - [ ] Retention remains paused; no automatic expiration/count pruning or cleanup schedule reactivation. Keep existing saved content and content jobs intact. A production migration, if actually required, needs separate review and a non-destructive plan.
@@ -58,7 +58,7 @@ This step requires an authorized **ChatGPT Sites maintainer** with source/save/d
 | Negative | Incomplete `/share/p/`, unsupported/foreign/insecure/credentialed redirects | Rejected without fetching unsafe destination |
 | Output | Actual native caption track | Timed platform cues labeled **native captions**, not independent transcription |
 | Partial | Public post text or metadata but no caption | Useful partial output preserved; Facebook preview may be truncated; no fabricated speech text |
-| Failure | Provider block, missing caption, timeout, rate-limit, offline backend | Distinct truthful codes and safe recovery suggestions when PEN-026 is included |
+| Failure | Provider block, missing caption, timeout, rate-limit, offline backend | Distinct truthful codes and safe PEN-026 recovery suggestions |
 | Assistant | Owner-authenticated Pen read-only list/get when available | No cross-owner access; do not treat empty list as proof of full integration |
 | Poster | Inspect export for approved Facebook draft | `submissionStatus: not_sent`; no automatic draft write or social publication |
 
@@ -91,7 +91,7 @@ Outstanding concerns, failure or rollback: [facts]
 
 ## 6. What this does *not* prove
 
-Passing 149 synthetic unit tests or the desktop/mobile browser suite does not demonstrate provider permission, universal extraction reliability, independent Whisper transcription, real Facebook caption access, full-text search, automatic Poster delivery or successful live Site publication. Do not request restricted content, acquire platform cookies, evade blocks, or log sensitive source media. Keep actual sample links and content out of the repository and automatic diagnostics.
+Passing the synthetic unit tests or desktop/mobile browser suite does not demonstrate provider permission, universal extraction reliability, independent Whisper transcription, real Facebook caption access, full-text search, automatic Poster delivery or successful live Site publication. Do not request restricted content, acquire platform cookies, evade blocks, or log sensitive source media. Keep actual sample links and content out of the repository and automatic diagnostics.
 
 ## References
 
