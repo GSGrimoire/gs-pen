@@ -2,7 +2,7 @@
 
 GS Pen Test Lab is deployed owner-private at https://gs-pen-test-lab.goofyspook.chatgpt.site. Exact version, source and verification receipts are in [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md). This experimental service keeps native platform captions separate from independent speech transcription, which is not implemented.
 
-**Current release status, 3 November 2026:** the last documented owner-private Site deployment is **version 11 from 25 October**. It already pauses automatic record deletion while preserving explicit owner deletion. GitHub `main` also contains reviewed PEN-018 paging, PEN-020 TikTok share-link, PEN-023 Facebook video/reel reliability and PEN-024 Facebook post-share changes, but there is **no verified newer Site deployment receipt** for them. PEN-026 recovery guidance remains in draft PR #29. Private publication and hosted checks are tracked by issue #27 and [the 4 November readiness checklist](docs/RELEASE_READINESS_2026-11-04.md).
+**Current release status, 3 November 2026:** the last documented owner-private Site deployment is **version 11 from 25 October**. It already pauses automatic record deletion while preserving explicit owner deletion. GitHub `main` also contains reviewed PEN-018 paging, PEN-020 TikTok share-link, PEN-023 Facebook video/reel reliability and PEN-024 Facebook post-share changes, but there is **no verified newer Site deployment receipt** for them. PEN-026 recovery guidance has now merged as PR #29 (`f2b4a7c0642f90c37b5c41f36d530f24de95eb22`), but is not documented live on the Site. Private publication and hosted checks are tracked by issue #27 and [the 4 November readiness checklist](docs/RELEASE_READINESS_2026-11-04.md).
 
 ## Hosted application
 
