@@ -4,14 +4,19 @@
 <link rel="stylesheet" href="./styles.css"></head>
 <body>
 <div class="shell">
-  <aside class="rail">
+  <aside class="rail" id="workspace-rail"><button id="workspace-close" class="drawer-close" type="button" aria-label="Close menu and history">&gt;</button>
     <a class="logo" href="#extract" aria-label="GS Pen home"><span class="mark" aria-hidden="true">p<span>.</span></span><span><strong>GS Pen</strong><small>Capture what matters.</small></span></a>
     <div class="rail-section">YOUR WORKSPACE</div>
     <nav aria-label="Workspace"><a class="nav active" href="#extract" data-view="extract"><span class="nav-icon" aria-hidden="true">↗</span>Extract</a><a class="nav" href="#recent" data-view="recent"><span class="nav-icon" aria-hidden="true">◷</span>Recent<span id="history-count" class="nav-count">0</span></a><a class="nav" href="#create" data-view="create"><span class="nav-icon" aria-hidden="true">✧</span>Create</a><a class="nav" href="#diagnostics" data-view="diagnostics"><span class="nav-icon" aria-hidden="true">⌁</span>Diagnostics</a></nav>
+    <section class="rail-history" aria-labelledby="rail-history-title">
+      <div class="rail-history-head"><h2 id="rail-history-title">Saved history</h2><a href="#recent" class="text-link">View all</a></div>
+      <div id="recent-preview" aria-live="polite"><p class="muted-text">Loading saved extractions…</p></div>
+      <button id="rail-history-refresh" class="rail-refresh" type="button">Refresh history</button>
+    </section>
     <div class="rail-spacer"></div><div class="rail-note"><span class="status-dot"></span><strong>Just for you</strong><p>Your extractions stay in your private workspace. Automatic deletion is paused.</p></div><div class="foot-note">GS SUITE <span>Pen · v0.3</span></div>
   </aside>
-  <main>
-    <header class="top"><div class="breadcrumb">GS SUITE <span>/</span> PEN <span>/</span> <strong id="view-label">Extract</strong></div><div class="top-right"><span class="pill" id="backend-badge">Checking backend</span><span class="pill muted">Owner private</span></div></header>
+  <main tabindex="-1">
+    <header class="top"><button id="workspace-open" class="drawer-open" type="button" aria-label="Open menu and saved history" aria-controls="workspace-rail" aria-expanded="false"><span aria-hidden="true">☰</span><span>Menu / History</span></button><div class="breadcrumb">GS SUITE <span>/</span> PEN <span>/</span> <strong id="view-label">Extract</strong></div><div class="top-right"><span class="pill" id="backend-badge">Checking backend</span><span class="pill muted">Owner private</span></div></header>
     <section id="dev-access" class="panel access-panel" hidden><div><strong>Connect development backend</strong><p>Use the temporary development key from your private Codespaces terminal.</p></div><div class="access-form"><label for="dev-key">Development key</label><input type="password" id="dev-key" autocomplete="off"><button type="button" id="connect-backend">Connect backend</button><span id="dev-key-status" role="status"></span></div></section>
     <section id="extract-view" data-page="extract">
       <div class="page-heading"><span class="eyebrow">LESS SCRUBBING. MORE CREATING.</span><h1>Good ideas.<br><span>Worth keeping.</span></h1><p>Turn a TikTok video or public Facebook post link into the source material available to retrieve.</p></div>
@@ -35,7 +40,7 @@
           <div class="output-toolbar"><button id="create-from-result" class="outline" type="button" disabled>Make something from this ↗</button><button id="copy-output" class="outline" type="button" disabled>Copy this tab</button><button id="export-text" class="outline" type="button" disabled>Export text</button><button id="export-subrip" class="outline" type="button" disabled title="Available only for complete native caption timings">Export native captions (.srt)</button><button id="export-json" class="outline" type="button" disabled>Export structured data</button><span id="output-action-status" role="status"></span></div>
           <div id="tab-panel" role="tabpanel" aria-live="polite" aria-labelledby="tab-captions"></div>
         </section>
-      </div><aside class="secondary"><section class="panel getting-started"><span class="decor-number" aria-hidden="true">↗</span><h2>A little less<br>copy. A lot more<br><span>possibility.</span></h2><p>Keep the words that caught your attention. Come back to them when inspiration strikes.</p><div class="mini-steps"><span><b>1</b> Paste a post or video link</span><span><b>2</b> Explore available content</span><span><b>3</b> Copy, export, or revisit</span></div></section><section class="panel latest-panel"><div class="panel-head"><h2>Recently saved</h2><a href="#recent" class="text-link">View all ↗</a></div><div id="recent-preview"><p class="muted-text">Your next good find goes here.</p></div></section></aside></section>
+      </div></section>
     </section>
     <section id="recent-view" data-page="recent" hidden><div class="page-heading compact"><span class="eyebrow">YOUR COLLECTION</span><h1>Pick up where<br><span>you left off.</span></h1><p>Browse your saved extractions, including older pages. Automatic deletion is paused.</p></div><section class="panel"><div class="recent-controls"><label for="history-search">Search loaded extractions<input id="history-search" type="search" placeholder="Filter loaded titles, creators, or platforms" maxlength="200"></label><label for="history-platform">Platform<select id="history-platform"><option value="all">All platforms</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option></select></label><button id="refresh-history" class="outline" type="button">Refresh</button></div><p id="history-status" role="status">Loading saved extractions…</p><div id="history-items" class="history-items"></div><button id="history-more" type="button" class="outline" hidden>Load older extractions</button></section></section>
     <section id="create-view" data-page="create" hidden>
@@ -58,6 +63,6 @@
     </section>
     <footer class="about" id="about"><span>GS Pen <b>·</b> Made for the good ideas.</span><span>Experimental extraction. Availability varies by platform.</span></footer>
   </main>
-</div><dialog id="delete-dialog"><form method="dialog"><span class="eyebrow">YOUR COLLECTION</span><h2>Delete this extraction?</h2><p>This removes the saved extraction from Recent. Content jobs made from it keep their source excerpt and link until you delete those jobs in Create.</p><div class="actions"><button value="cancel" class="outline">Keep extraction</button><button value="delete" id="confirm-delete" class="danger-button">Delete extraction</button></div></form></dialog>
+</div><div id="workspace-scrim" class="workspace-scrim" aria-hidden="true" hidden></div><dialog id="delete-dialog"><form method="dialog"><span class="eyebrow">YOUR COLLECTION</span><h2>Delete this extraction?</h2><p>This removes the saved extraction from Recent. Content jobs made from it keep their source excerpt and link until you delete those jobs in Create.</p><div class="actions"><button value="cancel" class="outline">Keep extraction</button><button value="delete" id="confirm-delete" class="danger-button">Delete extraction</button></div></form></dialog>
 <dialog id="content-delete-dialog"><form method="dialog"><h2>Delete this content job?</h2><p>This permanently removes its brief, copied source excerpt and saved draft. The original extraction stays in Recent. Any downloaded copies or drafts sent to other tools remain separate.</p><div class="actions"><button value="cancel" class="outline">Keep content job</button><button value="delete" id="content-confirm-delete" class="danger-button">Delete content job</button></div></form></dialog>
 <script type="module" src="./app.mjs"></script></body></html>
