@@ -51,14 +51,12 @@ Final reviewed feature source before any documentation updates: `f3514cbe47716ae
 
 ## Decision record to be supplied by an independent reviewer
 
-Reviewer identity: **pending**
+Reviewer identity: Claude | Independent Reviewer (requested by Gus in chat). Same GitHub account as the author, so recorded as a review comment, not a formal GitHub approval.
 
-Exact reviewed source commit and diff base: **pending**
+Exact reviewed source commit and diff base: head `6706912f7bc5bc247197f4803fea2679788593cc`, base `origin/main` `8f8d0a6` (merge base `d6f99b9`).
 
-Security/privacy findings, severity and required corrections: **pending**
+Security/privacy findings, severity and required corrections: no blockers. Non-blocking: the 32 KB body cap can reject unusual valid input (for example 8,000 control characters) with a loud 413; realistic text fits. Platform request-body logging remains unverified.
 
-Independent approval recorded as GitHub review on the final corrected pull request head: **pending**
+Independent approval recorded as GitHub review on the final corrected pull request head: https://github.com/GSGrimoire/gs-pen/pull/37 , review on `6706912`, 3 November 2026.
 
-Owner release inclusion decision: **pending**
-
-If any entry is missing, leave PR #37 as a draft and exclude it from tomorrow's private release. A documented green test run is not evidence of independent privacy approval.
+Owner release inclusion decision: Gus approved merge and inclusion in the 4 November private release in chat, 3 November 2026. Merged as `db560e62da95d47798fdcd469a9064cade5ba52c`.
