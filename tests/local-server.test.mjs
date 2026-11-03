@@ -15,6 +15,12 @@ test("local Test Lab serves UI, rejects arbitrary content, persists only sanitiz
   const html=await fetch(root+"/");
   assert.equal(html.status,200);
   assert.match(await html.text(),/GS Pen \| Your video workspace/);
+  const helper=await fetch(root+"/modules/recovery-guidance.mjs");
+  assert.equal(helper.status,200);
+  assert.match(helper.headers.get("content-type"),/text\/javascript/);
+  assert.match(await helper.text(),/export function recoveryGuidance/);
+  const arbitrary=await fetch(root+"/modules/not-approved.mjs");
+  assert.equal(arbitrary.status,404);
   const blocked=await fetch(root+"/api/diagnostics",{
     method:"POST",headers:{"Content-Type":"application/json","Origin":"https://evil.test"},
     body:JSON.stringify({traceId:"testing",stage:"finished"})

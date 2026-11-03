@@ -3,6 +3,7 @@ import {initContentWorkspace} from './content-workflow.mjs';
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
 import {exportRecord,exportText,tabText,assistantHandoff} from "./modules/extraction-export.mjs";
+import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
 const BUILD="workspace_v03_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
@@ -99,6 +100,10 @@ function renderTab(){
     const rows=[['Original captions',result.ok?result.cues.length+' timed cues':'Not available'],['Post text',result.post?.text?'Available':'Unavailable'],['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable'],['Whisper','Not implemented']];
     for(const [label,value] of rows)summary.append(node('p',label+': '+value));
   }
+  const recovery=$("recovery-guidance");
+  const advice=recoveryGuidance(result);
+  recovery.textContent=advice;
+  recovery.hidden=!advice;
   if(state.tab==="whisper"){panel.append(plainEmpty("Independent Whisper is not active","Audio capture and speech recognition are planned for a future release. This tab never displays platform captions as Whisper output."));return;}
   if(state.tab==="post"){
     if(!result){panel.append(plainEmpty('No post request yet','Inspect a supported TikTok video or public Facebook post to retrieve available text and hashtags.'));return;}
