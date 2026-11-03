@@ -97,13 +97,27 @@ function renderTab(){
   $('claude-desktop-link').removeAttribute('href');$('claude-desktop-link').hidden=true;
   const summary=$("result-summary");summary.replaceChildren();
   if(result){
-    const rows=[['Original captions',result.ok?result.cues.length+' timed cues':'Not available'],['Post text',result.post?.text?'Available':'Unavailable'],['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable'],['Whisper','Not implemented']];
-    for(const [label,value] of rows)summary.append(node('p',label+': '+value));
+    const rows=[
+      ['Original captions',result.ok?result.cues.length+' timed cues':'Not available',!!result.ok],
+      ['Post text',result.post?.text?'Available':'Unavailable',!!result.post?.text],
+      ['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable',result.metadata?.status==='succeeded'],
+      ['Whisper','Not implemented',false]
+    ];
+    for(const [label,value,available] of rows)summary.append(node('p',label+': '+value,available?'available':'unavailable'));
   }
-  const recovery=$("recovery-guidance");
-  const advice=recoveryGuidance(result);
-  recovery.textContent=advice;
-  recovery.hidden=!advice;
+  const advice=recoveryGuidance(result),partial=!!advice&&!!hasContent;
+  $("recovery-guidance").textContent=advice;
+  const recoveryCard=$("recovery-card");
+  recoveryCard.hidden=!advice;
+  recoveryCard.dataset.state=partial?'partial':'unavailable';
+  $("recovery-title").textContent=partial?'Some source material is available':'This source could not be retrieved';
+  const saved=partial&&!!result?.historyId;
+  $("recovery-create").textContent=saved?'Use saved source in Create':'Open Create to continue';
+  $("recovery-source-note").textContent=saved
+    ?'Attaches your privately saved extraction. It does not create or publish a draft.'
+    :partial
+      ?'This result is not attached to Create. Copy or export available content, or use your own notes.'
+      :'No result will be attached. Review any earlier source selection in Create before continuing.';
   if(state.tab==="whisper"){panel.append(plainEmpty("Independent Whisper is not active","Audio capture and speech recognition are planned for a future release. This tab never displays platform captions as Whisper output."));return;}
   if(state.tab==="post"){
     if(!result){panel.append(plainEmpty('No post request yet','Inspect a supported TikTok video or public Facebook post to retrieve available text and hashtags.'));return;}
@@ -342,3 +356,11 @@ $('delete-dialog').addEventListener('close',async()=>{
 
 const contentWorkspace=initContentWorkspace();
 $('create-from-result').addEventListener('click',()=>{if(state.result?.historyId)contentWorkspace.useExtraction(state.result.historyId);});
+$('recovery-create').addEventListener('click',()=>{
+  if(state.busy||!state.result||state.result.ok)return;
+  const available=!!(state.result.cues?.length||state.result.post?.text||state.result.metadata?.status==='succeeded');
+  if(available&&state.result.historyId)contentWorkspace.useExtraction(state.result.historyId);
+  else location.hash='create'; // Do not attach an unsaved extraction or clear existing creative work.
+  navigate(); // Make the Create panel visible before moving keyboard focus.
+  if(location.hash==='#create')$('content-idea').focus();
+});

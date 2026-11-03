@@ -26,6 +26,7 @@ test('home page exposes private research status, actual backend and four separat
   await openConnected(page);
   await expect(page.getByRole('heading', { name: /Good ideas/ })).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(4);
+  await expect(page.locator('#recovery-card')).toBeHidden();
   await page.getByRole('tab', {name: 'Whisper transcript'}).click();
   await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
   await page.getByRole('tab', {name: 'Post text'}).click();
@@ -59,6 +60,8 @@ test('known caption result shows original timed cues and sanitized stage timelin
   expect(subtitles).toContain('2\r\n00:00:03,000 --> 00:00:04,000\r\nSecond synthetic line');
 
   await expect(page.locator('#recovery-guidance')).toBeHidden();
+  await expect(page.locator('#recovery-card')).toBeHidden();
+  await expect(page.locator('#result-summary p.available')).toHaveCount(1);
   await expect(page.locator('#timeline')).toContainText('caption parse');
   await expect(page.locator('#context-details')).toContainText('creator_video');
   await expect(page.locator('#storage-indicator')).not.toHaveText('Local only (server write failed)');
@@ -86,6 +89,15 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
   await expect(page.locator('#recovery-guidance')).toContainText('platform refused the request');
   await expect(page.locator('#export-subrip')).toBeDisabled();
   await expect(page.locator('#recovery-guidance')).toContainText('open Create');
+  await expect(page.locator('#recovery-card')).toBeVisible();
+  await expect(page.locator('#recovery-title')).toHaveText('This source could not be retrieved');
+  await expect(page.locator('#recovery-create')).toHaveText('Open Create to continue');
+  const dimensions=await page.evaluate(()=>({width:document.documentElement.scrollWidth,visible:document.documentElement.clientWidth}));
+  expect(dimensions.width).toBeLessThanOrEqual(dimensions.visible+2);
+  await page.locator('#recovery-create').click();
+  await expect(page.locator('#create-view')).toBeVisible();
+  await expect(page.locator('#content-idea')).toBeFocused();
+  await expect(page.locator('#content-source')).toContainText('No source extraction selected');
   await expect(page.locator('#timeline')).toContainText('PROVIDER_BLOCKED');
   await expect(page.locator('#diagnostic-rows')).toContainText('PROVIDER_BLOCKED');
 });
@@ -244,8 +256,34 @@ test('Facebook reaches the backend and displays partial post information without
  await expect(page.locator('#export-subrip')).toBeDisabled();
  await expect(page.locator('#recovery-guidance')).toContainText('not an independent speech transcript');
  await expect(page.locator('#recovery-guidance')).not.toContainText('Synthetic Facebook story');
+ await expect(page.locator('#recovery-card')).toHaveAttribute('data-state','partial');
+ await expect(page.locator('#recovery-title')).toHaveText('Some source material is available');
+ await expect(page.locator('#result-summary p.available')).toHaveCount(2);
+ await expect(page.locator('#recovery-source-note')).toContainText('not attached to Create');
  await page.getByRole('tab',{name:'Original captions',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Native captions unavailable');
  await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
+});
+
+test('saved partial post can be selected directly in Create without a write',async({page})=>{
+ await stubHistory(page);await stubContentJobs(page);
+ const id='00000000-0000-4000-8000-000000000010';
+ await page.route('**/api/history/*',async route=>{
+  if(route.request().method()!=='GET')return route.fallback();
+  return route.fulfill({contentType:'application/json',body:JSON.stringify({item:{
+   id,sourceUrl:'https://www.facebook.com/reel/123456789012345',
+   result:{ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',text:'Synthetic public preview',provenance:'Synthetic fixture',completeness:'page_preview_may_be_truncated'},metadata:{status:'unavailable',fields:{}}}
+  }})});
+ });
+ let writes=0;page.on('request',req=>{if(req.url().includes('/api/content')&&req.method()!=='GET')writes++;});
+ await page.goto('/#recent');
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await expect(page.locator('#recovery-create')).toHaveText('Use saved source in Create');
+ await expect(page.locator('#recovery-source-note')).toContainText('privately saved extraction');
+ await page.locator('#recovery-create').click();
+ await expect(page.locator('#create-view')).toBeVisible();
+ await expect(page.locator('#content-source')).toContainText('saved Pen extraction');
+ await expect(page.locator('#content-idea')).toBeFocused();
+ expect(writes).toBe(0);
 });
 
 async function stubHistory(page,{failedSave=false}={}){
