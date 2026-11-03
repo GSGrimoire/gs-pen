@@ -9,6 +9,12 @@ const mockEvents = (traceId, status, code) => [{
   durationMs: 24, cdnFamily: 'tiktokcdn_us', httpStatus: 200
 }];
 
+async function chooseView(page,view){
+ const opener=page.locator('#workspace-open');
+ if(await opener.isVisible())await opener.click();
+ await page.locator('#workspace-rail').getByRole('link',{name:view==='Recent'?/^Recent/:view,exact:view!=='Recent'}).click();
+}
+
 async function openConnected(page) {
   await page.goto('/');
   await expect(page.locator('#backend-badge')).toContainText('Local probe connected');
@@ -137,7 +143,7 @@ test('diagnostics JSON export includes only sanitized technical events', async (
   await openConnected(page);
   await page.locator('#video-url').fill('https://example.org/private/1234');
   await page.locator('#probe-button').click();
-  await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
+  await chooseView(page,'Diagnostics');
   const [download] = await Promise.all([
     page.waitForEvent('download'),
     page.locator('#export-diagnostics').click()
@@ -228,7 +234,7 @@ test('Search and error filters inspect backend diagnostics and select processing
  await page.route('**/api/health',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
  await page.route('**/api/diagnostics',route=>route.fulfill({contentType:'application/json',body:JSON.stringify({events:mockEvents(trace,'failed','TIMEOUT')})}));
  await page.goto('/');await expect(page.locator('#server-event-count')).toHaveText('1');
- await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
+ await chooseView(page,'Diagnostics');
  await page.locator('#filter-search').fill('TIMEOUT');await expect(page.locator('#diagnostic-rows tr')).toHaveCount(1);
  await page.locator('#filter-status').selectOption('succeeded');await expect(page.locator('#diagnostic-rows')).toContainText('No diagnostic records');
  await page.locator('#filter-status').selectOption('failed');await page.locator('#diagnostic-rows tr').click();
@@ -294,13 +300,71 @@ async function stubHistory(page,{failedSave=false}={}){
  await page.route('**/api/history/*',r=>{const id=r.request().url().split('/').at(-1);if(r.request().method()==='DELETE'){items=items.filter(x=>x.id!==id);return r.fulfill({contentType:'application/json',body:'{"deleted":true}'});}const item=items.find(x=>x.id===id);return r.fulfill({status:item?200:404,contentType:'application/json',body:JSON.stringify(item?{item:{...item,result:savedResult}}:{code:'NOT_FOUND'})});});
  await stubCaptionResult(page,traceId=>({...savedResult,events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true,historyStatus:failedSave?'failed':'saved'}));
 }
+test('Responsive right rail keeps extractor alongside navigation and saved history',async({page,isMobile})=>{
+ await stubHistory(page);await page.goto('/');
+ await expect(page.locator('#recent-preview')).toContainText('Fixture saved video');
+ const rail=page.locator('#workspace-rail'),main=page.locator('main'),opener=page.locator('#workspace-open');
+ if(!isMobile){
+  await expect(rail).toBeVisible();
+  await expect(opener).toBeHidden();
+  const [a,b]=await Promise.all([rail.boundingBox(),main.boundingBox()]);
+  expect(a.x).toBeGreaterThanOrEqual(b.x+b.width-2);
+  expect(a.width).toBeGreaterThan(260);
+  await page.locator('#recent-preview .preview-item').click();
+  await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
+ }else{
+  await expect(opener).toBeVisible();
+  await expect(rail).toBeHidden();
+  await page.locator('#video-url').fill(example);
+  await opener.click();
+  await expect(rail).toBeVisible();
+  await expect(opener).toHaveAttribute('aria-expanded','true');
+  await expect(rail).toHaveAttribute('aria-modal','true');
+  const size=await page.evaluate(()=>{
+   const width=window.innerWidth,rail=document.getElementById('workspace-rail').getBoundingClientRect();
+   return {width,railWidth:rail.width,railRight:rail.right};
+  });
+  expect(size.railWidth).toBeGreaterThanOrEqual(size.width*.73);
+  expect(size.railWidth).toBeLessThanOrEqual(size.width*.77);
+  expect(Math.abs(size.railRight-size.width)).toBeLessThanOrEqual(1);
+  await expect(page.locator('#workspace-close')).toBeFocused();
+  await page.keyboard.press('Shift+Tab');
+  await expect(page.locator('#rail-history-refresh')).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(page.locator('#workspace-close')).toBeFocused();
+  await page.locator('#workspace-scrim').click({position:{x:9,y:190}});
+  await expect(rail).toBeHidden();
+  await expect(opener).toBeFocused();
+  await expect(page.locator('#video-url')).toHaveValue(example);
+  await opener.click();
+  await page.keyboard.press('Escape');
+  await expect(rail).toBeHidden();
+  await expect(opener).toBeFocused();
+  await opener.click();
+  await page.locator('#workspace-close').click();
+  await expect(rail).toBeHidden();
+  await opener.click();
+  await rail.getByRole('link',{name:'Create',exact:true}).click();
+  await expect(page.locator('#create-view')).toBeVisible();
+  await expect(rail).toBeHidden();
+  await chooseView(page,'Extract');
+  await expect(page.locator('#video-url')).toHaveValue(example);
+  await opener.click();
+  await page.locator('#recent-preview .preview-item').click();
+  await expect(rail).toBeHidden();
+  await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
+  const dims=await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.clientWidth]);
+  expect(dims[0]).toBeLessThanOrEqual(dims[1]+2);
+ }
+});
+
 test('Workspace separates Extract, Recent and Diagnostics with working history search, reopen and delete',async({page})=>{
  await stubHistory(page);await page.goto('/');await expect(page.locator('#backend-badge')).toHaveText('Owner-private Site backend');
  await expect(page.locator('#diagnostics-view')).toBeHidden();await expect(page.locator('#recent-view')).toBeHidden();
- await page.getByRole('link',{name:/^Recent/}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
+ await chooseView(page,'Recent');await expect(page.locator('#history-items')).toContainText('Fixture saved video');
  await page.locator('#history-search').fill('no such creator');await expect(page.locator('#history-items')).toContainText('No matching');await page.locator('#history-search').fill('Fixture creator');
  await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();await expect(page.locator('#extract-view')).toBeVisible();await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
- await page.reload();await page.getByRole('link',{name:/^Recent/}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
+ await page.reload();await chooseView(page,'Recent');await expect(page.locator('#history-items')).toContainText('Fixture saved video');
  await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await expect(page.getByRole('dialog')).toBeVisible();await page.getByRole('button',{name:'Keep extraction',exact:true}).click();await expect(page.locator('#history-items')).toContainText('Fixture saved video');
  await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await page.getByRole('button',{name:'Delete extraction',exact:true}).click();await expect(page.locator('#history-items')).not.toContainText('Fixture saved video');await expect(page.locator('#history-status')).toHaveText('Extraction deleted.');
 });
@@ -322,7 +386,7 @@ async function mockAssistantLaunch(page,{clipboardFails=false,popupBlocked=false
 test('Assistant handoffs copy all saved outputs even from Whisper tab and expose safe destinations',async({page,isMobile})=>{
  await mockAssistantLaunch(page);await stubHistory(page);await page.goto('/');
  await expect(page.locator('#open-chatgpt')).toBeDisabled();
- await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await chooseView(page,'Recent');await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
  await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await page.locator('#open-claude').click();
  await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');
  expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
@@ -359,9 +423,9 @@ test('A delayed saved result cannot change a new extraction or its exported sour
   const {traceId}=route.request().postDataJSON();await captionGate;
   await route.fulfill({contentType:'application/json',body:JSON.stringify({ok:true,code:'OK',cues:[{start:'00:00:05.000',end:'00:00:06.000',text:'New extraction caption'}],post:{status:'unavailable'},metadata:{status:'unavailable'},events:mockEvents(traceId,'succeeded','OK'),diagnosticsStored:true,historyStatus:'saved'})});
  });
- await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.goto('/');await chooseView(page,'Recent');
  await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
- await page.getByRole('link',{name:'Extract',exact:true}).click();
+ await chooseView(page,'Extract');
  const other='https://www.tiktok.com/@hankgreen1/video/7047596209028074758';
  await page.locator('#video-url').fill(other);await page.locator('#probe-button').click();
  const savedResponse=page.waitForResponse(r=>r.url().endsWith(savedId));releaseHistory();await (await savedResponse).finished();
@@ -378,7 +442,7 @@ test('The latest saved-result selection wins when responses arrive in reverse or
  await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items})}));
  let releaseFirst;const firstGate=new Promise(r=>releaseFirst=r);
  await page.route('**/api/history/*',async r=>{const id=r.request().url().split('/').at(-1);if(id===first)await firstGate;await r.fulfill({contentType:'application/json',body:JSON.stringify({item:{...items.find(x=>x.id===id),result:{ok:true,code:'OK',cues:[{start:'00:00:01.000',text:id===first?'Old saved selection':'Latest saved selection'}]}}})});});
- await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await page.goto('/');await chooseView(page,'Recent');
  await page.getByRole('button',{name:'Open extraction: Selection 0',exact:true}).click();await page.getByRole('button',{name:'Open extraction: Selection 1',exact:true}).click();
  await expect(page.locator('#tab-panel')).toContainText('Latest saved selection');
  const response=page.waitForResponse(r=>r.url().endsWith(first));releaseFirst();await(await response).finished();
@@ -390,14 +454,14 @@ test('Unbroken provider creator text does not overflow Recent or its preview',as
  await page.route('**/api/history',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({items:[{id:'00000000-0000-4000-8000-000000000010',sourceUrl:example,platform:'tiktok',createdAt:Date.now(),expiresAt:Date.now()+86400000,title:'Long creator fixture',creator}]})}));
  await page.goto('/');await expect(page.locator('#recent-preview')).toContainText(creator);
  for(const view of ['Extract','Recent']){
-  await page.getByRole('link',{name:view==='Recent'?/^Recent/:view,exact:view!=='Recent'}).click();
+  await chooseView(page,view);
   const size=await page.evaluate(()=>({width:document.documentElement.clientWidth,scroll:document.documentElement.scrollWidth}));expect(size.scroll).toBeLessThanOrEqual(size.width+2);
  }
 });
 
 
 test('History states retention is paused and does not display legacy expiry as an active deadline',async({page})=>{
- await stubHistory(page);await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();
+ await stubHistory(page);await page.goto('/');await chooseView(page,'Recent');
  await expect(page.locator('#history-status')).toContainText('Automatic deletion paused');
  await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
  await expect(page.locator('#history-save-status')).toHaveText('Saved extraction · Automatic deletion paused');
@@ -409,7 +473,7 @@ test('Hosted diagnostic reads display aged records without the browser-cache siz
  const events=Array.from({length:1001},(_,i)=>({schema:'gs-pen.diagnostic.v2',timestamp,traceId:'retained_'+i,platform:'tiktok',stage:'finished',status:'succeeded',code:'OK',source:'site',build:'test'}));
  await page.route('**/api/health',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({backend:'sites_private',centralSiteStorage:true})}));
  await page.route('**/api/diagnostics',r=>r.fulfill({contentType:'application/json',body:JSON.stringify({events,retentionPaused:true,retentionDays:null})}));
- await page.goto('/');await page.getByRole('link',{name:'Diagnostics',exact:true}).click();
+ await page.goto('/');await chooseView(page,'Diagnostics');
  await expect(page.locator('#server-event-count')).toHaveText('1001');
  await expect(page.locator('#diagnostic-rows')).toContainText('OK');
 });
@@ -430,7 +494,7 @@ async function stubContentJobs(page){
  });
 }
 test('Idea workflow prepares a compact brief and saves a creative response without automatic generation',async({page})=>{
- await stubContentJobs(page);await page.goto('/');await page.getByRole('link',{name:'Create',exact:true}).click();
+ await stubContentJobs(page);await page.goto('/');await chooseView(page,'Create');
  await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();
  await expect(page.locator('#content-status')).toContainText('Brief saved');await expect(page.locator('#content-summary')).toContainText('0 source characters');
  const draft={title:'The Lighthouse Key',message:'A brass key that glows beside lost sailors. <img src=x onerror="window.injected=true">',hashtags:['#DnD'],visualBrief:'A key in lighthouse fog.',images:[]};
@@ -447,7 +511,7 @@ test('Invalid creative JSON remains editable and never reaches the save endpoint
 test('Saved extraction can seed a creative brief without copying arbitrary browser content',async({page})=>{
  await stubHistory(page);await stubContentJobs(page);let submitted;
  await page.route('**/api/content',async route=>{if(route.request().method()==='POST'){submitted=route.request().postDataJSON();}await route.fallback();});
- await page.goto('/');await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();await page.locator('#create-from-result').click();await expect(page.locator('#create-view')).toBeVisible();await expect(page.locator('#content-source')).toContainText('saved Pen extraction');
+ await page.goto('/');await chooseView(page,'Recent');await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();await page.locator('#create-from-result').click();await expect(page.locator('#create-view')).toBeVisible();await expect(page.locator('#content-source')).toContainText('saved Pen extraction');
  await page.locator('#content-idea').fill('A lighthouse key');await page.locator('#content-create').click();await expect(page.locator('#content-status')).toContainText('Brief saved');expect(submitted.extractionId).toBe('00000000-0000-4000-8000-000000000010');expect(submitted.source).toBeUndefined();expect(submitted.captions).toBeUndefined();
 });
 
@@ -458,7 +522,7 @@ test('Content deletion requires confirmation, clears copies and explains separat
  await page.getByRole('button',{name:'Keep content job',exact:true}).click();expect(deletes).toBe(0);await expect(page.locator('#content-brief-panel')).toBeVisible();
  await page.locator('#content-delete').click();await page.locator('#content-confirm-delete').click();await expect(page.locator('#content-status')).toContainText('Content job deleted');expect(deletes).toBe(1);
  await expect(page.locator('#content-brief-panel')).toBeHidden();await expect(page.locator('#content-prompt')).toBeEmpty();await expect(page.locator('#content-response')).toHaveValue('');await expect(page.locator('#content-jobs')).toContainText('Your content jobs will appear here');
- await page.getByRole('link',{name:/^Recent/}).click();await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await expect(page.locator('#delete-dialog')).toContainText('Content jobs made from it keep their source excerpt and link');await page.getByRole('button',{name:'Keep extraction',exact:true}).click();
+ await chooseView(page,'Recent');await page.getByRole('button',{name:'Delete extraction: Fixture saved video',exact:true}).click();await expect(page.locator('#delete-dialog')).toContainText('Content jobs made from it keep their source excerpt and link');await page.getByRole('button',{name:'Keep extraction',exact:true}).click();
 });
 test('A failed content deletion keeps the open brief and editable response',async({page})=>{
  await stubContentJobs(page);await page.route('**/api/content/**',async route=>{if(route.request().method()==='DELETE')return route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'STORAGE_FAILED'})});await route.fallback();});
@@ -480,7 +544,7 @@ async function stubPagedWork(page,{kind,failOnce=false,delayOlder=false}={}){
 test('Recent pages older items, retries failures, filters loaded work and deletes an older extraction',async({page})=>{
  await stubPagedWork(page,{kind:'history',failOnce:true});await page.goto('/#recent');await expect(page.locator('#history-status')).toContainText('50 loaded of 52');await page.locator('#history-more').click();await expect(page.locator('#history-status')).toContainText('Could not load older');await expect(page.getByRole('button',{name:'Open extraction: Fixture saved 1',exact:true})).toBeVisible();
  await page.locator('#history-more').click();await expect(page.locator('#history-status')).toContainText('52 loaded of 52');await expect(page.locator('#history-more')).toBeHidden();await page.locator('#history-search').fill('Fixture saved 52');await page.getByRole('button',{name:'Open extraction: Fixture saved 52',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic old caption');
- await page.getByRole('link',{name:/^Recent/}).click();await page.locator('#history-search').fill('');await expect(page.locator('#history-more')).toBeVisible();await page.locator('#history-more').click();await expect(page.locator('#history-status')).toContainText('52 loaded');await page.getByRole('button',{name:'Delete extraction: Fixture saved 52',exact:true}).click();await page.locator('#confirm-delete').click();await expect(page.locator('#history-status')).toHaveText('Extraction deleted.');await expect(page.locator('#history-count')).toHaveText('51');await expect(page.getByRole('button',{name:'Open extraction: Fixture saved 52',exact:true})).toHaveCount(0);
+ await chooseView(page,'Recent');await page.locator('#history-search').fill('');await expect(page.locator('#history-more')).toBeVisible();await page.locator('#history-more').click();await expect(page.locator('#history-status')).toContainText('52 loaded');await page.getByRole('button',{name:'Delete extraction: Fixture saved 52',exact:true}).click();await page.locator('#confirm-delete').click();await expect(page.locator('#history-status')).toHaveText('Extraction deleted.');await expect(page.locator('#history-count')).toHaveText('51');await expect(page.getByRole('button',{name:'Open extraction: Fixture saved 52',exact:true})).toHaveCount(0);
  const dims=await page.evaluate(()=>[document.documentElement.scrollWidth,document.documentElement.clientWidth]);expect(dims[0]).toBeLessThanOrEqual(dims[1]+2);
 });
 test('Create pages older jobs and preserves loaded work after a failed continuation',async({page})=>{
