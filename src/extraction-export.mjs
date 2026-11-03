@@ -9,6 +9,28 @@ export function tabText(result,tab) {
   if(tab==='metadata')return result.metadata?.status==='succeeded'?'Public video metadata\nSource: '+result.metadata.provenance+'\n\n'+Object.entries(result.metadata.fields).map(([k,v])=>k+': '+v).join('\n'):'';
   return '';
 }
+// SubRip output uses only already retrieved native platform timing data.
+// Invalid or missing end times reject the entire export rather than inventing timings.
+function subRipTimestamp(raw) {
+  if(typeof raw!=='string')return null;
+  const match=/^(?:(\\d{2}):)?([0-5]\\d):([0-5]\\d)\\.(\\d{3})$/.exec(raw);
+  if(!match)return null;
+  const hours=Number(match[1]||0),minutes=Number(match[2]),seconds=Number(match[3]),fraction=Number(match[4]);
+  return {milliseconds:((hours*60+minutes)*60+seconds)*1000+fraction,
+    formatted:String(hours).padStart(2,'0')+':'+match[2]+':'+match[3]+','+match[4]};
+}
+export function exportSubRip(result) {
+  if(!result?.ok||!Array.isArray(result.cues)||result.cues.length===0||result.cues.length>2000)return '';
+  const blocks=[];
+  for(const cue of result.cues) {
+    const start=subRipTimestamp(cue?.start),end=subRipTimestamp(cue?.end);
+    if(!start||!end||end.milliseconds<=start.milliseconds||typeof cue?.text!=='string'||!cue.text.trim())return '';
+    const body=cue.text.replace(/\\r\\n?/g,'\\n').trim().replace(/\\n/g,'\\r\\n');
+    blocks.push(String(blocks.length+1)+'\\r\\n'+start.formatted+' --> '+end.formatted+'\\r\\n'+body);
+  }
+  return blocks.join('\\r\\n\\r\\n')+'\\r\\n';
+}
+
 export function exportText(result,sourceUrl) {
   return ['GS Pen extraction','Source: '+sourceUrl,'',...['captions','post','metadata'].map(t=>tabText(result,t)).filter(Boolean),'','Independent Whisper transcript: not implemented.'].join('\n\n');
 }
