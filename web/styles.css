@@ -22,3 +22,6 @@
 .recovery-source-note{margin:0;flex:1;min-width:190px;max-width:60ch;color:#746b62;font-size:11px;line-height:1.6;overflow-wrap:anywhere}
 @media(max-width:680px){.recovery-card{padding:17px 16px}.recovery-actions{align-items:stretch;flex-direction:column}.recovery-primary{width:100%}.recovery-source-note{min-width:0}}
 #export-subrip{min-height:44px;white-space:normal}
+/* PEN-031: disclose generation responsibility before owner prepares a brief. */
+.creative-cost-note{border:1px solid #eadfd0;border-left:3px solid var(--orange);background:#fffaf3;color:#5d5043;border-radius:9px;padding:13px 15px;font-size:12px;line-height:1.75;margin:14px 0 18px;overflow-wrap:anywhere}
+.creative-cost-note strong{display:block;color:var(--text);font-size:13px;margin-bottom:3px}
