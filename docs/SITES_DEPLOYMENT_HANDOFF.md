@@ -13,12 +13,14 @@ Run `npm run install:ci`, `npm run check`, `npm run build`, `npm run lint`, `pnp
 
 - Require trusted dispatcher user identity and configured `GS_PEN_OWNER_EMAIL` plus `GS_PEN_OWNER_ID`. Reject missing or mismatched identity on all content and diagnostic endpoints.
 - Keep exactly one allowed owner. Diagnostics intentionally have no owner column: reads and deletion cover the single owner's store. Add ownership isolation before permitting a second user.
-- Automatic deletion is paused in issue #14. Diagnostic listing returns at most 10,000 records without pruning storage; history lists the latest 50 without deleting older results. Ignore legacy expiry timestamps. Keep the cleanup automation paused. Before this branch is reviewed and deployed, version 10 still has the old read/write expiry behavior.
+- Version 11 already pauses automatic deletion and count pruning in the owner-private Site. The diagnostic listing is limited to a window of at most 10,000 records without pruning storage. Version 11 displays the latest 50 history items; newer GitHub code adds paging of older items but is not documented deployed. Ignore legacy expiry timestamps. Keep the cleanup automation paused.
 - The legacy identity-less retention route is a harmless no-op while paused. It returns retentionPaused true and expiredDeleted false and exposes no records. Preserve the private dispatcher boundary.
 - Hosting request metadata has independent platform retention. Application diagnostic privacy does not promise control of those logs.
 - Keep platform captions, post text, metadata and independent transcripts distinct. Preserve partial-result and provenance warnings.
 
 ## Release
+
+Use `docs/RELEASE_READINESS_2026-11-04.md` as the preflight, hosted acceptance and receipt checklist. It is a preparation document, not evidence of a new deployment.
 
 Use the Sites source helper to open the existing source repository, synchronize the verified main application tree, build and package it, and save/deploy privately. Do not change sharing. Record GitHub main commit, runtime source commit, saved version, deployment identifier, URL and checks in `docs/DEPLOYMENT.md`. A GitHub commit is not itself a Site deployment.
 
