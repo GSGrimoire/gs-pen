@@ -18,7 +18,7 @@ Updated 3 November 2026. The last documented owner-private Site release remains 
 
 ## Pending release and usability increments
 - Issue #27 / PEN-025: private publication and real provider/owner-access verification of merged PEN-018, PEN-020, PEN-023 and PEN-024. No live Site update until the publication gate. Prepare against `docs/RELEASE_READINESS_2026-11-04.md`.
-- Issue #28 / PEN-026, draft pull request #29: deterministic next-step guidance for failed/partial extractions. Only include after its final checks and review, and after it merges. No Site release is implied by a GitHub PR.
+- Issue #28 / PEN-026, merged pull request #29: deterministic next-step guidance for failed/partial extractions. Final head passed 149 unit, 68 browser and hosted checks, and merged to `main` as `f2b4a7c0642f90c37b5c41f36d530f24de95eb22`. Not yet published on the Site.
 - Issue #14 retention pause passed review, merged in #15 and has been live since version 11; scheduled cleanup remains paused.
 
 ## Proposed next integration
