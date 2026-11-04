@@ -1,3 +1,13 @@
+# Current checkpoint, 4 November 2026: version 12 deployed
+
+Owner-private version **12** is live at https://gs-pen-test-lab.goofyspook.chatgpt.site . Final GitHub source `20dec279b09b0b287fbf82b62cc9651715ebd3bb` and pushed Sites source `de46b2004881e7afc79785e5dacb6cbcc5b2b646` have the identical tree `05e19593aca8af9cfa83e79a230bb4876055e0c8`. All merged work through #37 and documentation #43 is included. See docs/DEPLOYMENT.md for the actual saved version, deployment and checksum receipt.
+
+Final main passed 156 unit and 78 desktop/mobile browser checks plus production build/lint/types. Native deployment succeeded, owner-private access was reconfirmed, the installed owner assistant list read returned the new paginated contract, and the legacy retention route confirms deletion remains paused. No secrets, database schema, sharing or schedules changed. Version 11 remains available for rollback.
+
+Issue #27 stays open for hosted acceptance that needs an owner-signed-in browser and permitted real provider samples. The separate cloud browser is unsigned-in; no claim is made that the new UI, real TikTok/Facebook extraction, pasted-source save/reopen/delete, pagination over 50 actual records or a real second account were tested on version 12. Do not mistake synthetic tests or successful publication for provider reliability. No model or GS Poster write occurred.
+
+---
+
 # Current checkpoint, 3 November 2026
 
 PEN-029 (#37, explicit private manual-source text in Create) is merged as `db560e62da95d47798fdcd469a9064cade5ba52c` after Claude's independent privacy/security review on head `6706912` (no blockers), and Gus approved it for the 4 November private Site release. The release packet (docs/SHIP_PACKET_2026-11-04.md, docs/RELEASE_READINESS_2026-11-04.md) now includes it. Next: the authorized maintainer publishes final main once to the existing owner-private Site and fills the receipt. Version 11 stays the documented live Site until then. Not verified: e2e locally, real Site, cross-account and platform request logging.

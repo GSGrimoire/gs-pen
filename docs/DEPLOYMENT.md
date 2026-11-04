@@ -1,3 +1,52 @@
+# Published version 12, 4 November 2026
+
+The existing owner-private GS Pen Site was updated successfully at **17:39:17 Europe/Copenhagen (UTC+01:00)** on 4 November 2026. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site
+
+## Exact release receipt
+
+| Item | Verified value |
+| --- | --- |
+| Final GitHub source commit | `20dec279b09b0b287fbf82b62cc9651715ebd3bb` |
+| Last application merge | `db560e62da95d47798fdcd469a9064cade5ba52c` (#37) |
+| Exact GitHub and Sites source tree | `05e19593aca8af9cfa83e79a230bb4876055e0c8` |
+| Pushed Sites source commit | `de46b2004881e7afc79785e5dacb6cbcc5b2b646` |
+| Submitted compressed archive SHA-256 | `e4f582525e64a520a3fe9a9e3d0f4120dfd467a7c87d07de2231d68ad66fe44f` |
+| Submitted archive bytes | 428609 |
+| Sites stored normalized tar SHA-256 | `85aa79bda01027840c798b720e7b5f5dffee99b078edcb1b73d9d18f4d2d49cf` |
+| Sites stored tar bytes / files | 1648640 / 73 |
+| Saved version | `appgprj_6adce46e22dc81918dab627af382c76a~appgver_7ffcd3eea96881919c53f69bf10e6cf1` |
+| Deployment | `appgdep_6aeb5fac207081918146dfe55b1234f8` |
+| Terminal deployment state | `succeeded`, assistant capability ready, environment revision 2 |
+| Client/server build | `workspace_v03_sites_3` |
+| Access | Existing custom policy, exactly one owner, no additional editors, groups or external visitors |
+| Rollback | Saved version 11 retains its archive and can be selected with the private deployment operation |
+
+The compressed upload and normalized stored tar are different representations; their distinct digests above are intentional. Every tracked file blob and mode matched final GitHub source, and the resulting complete Git tree matched exactly before packaging. The build and source helpers pushed the source and packaged its production output. No application code was changed during release preparation. Documentation-only #43 was reviewed at exact head `570cc52`, passed required checks and merged before selection.
+
+## Included changes and review
+
+Version 12 includes retained-work paging (#19), TikTok vm/vt resolution (#21), Facebook video/reel resolution and caption fallback (#24), ordinary Facebook post shares (#26), failure guidance (#29), recovery-to-Create (#33), native timed-caption SubRip export (#35), desktop/mobile layout (#39), creative-cost disclosure (#41), and explicit pasted-source briefs (#37). PEN-029 has Claude's independent privacy/security review at exact head `6706912f7bc5bc247197f4803fea2679788593cc`, with no blockers, and the recorded owner inclusion decision. Publication authorization was renewed directly by the owner on 4 November.
+
+## Completed verification
+
+- Final main: **156 unit tests and 78 desktop/mobile Chromium checks passed**, alongside production build, lint and type checks. Workflow runs: https://github.com/GSGrimoire/gs-pen/actions/runs/41868563442 and https://github.com/GSGrimoire/gs-pen/actions/runs/41868563033 . The decoded browser job log confirms 78 passed; these provider and storage fixtures are synthetic.
+- Local exact-source verification: 156/156 tests, static preview syntax checks, production Worker build and whitespace check passed. Dependencies and hosting manifest are unchanged from the prior Site source.
+- Native Sites publication and saved-version reads confirm version 12 and its exact pushed source. The Site remains owner-private after deployment. Existing DB binding and all four tables were present before publication; no migrations, resets, credential changes, access changes or cleanup schedules were introduced.
+- A fresh installed assistant `list_content_jobs` call succeeded after deployment with the new contract: `jobs: [], total: 0, nextCursor: null, limit: 50`. This confirms signed-in owner access to the deployed content-list path and its database. The prior version returned only `jobs: []`.
+- The browser shows the private Site sign-in gate. Its separate cloud-browser session is not signed in. No owner sign-in credentials were requested or authentication weakened.
+- An authenticated service call to the legacy retention endpoint returned 200 with `retentionPaused: true` and `expiredDeleted: false`. No production records were created or removed during the release checks.
+- Direct anonymous, service-only and synthetic forged-identity probes were rejected; exact endpoint results are recorded in the release issue after verification. These probes do not constitute a real second-account test.
+
+## Verification limits and remaining release acceptance
+
+Deployment succeeded, but issue #27 remains open for the remaining hosted acceptance. The signed-in browser interface, real TikTok/Facebook provider samples, actual subtitle downloads, manual-source write/reopen/delete, storage self-check, paging beyond 50 stored records, and a real second-account rejection were **not tested on version 12**. Their source tests passed, but synthetic tests are not evidence of real provider availability. No real links or extracted content were committed. Platform request-body logging remains unverified.
+
+Only the installed content-list assistant operation was exercised. No model service, media download, GS Poster action or social publication was performed. Existing source guards and retention-pause code remain intact. The deployed version is suitable for owner acceptance testing; broader extraction reliability is not established by publication.
+
+Earlier pending-release notes below are historical and superseded by this actual version-12 receipt.
+
+---
+
 # Pending PEN-024 ordinary Facebook post-share release, 1 November 2026
 
 **GitHub source merged, owner-private Site NOT published.** PEN-024 issue #25 / pull request #26 merged into main as `2a5fb303a83f232d04a6e1ff5a8532876187abca` on 1 November 2026. It adds ordinary Facebook post-share URL support, bounded safe redirect resolution, user-facing failure explanations and partial public-preview output. Final reviewed pull-request head `9b5fae3df315043e41a8640620731997d1a7a516` passed 143/143 unit tests, 68/68 desktop/mobile browser checks, hosted production build, lint and type checks (GitHub workflow runs 41346101335 and 41346101377). Node research workflow 41346101419 also passed. Tests are synthetic and do not verify any real Facebook or TikTok provider access. The earlier 30 October TikTok vm/vt and Facebook video/reel changes likewise remain unpublished. The last documented live Site version is 11 from 25 October. Do not equate accepted links with provider permission to retrieve content. Site source sync, owner-private deployment and real signed-in sample/authorization testing remain necessary.
