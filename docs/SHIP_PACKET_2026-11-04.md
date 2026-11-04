@@ -8,7 +8,7 @@
 - Existing private Site: https://gs-pen-test-lab.goofyspook.chatgpt.site
 - Existing project ID: `appgprj_6adce46e22dc81918dab627af382c76a`
 - Last **documented** live Site: version 11, published 25 October 2026, application commit `4a7d271af142a1d48affc994a9da4b42a178410a`, tree `5029510bdafbd025b6d23ced233f952b652dd5a5`, deployment `appgdep_6addf0d9991081919e6026f4eb2ecff7`
-- Last code merge candidate at preparation: `d6f99b98ab342bb4fb9ac791dcc91fff528f8b08`, Git tree `494ff8fd82c8adc1eb053ba11fe308669cbbb847`. **Re-read GitHub `main` and its tree immediately before publishing.** Later documentation-only commits may change Git SHA/tree without changing application bytes.
+- Last code merge candidate: `db560e62da95d47798fdcd469a9064cade5ba52c` (PEN-029 merge, 3 November 2026), Git tree `451c09102d031ba9e0cc81871d7e39c008108638`. The earlier candidate `d6f99b98ab342bb4fb9ac791dcc91fff528f8b08` is superseded. **Re-read GitHub `main` and its tree immediately before publishing.** Later documentation-only commits may change Git SHA/tree without changing application bytes.
 - Review `docs/RELEASE_READINESS_2026-11-04.md` and `docs/DEPLOYMENT.md` as the source of deployment controls and existing receipts.
 
 ## A. Exactly what is in the candidate
@@ -27,7 +27,9 @@ The current GitHub `main` includes all previously merged reliability and source 
 | Extract beside right navigation + history, mobile 75%-width drawer | #39, merged as `4a6a274279707b3666161483c58aab42e311bfd7` | Side by side desktop; on mobile dismiss via `>`, scrim, Escape and navigation, focus returns correctly |
 | Transparent creative-generation and cost disclosure | #41, merged as `d6f99b98ab342bb4fb9ac791dcc91fff528f8b08` | Pen prepares briefs with code, zero Pen model-generation calls; a selected assistant's account covers creative pass |
 
-**Explicitly excluded:** PEN-029 manual pasted source text, draft PR #37, because the feature adds a new private-data storage path and still needs an **independent privacy/security review** on its final head. The review packet is `docs/PEN_029_INDEPENDENT_REVIEW_PACKET.md` on that branch. Do not cherry-pick, merge, copy its browser field or include a package built from that branch. Future audio transcription, full-history search and direct GS Poster writes/publishing are not included.
+| Explicit private manual-source text in Create (PEN-029) | #37, merged as `db560e62da95d47798fdcd469a9064cade5ba52c` after independent Claude privacy/security review on head `6706912` (no blockers); owner approved inclusion in chat, 3 November 2026 | Pasted text is sent only on Prepare brief; only the budget-selected excerpt is stored; labelled not verified by Pen; mutually exclusive with a saved extraction; job delete removes it |
+
+**Not included:** future audio transcription, full-history search and direct GS Poster writes/publishing.
 
 The GitHub compare against the last documented live application includes source and test changes across 51 files, including changes to server extraction/share, paging, UI and tests. No migration, owner-secret configuration or deployment security configuration files appear in that comparison, but **that is not proof** of hosted identity, data isolation or correct database bindings. Verify these on the actual owner-private Site.
 
@@ -35,7 +37,7 @@ The GitHub compare against the last documented live application includes source 
 
 1. Confirm the existing project's owner-private sharing remains restricted to the one approved owner. Check both existing server-side trusted identity settings without displaying values, changing secrets or accepting client-provided identity.
 2. Confirm Site project ID, database binding, original records, and paused automatic expiry and count pruning. Ensure the scheduled cleanup remains disabled. **No destructive migration, cleanup, data reset or origin recreation.**
-3. Compare the current GitHub `main` SHA/tree to the source revision selected for the build. Check that PR #37 remains excluded and that no PR with failing/pending review has entered `main`.
+3. Compare the current GitHub `main` SHA/tree to the source revision selected for the build. Check that PR #37 is present as `db560e6` and that no PR with failing/pending review has entered `main`.
 4. Confirm successful unit, hosted production build, lint, type and desktop/mobile browser workflows on the **final main**. Capture the workflow URLs, actual test counts and final conclusions. A green PR alone is not the final-main check.
 5. Confirm the planned artifact's source tree or file manifest matches approved source and record its exact package digest before any live deployment. Do not accept an unverified directory zip as an exact build.
 6. Confirm the Site interface provides a genuine route to the last documented working version 11 or an equivalent rollback method. If no rollback exists, explicitly record that limitation and seek owner acceptance before publishing.
@@ -68,6 +70,7 @@ If a tool required for exact Site sync/deploy or source-tree verification is una
 | Desktop | Wide viewport | Extract to left; navigation plus saved-history shortcuts to right; saved preview reopens its source |
 | Mobile | Narrow viewport | Menu / History trigger opens about 75%-width right overlay; `>`, outside click, Escape and navigation close it; focus/scroll restore and input retained |
 | Create | Owner with synthetic idea/source and draft | Brief created by code, no hidden model requests, prompt externally handled, draft validated/saved |
+| Manual source | Synthetic pasted text longer than the budget, then Prepare brief, reopen and delete | No network write while typing; only the selected excerpt reopens; not-verified label shown; delete removes it; nothing enters Diagnostics |
 | Cost | Inspect Create disclosure | Explicit selected-assistant account billing; Pen's server model calls remain zero |
 | Connector | Owner read-only list/get when authorized | Correct owner scope; empty response alone is insufficient proof of integration |
 | Poster | Inspect export from test draft only | `submissionStatus: not_sent`; no action in GS Poster |

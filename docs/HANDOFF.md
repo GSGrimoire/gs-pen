@@ -1,3 +1,9 @@
+# Current checkpoint, 3 November 2026
+
+PEN-029 (#37, explicit private manual-source text in Create) is merged as `db560e62da95d47798fdcd469a9064cade5ba52c` after Claude's independent privacy/security review on head `6706912` (no blockers), and Gus approved it for the 4 November private Site release. The release packet (docs/SHIP_PACKET_2026-11-04.md, docs/RELEASE_READINESS_2026-11-04.md) now includes it. Next: the authorized maintainer publishes final main once to the existing owner-private Site and fills the receipt. Version 11 stays the documented live Site until then. Not verified: e2e locally, real Site, cross-account and platform request logging.
+
+---
+
 # Pending retained-work paging, 28 October 2026
 
 PEN-018 / issue #18, branch chatgpt/pen-retained-pages, based on main cc564637. Work resumed after the temporary workspace was reset; implementation checkpoints are now preserved in GitHub. Recent and Create can browse older summaries in pages of 50, with owner-scoped totals and validated cursors. History lists avoid loading full caption/post payloads. No migration, owner-guard change, retention change or Poster write is included. Candidate build: workspace_v03_sites_3.

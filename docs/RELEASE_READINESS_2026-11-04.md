@@ -4,9 +4,9 @@
 
 ## Latest pre-release selection, updated 3 November 2026
 
-Use the [execution-ready publication packet](SHIP_PACKET_2026-11-04.md) for the final planned source, new responsive interface acceptance, explicit creative-cost disclosure, and exact blank publication receipt. The **latest application code candidate** is merge commit `d6f99b98ab342bb4fb9ac791dcc91fff528f8b08`, Git tree `494ff8fd82c8adc1eb053ba11fe308669cbbb847`. It includes reviewed and merged PEN-027, PEN-028, PEN-030 and PEN-031. The candidate root commit/tree can advance with **documentation-only** release receipts; recheck `main` and verify actual application files before publication.
+Use the [execution-ready publication packet](SHIP_PACKET_2026-11-04.md) for the final planned source, new responsive interface acceptance, explicit creative-cost disclosure, and exact blank publication receipt. The **latest application code candidate** is merge commit `db560e62da95d47798fdcd469a9064cade5ba52c`, Git tree `451c09102d031ba9e0cc81871d7e39c008108638`. It includes reviewed and merged PEN-027, PEN-028, PEN-029, PEN-030 and PEN-031. The candidate root commit/tree can advance with **documentation-only** release receipts; recheck `main` and verify actual application files before publication.
 
-**Do not include** draft manual-source PR #37 (PEN-029). Its new private content input awaits an independent security/privacy review, and passing synthetic tests are not sufficient approval. The last documented live private Site remains **version 11**, not the GitHub candidate. No saved version, private deployment, checksum or real provider acceptance has been performed for the 4 November release. All operational gates below still apply.
+**Include** manual-source PR #37 (PEN-029). Claude reviewed its exact head `6706912` independently for privacy and security with no blockers, and Gus approved its inclusion in chat on 3 November 2026. The last documented live private Site remains **version 11**, not the GitHub candidate. No saved version, private deployment, checksum or real provider acceptance has been performed for the 4 November release. All operational gates below still apply.
 
 ## 1. Verified baseline and release selection
 
