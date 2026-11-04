@@ -1,3 +1,9 @@
+# Live release checkpoint, 4 November 2026
+
+Version **12** is deployed owner-private. The release includes all merged application changes through #37, including paging, short links, recovery, SubRip export, responsive navigation, cost disclosure and explicit pasted-source briefs. Exact source, receipt and verification limits: docs/DEPLOYMENT.md. Final source checks passed 156 unit and 78 browser tests plus build/lint/types. Installed owner content-list read and paused-retention service response passed after deployment. Issue #27 remains open for signed-in browser and real provider acceptance. The historical pending notes below predate this publication.
+
+---
+
 # GS Pen backlog
 Updated 3 November 2026. The last documented owner-private Site release remains version 11 from 25 October. Later changes have merged into GitHub but have no newer verified private deployment receipt; see `docs/DEPLOYMENT.md` and `docs/RELEASE_READINESS_2026-11-04.md`.
 
