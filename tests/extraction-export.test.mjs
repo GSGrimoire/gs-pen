@@ -3,8 +3,9 @@ import {exportRecord,exportText,tabText,exportSubRip} from '../src/extraction-ex
 const result={ok:true,code:'OK',cues:[{start:'00:00:01.000',text:'Synthetic platform caption'}],post:{text:'Fixture description',provenance:'Public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',provenance:'Public page',fields:{creator:'Fixture creator',likes:0}},events:[{secret:'diagnostic'}],unpersistedCaptionHost:'signed.test'};
 test('Text and structured exports retain provenance, partial outputs and transcript separation',()=>{
  const r=exportRecord(result,'https://www.facebook.com/reel/123456789012345');assert.equal(r.independentTranscript.status,'not_implemented');assert.equal(r.result.captionType,'platform');assert.equal(r.result.events,undefined);assert.ok(!JSON.stringify(r).includes('signed.test'));
- const text=exportText(result,r.sourceUrl);for(const x of ['not independently transcribed','may be shortened','Fixture description','likes: 0','not implemented'])assert.ok(text.includes(x));
- assert.equal(tabText(result,'whisper'),'');assert.equal(tabText({...result,ok:false},'captions'),'');assert.ok(exportText({...result,ok:false,cues:[]},r.sourceUrl).includes('Fixture description'));
+ const text=exportText(result,r.sourceUrl);for(const x of ['Transcript (from the platform captions)','may be shortened','Fixture description','likes: 0'])assert.ok(text.includes(x),x);
+ assert.ok(!/\d{2}:\d{2}\.\d{3}/.test(text),'plain export has no timestamps');
+ assert.equal(tabText(result,'whisper'),'');assert.equal(tabText({...result,ok:false},'transcript'),'');assert.equal(tabText({...result,ok:false},'captions'),'');assert.ok(exportText({...result,ok:false,cues:[]},r.sourceUrl).includes('Fixture description'));
 });
 
 import {assistantHandoff} from '../src/extraction-export.mjs';
@@ -73,4 +74,14 @@ test('SubRip preserves unusual source text as text and does not include diagnost
  assert.ok(output.includes('01:02:03,004 --> 01:02:04,500'));
  assert.ok(output.includes('<b>Quoted cue</b>\r\nMore text'));
  assert.ok(!output.includes('DO_NOT_LOG'));
+});
+
+import {plainTranscript} from '../src/extraction-export.mjs';
+test('Transcript joins caption cues without timestamps, drops repeats and breaks on pauses',()=>{
+ const cues=[{start:'00:00:00.000',end:'00:00:01.500',text:'Hello  there.'},{start:'00:00:01.500',end:'00:00:02.500',text:'Hello  there.'},
+  {start:'00:00:02.500',end:'00:00:04.000',text:'This is\na test.'},{start:'00:00:07.000',end:'00:00:08.000',text:'After a pause.'},{start:'bad',end:'bad',text:'Odd timing.'},{start:'00:00:09.000',end:'00:00:10.000',text:'  '}];
+ assert.equal(plainTranscript(cues),'Hello there. This is a test.\n\nAfter a pause. Odd timing.');
+ assert.equal(plainTranscript([]),'');assert.equal(plainTranscript(null),'');
+ const r={ok:true,cues};assert.ok(tabText(r,'transcript').endsWith('After a pause. Odd timing.'));assert.ok(tabText(r,'captions').includes('00:00:07.000  After a pause.'));
+ assert.equal(exportRecord(r,'s').result.transcript,plainTranscript(cues));
 });

@@ -1,3 +1,11 @@
+# Current checkpoint, 5 November 2026
+
+Branch claude/eager-hawking-x3j1z1 (Claude): owner-requested UI clean-up after version 12. Transcript tab (plain text, no timestamps) is now the default; timed cues moved to a Clip text tab; the empty Whisper tab is removed; filler headings, notices and footer are removed. Facebook login redirects now report LOGIN_REQUIRED instead of a vague refusal. No change to owner checks, storage or what is fetched. Build label workspace_v04_sites_1. Not yet published: needs review, merge and a Site update by ChatGPT.
+
+Facebook speech transcripts remain unsolved: Facebook redirects anonymous requests to its login page and never exposes captions publicly. Options are in the pull request; the owner has not chosen one.
+
+---
+
 # Current checkpoint, 4 November 2026: version 12 deployed
 
 Owner-private version **12** is live at https://gs-pen-test-lab.goofyspook.chatgpt.site . Final GitHub source `20dec279b09b0b287fbf82b62cc9651715ebd3bb` and pushed Sites source `de46b2004881e7afc79785e5dacb6cbcc5b2b646` have the identical tree `05e19593aca8af9cfa83e79a230bb4876055e0c8`. All merged work through #37 and documentation #43 is included. See docs/DEPLOYMENT.md for the actual saved version, deployment and checksum receipt.

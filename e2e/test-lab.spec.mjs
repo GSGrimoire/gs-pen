@@ -30,17 +30,15 @@ async function stubCaptionResult(page, resultFor) {
 
 test('home page exposes private research status, actual backend and four separate tabs', async ({ page }) => {
   await openConnected(page);
-  await expect(page.getByRole('heading', { name: /Good ideas/ })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Extract', level: 1 })).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(4);
+  await expect(page.getByRole('tab', {name: 'Transcript'})).toHaveAttribute('aria-selected','true');
   await expect(page.locator('#recovery-card')).toBeHidden();
-  await page.getByRole('tab', {name: 'Whisper transcript'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
-  await page.getByRole('tab', {name: 'Post text'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('No post request yet');
-  await page.getByRole('tab', {name: 'Metadata'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('No metadata request yet');
-  await page.getByRole('tab', {name: 'Original captions'}).click();
-  await expect(page.locator('#tab-panel')).toContainText('No caption request yet');
+  await expect(page.locator('#tab-panel')).toContainText('Nothing extracted yet');
+  for(const name of ['Clip text','Post text','Details']){
+    await page.getByRole('tab', {name}).click();
+    await expect(page.locator('#tab-panel')).toContainText('Nothing extracted yet');
+  }
 });
 
 test('known caption result shows original timed cues and sanitized stage timeline', async ({ page }) => {
@@ -54,7 +52,10 @@ test('known caption result shows original timed cues and sanitized stage timelin
   await page.locator('#video-url').fill(example);
   await page.locator('#probe-button').click();
   await expect(page.locator('#trace-status')).toHaveText('Captions retrieved');
-  await expect(page.locator('#tab-panel')).toContainText('First synthetic line');
+  await expect(page.locator('#tab-panel')).toContainText('First synthetic line Second synthetic line');
+  await expect(page.locator('#tab-panel')).not.toContainText('00:00');
+  await page.getByRole('tab', {name: 'Clip text'}).click();
+  await expect(page.locator('#tab-panel')).toContainText('00:00:01.000');
   await expect(page.locator('#tab-panel')).toContainText('2 caption cues');
   await expect(page.locator('#export-subrip')).toBeEnabled();
   const [subtitleDownload]=await Promise.all([
@@ -91,10 +92,10 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
   await page.locator('#video-url').fill(example);
   await page.locator('#probe-button').click();
   await expect(page.locator('#trace-status')).toHaveText('Retrieval failed');
-  await expect(page.locator('#tab-panel')).toContainText('Captions might still exist');
+  await expect(page.locator('#tab-panel')).toContainText('The platform refused the request');
   await expect(page.locator('#recovery-guidance')).toContainText('platform refused the request');
   await expect(page.locator('#export-subrip')).toBeDisabled();
-  await expect(page.locator('#recovery-guidance')).toContainText('open Create');
+  await expect(page.locator('#recovery-guidance')).toContainText('into Create');
   await expect(page.locator('#recovery-card')).toBeVisible();
   await expect(page.locator('#recovery-title')).toHaveText('This source could not be retrieved');
   await expect(page.locator('#recovery-create')).toHaveText('Open Create to continue');
@@ -249,25 +250,23 @@ test('TikTok post and metadata tabs show independent results and safely render p
  await expect(page.locator('#result-summary')).toContainText('Post text: Available');
  await page.getByRole('tab',{name:'Post text',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic post '+attack);
  await expect(page.locator('#tab-panel img')).toHaveCount(0);
- await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText(attack);await expect(page.locator('#tab-panel')).toContainText('Likes');
- await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Whisper is not active');
+ await page.getByRole('tab',{name:'Details',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText(attack);await expect(page.locator('#tab-panel')).toContainText('Likes');
  const stored=await page.evaluate(()=>JSON.stringify(localStorage));expect(stored).not.toContain('Synthetic post');expect(stored).not.toContain(attack);
 });
 
 test('Facebook reaches the backend and displays partial post information without claiming captions',async({page})=>{
  await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',code:'OK',text:'Synthetic Facebook story #magic',hashtags:['#magic'],provenance:'Facebook public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',code:'OK',fields:{platform:'Facebook',creator:'Synthetic Studio'},provenance:'Synthetic fixture'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
  await openConnected(page);await page.locator('#video-url').fill('https://www.facebook.com/reel/123456789012345');await page.locator('#probe-button').click();
- await expect(page.locator('#trace-status')).toHaveText('Post information retrieved; captions unavailable');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
- await expect(page.locator('#recovery-guidance')).toContainText('Partial result');
+ await expect(page.locator('#trace-status')).toHaveText('Post text retrieved; no transcript');await expect(page.locator('#tab-panel')).toContainText('Synthetic Facebook story');await expect(page.locator('#tab-panel')).toContainText('may be shortened');
+ await expect(page.locator('#recovery-guidance')).toContainText('Post text and details were found, but no transcript');
  await expect(page.locator('#export-subrip')).toBeDisabled();
- await expect(page.locator('#recovery-guidance')).toContainText('not an independent speech transcript');
  await expect(page.locator('#recovery-guidance')).not.toContainText('Synthetic Facebook story');
  await expect(page.locator('#recovery-card')).toHaveAttribute('data-state','partial');
- await expect(page.locator('#recovery-title')).toHaveText('Some source material is available');
+ await expect(page.locator('#recovery-title')).toHaveText('Partly retrieved');
  await expect(page.locator('#result-summary p.available')).toHaveCount(2);
- await expect(page.locator('#recovery-source-note')).toContainText('not attached to Create');
- await page.getByRole('tab',{name:'Original captions',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Native captions unavailable');
- await page.getByRole('tab',{name:'Metadata',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
+ await page.getByRole('tab',{name:'Transcript',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('No transcript');
+ await page.getByRole('tab',{name:'Clip text',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('No clip text');
+ await page.getByRole('tab',{name:'Details',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('Synthetic Studio');
 });
 
 test('saved partial post can be selected directly in Create without a write',async({page})=>{
@@ -284,7 +283,6 @@ test('saved partial post can be selected directly in Create without a write',asy
  await page.goto('/#recent');
  await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
  await expect(page.locator('#recovery-create')).toHaveText('Use saved source in Create');
- await expect(page.locator('#recovery-source-note')).toContainText('privately saved extraction');
  await page.locator('#recovery-create').click();
  await expect(page.locator('#create-view')).toBeVisible();
  await expect(page.locator('#content-source')).toContainText('saved Pen extraction');
@@ -376,7 +374,8 @@ test('Output exports contain content and provenance while failed history saves r
  await stubHistory(page,{failedSave:true});await page.goto('/');await expect(page.locator('#backend-badge')).toHaveText('Owner-private Site backend');await page.locator('#video-url').fill(example);await page.locator('#probe-button').click();
  await expect(page.locator('#history-save-status')).toContainText('Could not save to Recent');await expect(page.locator('#tab-panel')).toContainText('Saved fixture caption');
  const dlPromise=page.waitForEvent('download');await page.locator('#export-json').click();const dl=await dlPromise;const content=JSON.parse(await(await import('node:fs/promises')).readFile(await dl.path(),'utf8'));expect(content.result.cues[0].text).toBe('Saved fixture caption');expect(content.independentTranscript.status).toBe('not_implemented');expect(content.result.events).toBeUndefined();
- await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await expect(page.locator('#copy-output')).toBeDisabled();await expect(page.locator('#tab-panel')).not.toContainText('Saved fixture caption');
+ await expect(page.locator('#tab-panel')).not.toContainText('00:00:01.000');
+ await page.getByRole('tab',{name:'Clip text',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText('00:00:01.000');await expect(page.locator('#copy-output')).toBeEnabled();
  const dims=await page.evaluate(()=>({width:document.documentElement.clientWidth,page:document.documentElement.scrollWidth}));expect(dims.page).toBeLessThanOrEqual(dims.width+2);
 });
 
@@ -387,11 +386,11 @@ async function mockAssistantLaunch(page,{clipboardFails=false,popupBlocked=false
   window.open=()=>{if(popupBlocked)return null;const win={opener:window,closed:false,location:{replace:url=>window.assistantTest.launches.push(url)},close:()=>{window.assistantTest.closed=true;}};window.assistantTest.win=win;return win;};
  },{clipboardFails,popupBlocked});
 }
-test('Assistant handoffs copy all saved outputs even from Whisper tab and expose safe destinations',async({page,isMobile})=>{
+test('Assistant handoffs copy all saved outputs even from Details tab and expose safe destinations',async({page,isMobile})=>{
  await mockAssistantLaunch(page);await stubHistory(page);await page.goto('/');
  await expect(page.locator('#open-chatgpt')).toBeDisabled();
  await chooseView(page,'Recent');await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
- await page.getByRole('tab',{name:'Whisper transcript',exact:true}).click();await page.locator('#open-claude').click();
+ await page.getByRole('tab',{name:'Details',exact:true}).click();await page.locator('#open-claude').click();
  await expect(page.locator('#assistant-action-status')).toContainText('All extracted content copied');
  expect(await page.evaluate(()=>window.assistantTest.win.opener)).toBeNull();
  const data=await page.evaluate(()=>window.assistantTest);expect(data.launches).toEqual(['https://claude.ai/new']);
@@ -466,9 +465,10 @@ test('Unbroken provider creator text does not overflow Recent or its preview',as
 
 test('History states retention is paused and does not display legacy expiry as an active deadline',async({page})=>{
  await stubHistory(page);await page.goto('/');await chooseView(page,'Recent');
- await expect(page.locator('#history-status')).toContainText('Automatic deletion paused');
+ await expect(page.locator('#history-status')).toContainText('1 loaded');
+ await expect(page.locator('#history-status')).not.toContainText('Expires');
  await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
- await expect(page.locator('#history-save-status')).toHaveText('Saved extraction · Automatic deletion paused');
+ await expect(page.locator('#history-save-status')).toHaveText('Saved extraction');
  await expect(page.locator('#history-save-status')).not.toContainText('Expires');
 });
 
@@ -503,11 +503,11 @@ test('Create distinguishes deterministic brief preparation from assistant genera
   if(/api\\.(openai|anthropic)\\.com|\/v1\/(responses|chat\/completions|messages)/i.test(request.url()))external.push(request.url());
  });
  await page.goto('/#create');
- await expect(page.getByRole('heading',{name:/Prepare your creative brief/})).toBeVisible();
+ await expect(page.getByRole('heading',{name:'Create',level:1})).toBeVisible();
  const disclosure=page.locator('#creative-cost-note');
- await expect(disclosure).toContainText('makes no language-model calls');
- await expect(disclosure).toContainText('your chosen assistant account');
- await expect(disclosure).toContainText('Nothing is sent to an assistant automatically');
+ await expect(disclosure).toContainText('Pen makes no AI calls');
+ await expect(disclosure).toContainText('you paste the brief into ChatGPT or Claude yourself',{ignoreCase:true});
+ await expect(disclosure).toContainText('your own account');
  await page.locator('#content-idea').fill('An original lighthouse compass');
  await page.locator('#content-create').click();
  await expect(page.locator('#content-status')).toContainText('Brief saved');

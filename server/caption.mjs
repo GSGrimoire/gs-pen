@@ -78,10 +78,14 @@ async function fetchBounded(url, limit, fetchImpl) {
   const timeout=setTimeout(()=>controller.abort(),12000);
   try {
     const result=await fetchImpl(url,{method:"GET",redirect:"manual",signal:controller.signal,headers:{"Accept":"text/html, text/vtt, text/plain","User-Agent":"GS-Pen-Feasibility/0.1"}});
-    if(result.status!==200) return {status:result.status,body:null};
+    if(result.status!==200){try{await result.body?.cancel();}catch{}return {status:result.status,body:null,location:result.headers?.get('location')||null};}
     const response=await limitedResponse(result,limit);
     return {status:200,body:response};
   } finally {clearTimeout(timeout);}
+}
+function isFacebookLogin(location,base) {
+  if(!location)return false;
+  try{const u=new URL(location,base);return ['www.facebook.com','facebook.com','m.facebook.com'].includes(u.hostname)&&/^\/(login|checkpoint)(\/|\.php|$)/.test(u.pathname);}catch{return false;}
 }
 export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="research",build="testlab_v1",onEvent=()=>{}}={}) {
   let content=unavailableContent(), contentParsed=false;
@@ -136,7 +140,12 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   report("provider_page_fetch","started","STARTED");
   try {page=await fetchBounded(canonical,LIMIT_PAGE,fetchImpl);}
   catch(e){const code=e?.name==="AbortError"?"TIMEOUT":"NETWORK_ERROR"; report("provider_page_fetch","failed",code);return fail(code);}
-  if(page.status!==200){report("provider_page_fetch","failed","PROVIDER_BLOCKED",{httpStatus:page.status});return fail("PROVIDER_BLOCKED");}
+  if(page.status!==200){
+    // Facebook sends anonymous visitors of members-only or restricted posts to its login page.
+    // Say so plainly; Pen never signs in or sends cookies.
+    const code=verdict.platform==='facebook'&&isFacebookLogin(page.location,canonical)?'LOGIN_REQUIRED':'PROVIDER_BLOCKED';
+    report("provider_page_fetch","failed",code,{httpStatus:page.status});return fail(code);
+  }
   if(page.body?.tooLarge){report("provider_page_fetch","failed","RESPONSE_TOO_LARGE");return fail("RESPONSE_TOO_LARGE");}
   if(!page.body){report("provider_page_fetch","failed","NETWORK_ERROR");return fail("NETWORK_ERROR");}
   report("provider_page_fetch","succeeded","OK",{responseBucket:responseSizeBucket(page.body.size),contentType:"html",httpStatus:200});

@@ -2,11 +2,11 @@ import {initContentWorkspace} from './content-workflow.mjs';
 // GS Pen Test Lab user interface v1. Telemetry uses the same-origin backend; hosted diagnostics are owner-restricted.
 import {classifyPublicVideoUrl} from "./modules/url-classifier.mjs";
 import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mjs";
-import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip} from "./modules/extraction-export.mjs";
+import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip,plainTranscript} from "./modules/extraction-export.mjs";
 import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v03_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000;
-const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"captions",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
+const BUILD="workspace_v04_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"transcript",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
@@ -98,10 +98,9 @@ function renderTab(){
   const summary=$("result-summary");summary.replaceChildren();
   if(result){
     const rows=[
-      ['Original captions',result.ok?result.cues.length+' timed cues':'Not available',!!result.ok],
-      ['Post text',result.post?.text?'Available':'Unavailable',!!result.post?.text],
-      ['Metadata',result.metadata?.status==='succeeded'?'Available':'Unavailable',result.metadata?.status==='succeeded'],
-      ['Whisper','Not implemented',false]
+      ['Transcript',result.ok?'Available':'Not available',!!result.ok],
+      ['Post text',result.post?.text?'Available':'Not available',!!result.post?.text],
+      ['Details',result.metadata?.status==='succeeded'?'Available':'Not available',result.metadata?.status==='succeeded']
     ];
     for(const [label,value,available] of rows)summary.append(node('p',label+': '+value,available?'available':'unavailable'));
   }
@@ -110,61 +109,65 @@ function renderTab(){
   const recoveryCard=$("recovery-card");
   recoveryCard.hidden=!advice;
   recoveryCard.dataset.state=partial?'partial':'unavailable';
-  $("recovery-title").textContent=partial?'Some source material is available':'This source could not be retrieved';
+  $("recovery-title").textContent=partial?'Partly retrieved':'This source could not be retrieved';
   const saved=partial&&!!result?.historyId;
   $("recovery-create").textContent=saved?'Use saved source in Create':'Open Create to continue';
-  $("recovery-source-note").textContent=saved
-    ?'Attaches your privately saved extraction. It does not create or publish a draft.'
-    :partial
-      ?'This result is not attached to Create. Copy or export available content, or use your own notes.'
-      :'No result will be attached. Review any earlier source selection in Create before continuing.';
-  if(state.tab==="whisper"){panel.append(plainEmpty("Independent Whisper is not active","Audio capture and speech recognition are planned for a future release. This tab never displays platform captions as Whisper output."));return;}
+  $("recovery-source-note").textContent='';
+  if(state.tab==="transcript"){
+    if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
+    if(!result.ok){panel.append(plainEmpty('No transcript',explain(result.code)));return;}
+    const wrap=node('div',undefined,'transcript-output');
+    for(const paragraph of plainTranscript(result.cues).split('\n\n'))wrap.append(node('p',paragraph));
+    panel.append(wrap,node('p','From the platform captions.','output-note'));return;
+  }
   if(state.tab==="post"){
-    if(!result){panel.append(plainEmpty('No post request yet','Inspect a supported TikTok video or public Facebook post to retrieve available text and hashtags.'));return;}
-    if(!result.post?.text){panel.append(plainEmpty('Post text unavailable',explain(result.post?.code||result.code)));return;}
-    panel.append(node('p',result.post.provenance,'output-note'),node('div',result.post.text,'post-output'));
+    if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
+    if(!result.post?.text){panel.append(plainEmpty('No post text',explain(result.post?.code||result.code)));return;}
+    panel.append(node('div',result.post.text,'post-output'));
     if(result.post.hashtags?.length)panel.append(node('p',result.post.hashtags.join(' '),'output-note'));
-    if(result.post.completeness==='page_preview_may_be_truncated')panel.append(node('p','Facebook exposes this text in its public share preview. It may be shortened. It is post text, not an independently generated transcript.','output-note'));
+    if(result.post.completeness==='page_preview_may_be_truncated')panel.append(node('p','Facebook preview text. It may be shortened.','output-note'));
     return;
   }
   if(state.tab==="metadata"){
-    if(!result){panel.append(plainEmpty('No metadata request yet','Inspect a supported TikTok video or public Facebook post to retrieve available metadata.'));return;}
-    if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('Metadata unavailable',explain(result.metadata?.code||result.code)));return;}
+    if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
+    if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('No details',explain(result.metadata?.code||result.code)));return;}
     const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook'};
     const list=node('dl',undefined,'detail-list');for(const [key,value] of Object.entries(result.metadata.fields))list.append(node('dt',labels[key]||key),node('dd',value));
-    panel.append(node('p',result.metadata.provenance+'. Only fields returned by the public page are shown; counts reflect retrieval time.','output-note'),list);return;
+    panel.append(list,node('p','Counts are from when the link was extracted.','output-note'));return;
   }
-  if(!state.result){panel.append(plainEmpty("No caption request yet","Paste a TikTok or Facebook link above. Available captions, post text and metadata will appear here."));return;}
-  if(!state.result.ok){panel.append(plainEmpty("Native captions unavailable",explain(state.result.code)));return;}
+  if(!state.result){panel.append(plainEmpty("Nothing extracted yet","Paste a link above."));return;}
+  if(!state.result.ok){panel.append(plainEmpty("No clip text",explain(state.result.code)));return;}
   const wrap=node("div",undefined,"caption-output");
   for(const cue of state.result.cues){const line=node("div",undefined,"cue");line.append(node("time",cue.start),node("span",cue.text));wrap.append(line);}
-  const note=node("p",state.result.cues.length+" caption cues from an existing platform track. Not independently transcribed.","output-note");
+  const note=node("p",state.result.cues.length+" caption cues from the platform.","output-note");
   panel.append(wrap,note);
 }
+// Short per-tab reasons; the recovery card carries the next step.
 const errorText={
-  CONTENT_NOT_FOUND:"The public page did not expose this information in a supported format. It may still be visible on the platform.",
-  AUTH_DENIED:"Owner authentication was rejected. Sign in again to this private Site.",
-  RATE_LIMITED:"The research request limit was reached. Wait one minute and retry.",
-  INVALID_URL:"The link is invalid or outside the supported public post and video formats.",
-  NOT_IMPLEMENTED:"Native caption retrieval is not implemented for this platform or link style. Post text and metadata may still be available in their tabs.",
-  UNSUPPORTED_LINK_TYPE:"The platform link is recognized but cannot be resolved to a supported public post or video.",
-  SHORT_LINK_UNRESOLVED:"The shared link did not expose a supported public post or video target. It may require sign-in, have expired, or be unavailable publicly.",
-  SHORT_LINK_TARGET_REJECTED:"The shared link pointed outside supported public post and video formats, so it was not followed.",
-  PROVIDER_BLOCKED:"The platform or caption asset rejected the request. Captions might still exist.",
-  CAPTIONS_NOT_FOUND:"The page was retrieved, but no caption track was discovered. This is not proof that captions do not exist.",
-  CAPTION_HOST_REJECTED:"A caption track was found, but its delivery domain was not on our narrowly reviewed list.",
-  CAPTION_PARSE_FAILED:"A caption file was accessed, but it did not contain recognizable timed cues.",
-  NETWORK_ERROR:"The network request could not be completed; this may be connectivity, a platform block or a host limitation.",
-  TIMEOUT:"The retrieval exceeded the request time limit.",
-  BACKEND_UNAVAILABLE:"The private caption retrieval backend could not be reached. Check the backend and authentication status.",
-  INTERNAL_ERROR:"The research backend encountered a safe, unclassified internal failure."
+  CONTENT_NOT_FOUND:"The page had no content Pen could read.",
+  AUTH_DENIED:"Sign in to the Site again.",
+  RATE_LIMITED:"Too many requests. Wait a minute.",
+  INVALID_URL:"This is not a supported TikTok or Facebook link.",
+  NOT_IMPLEMENTED:"Pen cannot get captions from this platform or link type yet.",
+  UNSUPPORTED_LINK_TYPE:"Pen does not support this kind of link.",
+  SHORT_LINK_UNRESOLVED:"The share link did not lead to a public post.",
+  SHORT_LINK_TARGET_REJECTED:"The share link led somewhere Pen does not support.",
+  PROVIDER_BLOCKED:"The platform refused the request.",
+  LOGIN_REQUIRED:"Facebook only shows this post to signed-in users.",
+  CAPTIONS_NOT_FOUND:"This video has no platform captions Pen can read.",
+  CAPTION_HOST_REJECTED:"The captions are hosted somewhere Pen does not fetch from.",
+  CAPTION_PARSE_FAILED:"The caption file had no readable lines.",
+  NETWORK_ERROR:"The connection failed.",
+  TIMEOUT:"The request took too long.",
+  BACKEND_UNAVAILABLE:"Pen could not reach its server.",
+  INTERNAL_ERROR:"Something went wrong in Pen."
 };
-function explain(code){return (errorText[code]||"The request did not return an available caption track.")+" Error code: "+code+".";}
-function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Inspecting…":"Extract link ↗";}
+function explain(code){return (errorText[code]||"Nothing was found.")+" (Code: "+code+")";}
+function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Extracting…":"Extract";}
 async function doProbe(event){
   event.preventDefault();if(state.busy)return;state.openSeq++;
   const input=$("video-url").value.trim(),context=diagnosticLinkContext(input);
-  state.currentTrace=makeTrace();state.trace=[];state.result=null;state.sourceUrl=input;$("output-action-status").textContent="";$("history-save-status").textContent="Extracting. Available content will be saved privately.";
+  state.currentTrace=makeTrace();state.trace=[];state.result=null;state.sourceUrl=input;$("output-action-status").textContent="";$("history-save-status").textContent="";
   $("trace-id").textContent=state.currentTrace;
   setContext(context);renderTab();setBusy(true);displayStatus("Validating");
   const base={traceId:state.currentTrace,...context,source:"browser",transport:state.backend?(state.site?"site_backend":"local_backend"):"browser_direct"};
@@ -181,13 +184,13 @@ async function doProbe(event){
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;state.sourceUrl=input;
-    $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent. Automatic deletion is paused.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
+    $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
     if(state.site)void refreshHistory();
     const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
-    if(partial){state.tab=outcome.post?.text?'post':'metadata';}
+    state.tab=outcome.ok?'transcript':partial?(outcome.post?.text?'post':'metadata'):state.tab;
     if(outcome.unpersistedCaptionHost)setContext(context,{"Rejected caption host (not stored)":outcome.unpersistedCaptionHost});
     if(outcome.ok){displayStatus("Captions retrieved","ok");setContext(context,{"Caption tracks":outcome.captionTrackCount,"Caption cues":outcome.cues.length});}
-    else if(partial)displayStatus('Post information retrieved; captions unavailable','ok');
+    else if(partial)displayStatus('Post text retrieved; no transcript','ok');
     else displayStatus(outcome.code==="CAPTIONS_NOT_FOUND"?"No track found":"Retrieval failed","error");
     if(!outcome.diagnosticsStored){state.storageFailed=true;$("storage-indicator").textContent="Storage failed; browser copy only";}
     record({...base,stage:"result_render",status:outcome.ok||partial?"succeeded":"failed",code:partial?'PARTIAL_RESULT':outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined,postTextFound:!!outcome.post?.text,metadataFound:outcome.metadata?.status==='succeeded'});
@@ -259,8 +262,6 @@ async function clearDiagnostics(){
   drawTrace();drawEvents();await refreshServerCount();
 }
 document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{state.tab=button.dataset.tab;renderTab();}));
-document.querySelectorAll("[data-example]").forEach(button=>button.addEventListener("click",()=>{$("video-url").value=button.dataset.example;$("source-summary").textContent="Example ready";$("video-url").focus();}));
-$("video-url").addEventListener("input",()=>{const c=diagnosticLinkContext($("video-url").value);$("source-summary").textContent=c.platform==="unknown"?"Paste a supported public post or video link":c.platform+" · "+c.linkType+" · "+c.sourceDomain;});
 $("probe-form").addEventListener("submit",doProbe);
 $("connect-backend").addEventListener("click",connectBackend);
 $("filter-search").addEventListener("input",drawEvents);
@@ -344,7 +345,7 @@ function drawHistory(){
   const query=$('history-search').value.trim().toLowerCase(),platform=$('history-platform').value;
   const list=$('history-items');list.replaceChildren();
   const items=state.history.filter(x=>(platform==='all'||x.platform===platform)&&(!query||[x.title,x.creator,x.platform].join(' ').toLowerCase().includes(query)));
-  if(!items.length){list.append(plainEmpty(state.history.length?'No matching extractions':'Your next good find goes here.',state.history.length?'Try another search or platform.':'Extract a TikTok or Facebook video. Available content will save here automatically.'));}
+  if(!items.length){list.append(plainEmpty(state.history.length?'No matching extractions':'No saved extractions yet',state.history.length?'Try another search or platform.':'Extractions save here automatically.'));}
   for(const item of items){
     const card=node('article',undefined,'history-card'),open=node('button',undefined,'history-open');open.type='button';open.setAttribute('aria-label','Open extraction: '+item.title);
     open.append(node('span',item.platform,'platform-tag'),node('strong',item.title),node('small',(item.creator||'Creator unavailable')+' · '+new Date(item.createdAt).toLocaleString()),node('div',[item.captionCueCount?item.captionCueCount+' caption cues':null,item.postAvailable?'Post text':null,item.metadataAvailable?'Metadata':null].filter(Boolean).join(' · '),'history-badges'));
@@ -353,7 +354,7 @@ function drawHistory(){
     card.append(open,del);list.append(card);
   }
   const preview=$('recent-preview');preview.replaceChildren();
-  if(!state.history.length)preview.append(node('p','Your next good find goes here.','muted-text'));
+  if(!state.history.length)preview.append(node('p','No saved extractions yet.','muted-text'));
   for(const item of state.history.slice(0,8)){
     const a=node('a',undefined,'preview-item');a.href='#extract';a.append(node('strong',item.title),node('small',item.platform+' · '+(item.creator||'Saved extraction')));a.addEventListener('click',e=>{e.preventDefault();void openExtraction(item.id);});preview.append(a);
   }
@@ -364,13 +365,13 @@ async function refreshHistory({older=false}={}){
  const seq=++state.historySeq,cursor=older?state.historyCursor:null;state.historyLoading=true;drawHistory();
  try{const response=await fetch('/api/history'+(cursor?'?cursor='+encodeURIComponent(cursor):''),{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('history');const data=await response.json();if(seq!==state.historySeq)return;
   const merged=older?[...state.history,...(data.items||[])]:data.items||[];state.history=[...new Map(merged.map(item=>[item.id,item])).values()];state.historyTotal=Number.isSafeInteger(data.total)?data.total:null;state.historyCursor=data.nextCursor||null;
-  $('history-status').textContent=state.history.length+' loaded'+(state.historyTotal!==null?' of '+state.historyTotal+' stored extractions':' extractions')+' · Search filters loaded items · Automatic deletion paused';drawHistory();
+  $('history-status').textContent=state.history.length+' loaded'+(state.historyTotal!==null?' of '+state.historyTotal+' stored extractions':' extractions');drawHistory();
  }catch{if(seq===state.historySeq)$('history-status').textContent=older?'Could not load older extractions. Your loaded items are kept; try again.':'Could not load Recent. Your loaded items are kept; refresh to try again.';}
  finally{if(seq===state.historySeq){state.historyLoading=false;drawHistory();}}
 }
 async function openExtraction(id){
   if(state.busy)return;const seq=++state.openSeq;
-  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();if(state.busy||seq!==state.openSeq)return;state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'captions':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction · Automatic deletion paused';displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
+  try{const response=await fetch('/api/history/'+id,{cache:'no-store',headers:authHeaders()});if(!response.ok)throw Error('missing');const {item}=await response.json();if(state.busy||seq!==state.openSeq)return;state.result={...item.result,historyId:item.id};state.sourceUrl=item.sourceUrl;state.currentTrace=null;state.trace=[];$('trace-id').textContent='Saved extraction';drawTrace();setContext(diagnosticLinkContext(item.sourceUrl));$('video-url').value=item.sourceUrl;state.tab=item.result.ok?'transcript':item.result.post?.text?'post':'metadata';$('output-action-status').textContent='';$('history-save-status').textContent='Saved extraction';displayStatus('Opened saved extraction','ok');renderTab();location.hash='extract';window.scrollTo({top:0,behavior:'smooth'});}
   catch{if(state.busy||seq!==state.openSeq)return;$('history-status').textContent='This extraction is unavailable. Refresh Recent.';}
 }
 function downloadOutput(filename,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=node('a');a.href=url;a.download=filename;document.body.append(a);a.click();a.remove();URL.revokeObjectURL(url);}

@@ -49,3 +49,14 @@ test('Diagnostic fields accept only availability booleans and never persist cont
  assert.equal(event.postTextFound,true);assert.ok(!JSON.stringify(event).includes('secret'));
  assert.equal(sanitizeDiagnostic({...event,postTextFound:'secret'}).postTextFound,undefined);
 });
+test('Facebook login redirect is reported as LOGIN_REQUIRED, other refusals stay PROVIDER_BLOCKED', async () => {
+ const story='https://www.facebook.com/story.php?story_fbid=1234567890&id=9876543210';
+ const login=new Response(null,{status:302,headers:{location:'https://www.facebook.com/login/?next=x'}});
+ let calls=0;
+ const r=await retrievePublicCaptions(story,{fetchImpl:async()=>{calls++;return login;}});
+ assert.equal(r.code,'LOGIN_REQUIRED');assert.equal(r.post.code,'LOGIN_REQUIRED');assert.equal(calls,1,'Pen never follows the login redirect');
+ const elsewhere=await retrievePublicCaptions(story,{fetchImpl:async()=>new Response(null,{status:302,headers:{location:'https://evil.example/login/'}})});
+ assert.equal(elsewhere.code,'PROVIDER_BLOCKED');
+ const tiktok=await retrievePublicCaptions('https://www.tiktok.com/@x/video/1234567890123',{fetchImpl:async()=>new Response(null,{status:302,headers:{location:'https://www.facebook.com/login/'}})});
+ assert.equal(tiktok.code,'PROVIDER_BLOCKED');
+});

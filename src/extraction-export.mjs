@@ -1,10 +1,26 @@
 export function exportRecord(result,sourceUrl) {
   return {schema:'gs-pen.extraction.v1',exportedAt:new Date().toISOString(),sourceUrl,
-    result:{ok:!!result.ok,code:result.code,captionType:'platform',captionTrackCount:result.captionTrackCount||0,cues:result.cues||[],post:result.post||null,metadata:result.metadata||null},
+    result:{ok:!!result.ok,code:result.code,captionType:'platform',captionTrackCount:result.captionTrackCount||0,transcript:plainTranscript(result.cues)||null,cues:result.cues||[],post:result.post||null,metadata:result.metadata||null},
     independentTranscript:{status:'not_implemented',text:null}};
 }
+// Plain reading text from the native caption cues: no timestamps, exact repeated
+// neighbouring cues removed, and a new paragraph after a pause of two seconds or more.
+export function plainTranscript(cues) {
+  if(!Array.isArray(cues))return '';
+  const paragraphs=[];let current=[],previous=null,previousEnd=null;
+  for(const cue of cues) {
+    const text=typeof cue?.text==='string'?cue.text.replace(/\s+/g,' ').trim():'';
+    if(!text||text===previous)continue;
+    const start=subRipTimestamp(cue.start)?.milliseconds;
+    if(current.length&&previousEnd!=null&&start!=null&&start-previousEnd>=2000){paragraphs.push(current.join(' '));current=[];}
+    current.push(text);previous=text;previousEnd=subRipTimestamp(cue.end)?.milliseconds??start??previousEnd;
+  }
+  if(current.length)paragraphs.push(current.join(' '));
+  return paragraphs.join('\n\n');
+}
 export function tabText(result,tab) {
-  if(tab==='captions')return result.ok&&result.cues?.length?'Original platform captions (not independently transcribed)\n\n'+result.cues.map(c=>c.start+'  '+c.text).join('\n'):'';
+  if(tab==='transcript')return result.ok&&result.cues?.length?'Transcript (from the platform captions)\n\n'+plainTranscript(result.cues):'';
+  if(tab==='captions')return result.ok&&result.cues?.length?'Clip text (platform captions with timestamps)\n\n'+result.cues.map(c=>c.start+'  '+c.text).join('\n'):'';
   if(tab==='post')return result.post?.text?'Original post text\nSource: '+result.post.provenance+(result.post.completeness==='page_preview_may_be_truncated'?'\nPublic share preview; text may be shortened.':'')+'\n\n'+result.post.text:'';
   if(tab==='metadata')return result.metadata?.status==='succeeded'?'Public video metadata\nSource: '+result.metadata.provenance+'\n\n'+Object.entries(result.metadata.fields).map(([k,v])=>k+': '+v).join('\n'):'';
   return '';
@@ -32,7 +48,7 @@ export function exportSubRip(result) {
 }
 
 export function exportText(result,sourceUrl) {
-  return ['GS Pen extraction','Source: '+sourceUrl,'',...['captions','post','metadata'].map(t=>tabText(result,t)).filter(Boolean),'','Independent Whisper transcript: not implemented.'].join('\n\n');
+  return ['GS Pen extraction','Source: '+sourceUrl,...['transcript','post','metadata'].map(t=>tabText(result,t)).filter(Boolean)].join('\n\n');
 }
 
 // Only the extraction allowlist is shared. Diagnostic records never enter a prompt.
