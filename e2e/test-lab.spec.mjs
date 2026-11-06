@@ -636,7 +636,7 @@ test('Failed source B requires a deliberate decision about the previously select
  await page.locator('#create-from-result').click();
  await expect(page.locator('#content-source')).toContainText(example);
  await page.locator('#content-idea').fill('Existing idea');
- await page.getByRole('link',{name:'Extract',exact:true}).click();
+ await chooseView(page,'Extract');
  const failedUrl='https://www.facebook.com/reel/123456789012345';
  await stubCaptionResult(page,()=>({ok:false,code:'LOGIN_REQUIRED',cues:[],historyStatus:'empty'}));
  await page.locator('#video-url').fill(failedUrl);
@@ -647,7 +647,11 @@ test('Failed source B requires a deliberate decision about the previously select
  await expect(page.locator('#content-source')).toContainText(example);
  await expect(page.locator('#content-source')).not.toContainText(failedUrl);
  await expect(page.locator('#content-create')).toBeDisabled();
- await expect(page.locator('#content-keep-source')).toBeVisible();
+ await page.locator('#content-keep-source').click();
+ await expect(page.locator('#content-create')).toBeEnabled();
+ await chooseView(page,'Extract');
+ await page.locator('#recovery-create').click();
+ await expect(page.locator('#content-create')).toBeDisabled();
  await page.locator('#content-clear-source').click();
  await expect(page.locator('#content-idea')).toHaveValue('Existing idea');
  let submitted;
