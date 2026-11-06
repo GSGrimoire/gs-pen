@@ -3,17 +3,28 @@ export function exportRecord(result,sourceUrl) {
     result:{ok:!!result.ok,code:result.code,captionType:'platform',captionTrackCount:result.captionTrackCount||0,transcript:plainTranscript(result.cues)||null,cues:result.cues||[],post:result.post||null,metadata:result.metadata||null},
     independentTranscript:{status:'not_implemented',text:null}};
 }
-// Plain reading text from the native caption cues: no timestamps, exact repeated
-// neighbouring cues removed, and a new paragraph after a pause of two seconds or more.
+// Merge identical text only in consecutive, valid, overlapping or touching cues.
 export function plainTranscript(cues) {
   if(!Array.isArray(cues))return '';
-  const paragraphs=[];let current=[],previous=null,previousEnd=null;
+  const paragraphs=[];
+  let current=[], previous=null;
   for(const cue of cues) {
     const text=typeof cue?.text==='string'?cue.text.replace(/\s+/g,' ').trim():'';
-    if(!text||text===previous)continue;
+    if(!text)continue;
     const start=subRipTimestamp(cue.start)?.milliseconds;
-    if(current.length&&previousEnd!=null&&start!=null&&start-previousEnd>=2000){paragraphs.push(current.join(' '));current=[];}
-    current.push(text);previous=text;previousEnd=subRipTimestamp(cue.end)?.milliseconds??start??previousEnd;
+    const end=subRipTimestamp(cue.end)?.milliseconds;
+    const valid=start!==undefined && end!==undefined && end>start;
+    const ordered=valid && (!previous || start>=previous.start);
+    if(ordered && previous && text===previous.text && start<=previous.end){
+      previous={text,start,end:Math.max(end,previous.end)};
+      continue;
+    }
+    if(ordered && previous && start-previous.end>=2000){
+      paragraphs.push(current.join(' '));
+      current=[];
+    }
+    current.push(text);
+    previous=ordered?{text,start,end}:null;
   }
   if(current.length)paragraphs.push(current.join(' '));
   return paragraphs.join('\n\n');

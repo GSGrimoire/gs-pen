@@ -86,7 +86,6 @@ test('Unsafe redirect targets are rejected without fetching them',async()=>{
     'https://facebook.com.evil.test/Fixture.Writer/posts/pfbid123456789012345',
     'http://www.facebook.com/Fixture.Writer/posts/pfbid123456789012345',
     'https://www.facebook.com:8443/Fixture.Writer/posts/pfbid123456789012345',
-    'https://www.facebook.com/login',
     'https://www.facebook.com/profile.php?id=123456789012345',
     'https://www.facebook.com/story.php?story_fbid=123456789012345',
     'https://www.tiktok.com/@creator/video/1234567890123456789'

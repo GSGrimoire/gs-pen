@@ -8,7 +8,7 @@ test('successful captions never show recovery instructions', () => {
 });
 test('blocked and unresolved links suggest supported next steps without bypass', () => {
   assert.match(recoveryGuidance({ok:false,code:'PROVIDER_BLOCKED'}), /refused the request/);
-  assert.match(recoveryGuidance({ok:false,code:'LOGIN_REQUIRED'}), /signed-in users/);
+  assert.match(recoveryGuidance({ok:false,code:'LOGIN_REQUIRED'}), /redirected Pen to a sign-in page/);
   assert.match(recoveryGuidance({ok:false,code:'LOGIN_REQUIRED'}), /paste the text into Create/);
   assert.match(recoveryGuidance({ok:false,code:'SHORT_LINK_UNRESOLVED'}), /direct post or video link/);
   assert.match(recoveryGuidance({ok:false,code:'SHORT_LINK_TARGET_REJECTED'}), /not followed/);

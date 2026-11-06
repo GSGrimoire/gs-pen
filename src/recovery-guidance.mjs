@@ -9,7 +9,7 @@ const NEXT_STEP = Object.freeze({
   SHORT_LINK_UNRESOLVED: 'The share link did not lead to a public post. Try the direct post or video link.',
   SHORT_LINK_TARGET_REJECTED: 'The share link led somewhere Pen does not support, so it was not followed.',
   PROVIDER_BLOCKED: 'The platform refused the request. You can paste the text into Create instead.',
-  LOGIN_REQUIRED: 'Facebook only shows this post to signed-in users, so Pen cannot read it. You can paste the text into Create instead.',
+  LOGIN_REQUIRED: 'Facebook redirected Pen to a sign-in page. You can paste the text into Create instead.',
   CAPTIONS_NOT_FOUND: 'This video has no platform captions Pen can read.',
   CAPTION_HOST_REJECTED: 'The captions are hosted somewhere Pen does not fetch from.',
   CAPTION_PARSE_FAILED: 'The caption file had no readable lines.',

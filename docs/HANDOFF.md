@@ -1,8 +1,16 @@
+# Pull request 45 review corrections, 6 November 2026
+
+The four findings from ChatGPT-C's independent review of 4fc2dcaf are addressed on claude/eager-hawking-x3j1z1. Plain transcripts preserve separated and uncertain repeats and merge only ordered, overlapping or touching identical cues. Unsaved recovery identifies an existing source and requires an explicit keep/clear choice before creating a brief. Facebook sign-in classification checks status and destination on both direct and share paths, and stream cancellation no longer blocks those responses. Source notes and keyboard tab navigation are restored.
+
+See docs/REVIEW_PEN_045_RESPONSE.md for the evidence and release gates. The corrected head needs independent re-review before merge and private publication. Issue #27 still tracks hosted acceptance.
+
+---
+
 # Current checkpoint, 5 November 2026
 
 Branch claude/eager-hawking-x3j1z1 (Claude): owner-requested UI clean-up after version 12. Transcript tab (plain text, no timestamps) is now the default; timed cues moved to a Clip text tab; the empty Whisper tab is removed; filler headings, notices and footer are removed. Facebook login redirects now report LOGIN_REQUIRED instead of a vague refusal. No change to owner checks, storage or what is fetched. Build label workspace_v04_sites_1. Not yet published: needs review, merge and a Site update by ChatGPT.
 
-Facebook speech transcripts remain unsolved: Facebook redirects anonymous requests to its login page and never exposes captions publicly. Options are in the pull request; the owner has not chosen one.
+Pen currently reads Facebook post previews and metadata. It has no Facebook caption reader. Some anonymous requests redirect to a Facebook sign-in page.
 
 ---
 

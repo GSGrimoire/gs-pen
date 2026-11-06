@@ -4,7 +4,8 @@ import { classifyPublicVideoUrl } from "../src/url-classifier.mjs";
 import { diagnosticLinkContext, captionCdnFamily, responseSizeBucket, sanitizeDiagnostic } from "../src/diagnostics.mjs";
 import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent } from './post-content.mjs';
 import { resolveTikTokShareUrl } from './tiktok-share.mjs';
-import { resolveFacebookShareUrl, canonicalFacebookContentUrl } from './facebook-share.mjs';
+import { resolveFacebookShareUrl, canonicalFacebookContentUrl, isFacebookLoginRedirect } from './facebook-share.mjs';
+import { discardBody } from './discard-body.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
@@ -65,7 +66,7 @@ async function limitedResponse(response, maxSize) {
       const {done,value}=await reader.read();
       if(done) break;
       size+=value.length;
-      if(size>maxSize) { await reader.cancel(); return {tooLarge:true}; }
+      if(size>maxSize) { discardBody(reader); return {tooLarge:true}; }
       chunks.push(value);
     }
   } finally { reader.releaseLock(); }
@@ -78,14 +79,10 @@ async function fetchBounded(url, limit, fetchImpl) {
   const timeout=setTimeout(()=>controller.abort(),12000);
   try {
     const result=await fetchImpl(url,{method:"GET",redirect:"manual",signal:controller.signal,headers:{"Accept":"text/html, text/vtt, text/plain","User-Agent":"GS-Pen-Feasibility/0.1"}});
-    if(result.status!==200){try{await result.body?.cancel();}catch{}return {status:result.status,body:null,location:result.headers?.get('location')||null};}
+    if(result.status!==200){discardBody(result.body);return {status:result.status,body:null,location:result.headers?.get('location')||null};}
     const response=await limitedResponse(result,limit);
     return {status:200,body:response};
-  } finally {clearTimeout(timeout);}
-}
-function isFacebookLogin(location,base) {
-  if(!location)return false;
-  try{const u=new URL(location,base);return ['www.facebook.com','facebook.com','m.facebook.com'].includes(u.hostname)&&/^\/(login|checkpoint)(\/|\.php|$)/.test(u.pathname);}catch{return false;}
+  } finally {clearTimeout(timeout);controller.abort();}
 }
 export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="research",build="testlab_v1",onEvent=()=>{}}={}) {
   let content=unavailableContent(), contentParsed=false;
@@ -141,9 +138,7 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   try {page=await fetchBounded(canonical,LIMIT_PAGE,fetchImpl);}
   catch(e){const code=e?.name==="AbortError"?"TIMEOUT":"NETWORK_ERROR"; report("provider_page_fetch","failed",code);return fail(code);}
   if(page.status!==200){
-    // Facebook sends anonymous visitors of members-only or restricted posts to its login page.
-    // Say so plainly; Pen never signs in or sends cookies.
-    const code=verdict.platform==='facebook'&&isFacebookLogin(page.location,canonical)?'LOGIN_REQUIRED':'PROVIDER_BLOCKED';
+    const code=verdict.platform==='facebook'&&isFacebookLoginRedirect(page.status,page.location,canonical)?'LOGIN_REQUIRED':'PROVIDER_BLOCKED';
     report("provider_page_fetch","failed",code,{httpStatus:page.status});return fail(code);
   }
   if(page.body?.tooLarge){report("provider_page_fetch","failed","RESPONSE_TOO_LARGE");return fail("RESPONSE_TOO_LARGE");}
@@ -157,7 +152,7 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   contentParsed=true;
   for(const [key,stage] of [['post','post_parse'],['metadata','metadata_parse']])report(stage,content[key].status,content[key].code,{...(key==='post'?{postTextFound:!!content.post.text}:{metadataFound:content.metadata.status==='succeeded'})});
   if(verdict.platform==='facebook'){
-    // Facebook exposes public post previews, but no caption or audio retrieval.
+    // Pen currently reads Facebook post previews and metadata.
     // Returning NOT_IMPLEMENTED preserves any authentic partial post/metadata result.
     report('caption_track_discovery','unavailable','NOT_IMPLEMENTED');
     return fail('NOT_IMPLEMENTED','unavailable');

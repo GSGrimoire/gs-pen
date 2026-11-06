@@ -85,3 +85,23 @@ test('Transcript joins caption cues without timestamps, drops repeats and breaks
  const r={ok:true,cues};assert.ok(tabText(r,'transcript').endsWith('After a pause. Odd timing.'));assert.ok(tabText(r,'captions').includes('00:00:07.000  After a pause.'));
  assert.equal(exportRecord(r,'s').result.transcript,plainTranscript(cues));
 });
+
+test('Caption transcript preserves distinct repeats and extends a merged cue across overlaps',()=>{
+ const cue=(start,end,text)=>({start,end,text});
+ const separated=[cue('00:00.000','00:01.000','Yes'),cue('00:06.000','00:07.000','Yes')];
+ assert.equal(plainTranscript(separated),'Yes\n\nYes');
+ const touching=[cue('00:00.000','00:01.000','Hello'),cue('00:01.000','00:04.000','Hello'),cue('00:04.000','00:05.000','world')];
+ assert.equal(plainTranscript(touching),'Hello world');
+ const overlapping=[cue('00:00.000','00:05.000','Hej 🌿'),cue('00:01.000','00:02.000','Hej 🌿'),cue('00:04.000','00:06.000','verden')];
+ assert.equal(plainTranscript(overlapping),'Hej 🌿 verden');
+ assert.deepEqual(exportRecord({ok:true,cues:separated},'fixture').result.cues,separated);
+ assert.equal(exportSubRip({ok:true,cues:separated}).match(/Yes/g).length,2);
+});
+
+test('Uncertain caption timings preserve repeated utterances',()=>{
+ const known={start:'00:03.000',end:'00:04.000',text:'Ja'};
+ for(const uncertain of [{text:'Ja'},{start:'bad',end:'bad',text:'Ja'},{start:'00:03.500',end:'00:03.100',text:'Ja'},{start:'00:02.000',end:'00:05.000',text:'Ja'}]){
+  assert.equal(plainTranscript([known,{text:'  '},uncertain]),'Ja Ja');
+ }
+ assert.equal(plainTranscript([null,{text:'  '},known]),'Ja');
+});

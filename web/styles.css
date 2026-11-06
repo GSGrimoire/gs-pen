@@ -93,3 +93,5 @@
 /* Plain transcript: readable paragraphs without timestamps. */
 .transcript-output{background:#fff;border:1px solid var(--stroke);border-radius:12px;padding:16px 18px;line-height:1.75;overflow-wrap:anywhere}
 .transcript-output p{margin:0 0 12px}.transcript-output p:last-child{margin-bottom:0}
+
+#content-source{overflow-wrap:anywhere}

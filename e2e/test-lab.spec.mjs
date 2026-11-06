@@ -627,3 +627,55 @@ test('Create pages older jobs and preserves loaded work after a failed continuat
 test('Refreshing either list discards a continuation response that finishes later',async({page})=>{
  for(const kind of ['history','content']){const isHistory=kind==='history',base=isHistory?'/api/history':'/api/content',prefix=isHistory?'history':'content',status=isHistory?'#history-status':'#content-list-status';const stub=await stubPagedWork(page,{kind,delayOlder:true});await page.goto(isHistory?'/#recent':'/#create');await expect(page.locator(status)).toContainText('50 loaded of 52');await page.locator('#'+prefix+'-more').click();await expect.poll(stub.waiting).toBe(true);await page.locator(isHistory?'#refresh-history':'#content-refresh').click();await expect(page.locator('#'+prefix+'-more')).toBeEnabled();const response=page.waitForResponse(r=>r.url().includes(base+'?cursor='));stub.release();await(await response).finished();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await expect(page.getByRole('button',{name:isHistory?'Open extraction: Fixture saved 52':'Fixture saved 52 · awaiting_creative',exact:true})).toHaveCount(0);await expect(page.locator(status)).toContainText('50 loaded of 52');}
 });
+
+test('Failed source B requires a deliberate decision about the previously selected source A',async({page})=>{
+ await stubHistory(page);
+ await stubContentJobs(page);
+ await page.goto('/#recent');
+ await page.getByRole('button',{name:'Open extraction: Fixture saved video',exact:true}).click();
+ await page.locator('#create-from-result').click();
+ await expect(page.locator('#content-source')).toContainText(example);
+ await page.locator('#content-idea').fill('Existing idea');
+ await page.getByRole('link',{name:'Extract',exact:true}).click();
+ const failedUrl='https://www.facebook.com/reel/123456789012345';
+ await stubCaptionResult(page,()=>({ok:false,code:'LOGIN_REQUIRED',cues:[],historyStatus:'empty'}));
+ await page.locator('#video-url').fill(failedUrl);
+ await page.locator('#probe-button').click();
+ await expect(page.locator('#recovery-source-note')).toContainText('This extraction is not attached');
+ await page.locator('#recovery-create').click();
+ await expect(page.locator('#content-status')).toContainText('Keep or clear the existing source');
+ await expect(page.locator('#content-source')).toContainText(example);
+ await expect(page.locator('#content-source')).not.toContainText(failedUrl);
+ await expect(page.locator('#content-create')).toBeDisabled();
+ await expect(page.locator('#content-keep-source')).toBeVisible();
+ await page.locator('#content-clear-source').click();
+ await expect(page.locator('#content-idea')).toHaveValue('Existing idea');
+ let submitted;
+ await page.route('**/api/content',async route=>{
+  if(route.request().method()==='POST')submitted=route.request().postDataJSON();
+  await route.fallback();
+ });
+ await page.locator('#content-create').click();
+ await expect(page.locator('#content-status')).toContainText('Brief saved');
+ expect(submitted.extractionId).toBeUndefined();
+ expect(submitted.sourceText).toBeUndefined();
+});
+
+test('Output tabs support arrows, Home and End with a single tab stop',async({page})=>{
+ await page.goto('/');
+ const transcript=page.locator('#tab-transcript'),clip=page.locator('#tab-captions'),details=page.locator('#tab-metadata');
+ await transcript.focus();
+ await transcript.press('ArrowRight');
+ await expect(clip).toBeFocused();
+ await expect(clip).toHaveAttribute('aria-selected','true');
+ await expect(transcript).toHaveAttribute('tabindex','-1');
+ await clip.press('End');
+ await expect(details).toBeFocused();
+ await details.press('ArrowRight');
+ await expect(transcript).toBeFocused();
+ await transcript.press('ArrowLeft');
+ await expect(details).toBeFocused();
+ await details.press('Home');
+ await expect(transcript).toBeFocused();
+ await expect(page.locator('#tab-panel')).toHaveAttribute('aria-labelledby','tab-transcript');
+});

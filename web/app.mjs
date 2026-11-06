@@ -84,7 +84,7 @@ function drawEvents(){
 }
 function plainEmpty(title,detail){const el=node("div",undefined,"empty");el.append(node("span","▤","empty-icon"),node("h3",title),node("p",detail));return el;}
 function renderTab(){
-  document.querySelectorAll(".tab").forEach(b=>{const selected=b.dataset.tab===state.tab;b.classList.toggle("selected",selected);b.setAttribute("aria-selected",String(selected));});
+  document.querySelectorAll(".tab").forEach(b=>{const selected=b.dataset.tab===state.tab;b.classList.toggle("selected",selected);b.setAttribute("aria-selected",String(selected));b.tabIndex=selected?0:-1;});
   const panel=$("tab-panel");panel.replaceChildren();
   const result=state.result;
   $("tab-panel").setAttribute("aria-labelledby","tab-"+state.tab);
@@ -98,7 +98,7 @@ function renderTab(){
   const summary=$("result-summary");summary.replaceChildren();
   if(result){
     const rows=[
-      ['Transcript',result.ok?'Available':'Not available',!!result.ok],
+      ['Caption transcript',result.ok?'Available':'Not available',!!result.ok],
       ['Post text',result.post?.text?'Available':'Not available',!!result.post?.text],
       ['Details',result.metadata?.status==='succeeded'?'Available':'Not available',result.metadata?.status==='succeeded']
     ];
@@ -112,7 +112,9 @@ function renderTab(){
   $("recovery-title").textContent=partial?'Partly retrieved':'This source could not be retrieved';
   const saved=partial&&!!result?.historyId;
   $("recovery-create").textContent=saved?'Use saved source in Create':'Open Create to continue';
-  $("recovery-source-note").textContent='';
+  $("recovery-source-note").textContent=saved
+    ? 'Create will use this saved extraction.'
+    : 'This extraction is not attached. In Create, check any source already selected.';
   if(state.tab==="transcript"){
     if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
     if(!result.ok){panel.append(plainEmpty('No transcript',explain(result.code)));return;}
@@ -124,6 +126,7 @@ function renderTab(){
     if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
     if(!result.post?.text){panel.append(plainEmpty('No post text',explain(result.post?.code||result.code)));return;}
     panel.append(node('div',result.post.text,'post-output'));
+    if(result.post.provenance)panel.append(node('p','Source: '+result.post.provenance,'output-note'));
     if(result.post.hashtags?.length)panel.append(node('p',result.post.hashtags.join(' '),'output-note'));
     if(result.post.completeness==='page_preview_may_be_truncated')panel.append(node('p','Facebook preview text. It may be shortened.','output-note'));
     return;
@@ -133,6 +136,7 @@ function renderTab(){
     if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('No details',explain(result.metadata?.code||result.code)));return;}
     const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook'};
     const list=node('dl',undefined,'detail-list');for(const [key,value] of Object.entries(result.metadata.fields))list.append(node('dt',labels[key]||key),node('dd',value));
+    if(result.metadata.provenance)panel.append(node('p','Source: '+result.metadata.provenance,'output-note'));
     panel.append(list,node('p','Counts are from when the link was extracted.','output-note'));return;
   }
   if(!state.result){panel.append(plainEmpty("Nothing extracted yet","Paste a link above."));return;}
@@ -153,7 +157,7 @@ const errorText={
   SHORT_LINK_UNRESOLVED:"The share link did not lead to a public post.",
   SHORT_LINK_TARGET_REJECTED:"The share link led somewhere Pen does not support.",
   PROVIDER_BLOCKED:"The platform refused the request.",
-  LOGIN_REQUIRED:"Facebook only shows this post to signed-in users.",
+  LOGIN_REQUIRED:"Facebook redirected Pen to a sign-in page.",
   CAPTIONS_NOT_FOUND:"This video has no platform captions Pen can read.",
   CAPTION_HOST_REJECTED:"The captions are hosted somewhere Pen does not fetch from.",
   CAPTION_PARSE_FAILED:"The caption file had no readable lines.",
@@ -261,7 +265,25 @@ async function clearDiagnostics(){
   if(state.backend)try{const response=await fetch("/api/diagnostics",{method:"DELETE",headers:authHeaders()});if(!response.ok)throw Error("not_cleared");}catch{$("storage-indicator").textContent="Backend clear failed";}
   drawTrace();drawEvents();await refreshServerCount();
 }
-document.querySelectorAll(".tab").forEach(button=>button.addEventListener("click",()=>{state.tab=button.dataset.tab;renderTab();}));
+const outputTabs=Array.from(document.querySelectorAll(".tab"));
+function selectOutputTab(button){
+  state.tab=button.dataset.tab;
+  renderTab();
+}
+outputTabs.forEach((button,index)=>{
+  button.addEventListener("click",()=>selectOutputTab(button));
+  button.addEventListener("keydown",event=>{
+    let next;
+    if(event.key==="ArrowRight")next=(index+1)%outputTabs.length;
+    else if(event.key==="ArrowLeft")next=(index-1+outputTabs.length)%outputTabs.length;
+    else if(event.key==="Home")next=0;
+    else if(event.key==="End")next=outputTabs.length-1;
+    else return;
+    event.preventDefault();
+    selectOutputTab(outputTabs[next]);
+    outputTabs[next].focus();
+  });
+});
 $("probe-form").addEventListener("submit",doProbe);
 $("connect-backend").addEventListener("click",connectBackend);
 $("filter-search").addEventListener("input",drawEvents);
@@ -409,12 +431,12 @@ $('delete-dialog').addEventListener('close',async()=>{
 });
 
 const contentWorkspace=initContentWorkspace();
-$('create-from-result').addEventListener('click',()=>{if(state.result?.historyId)contentWorkspace.useExtraction(state.result.historyId);});
+$('create-from-result').addEventListener('click',()=>{if(state.result?.historyId)contentWorkspace.useExtraction(state.result.historyId,state.sourceUrl);});
 $('recovery-create').addEventListener('click',()=>{
   if(state.busy||!state.result||state.result.ok)return;
   const available=!!(state.result.cues?.length||state.result.post?.text||state.result.metadata?.status==='succeeded');
-  if(available&&state.result.historyId)contentWorkspace.useExtraction(state.result.historyId);
-  else location.hash='create'; // Do not attach an unsaved extraction or clear existing creative work.
+  if(available&&state.result.historyId)contentWorkspace.useExtraction(state.result.historyId,state.sourceUrl);
+  else contentWorkspace.openAfterUnsavedExtraction();
   navigate(); // Make the Create panel visible before moving keyboard focus.
   if(location.hash==='#create')$('content-idea').focus();
 });
