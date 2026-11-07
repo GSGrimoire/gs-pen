@@ -1,3 +1,26 @@
+# Published version 13, 7 November 2026
+
+The existing [GS Pen Test Lab](https://gs-pen-test-lab.goofyspook.chatgpt.site) published version 13 at 13:32:33 Europe/Copenhagen (UTC+01:00). Owner-only access was verified after deployment. Version 12 is still available for rollback.
+
+| Item | Verified value |
+| --- | --- |
+| GitHub main commit | `90830575245bd042981d217646b631d237a6bea9` |
+| Independently reviewed pull request head | `671973ed3d7122d0a35875c1edc3a38dd8ef8a7b` |
+| Identical GitHub and Sites source tree | `65fa9529a1f49442a666065cf560716da7476058` |
+| Sites source commit | `cb6df23c6c1d54d3bab313d272d1d5a8b69cbc48` |
+| Archive SHA-256 | `c62affa6ace0ad3abe642fbaa4c5b3693fd92ffa92f59361e25fd32e43bae494` |
+| Saved version | `appgprj_6adce46e22dc81918dab627af382c76a~appgver_fe6061a73f9c81918b4f1e1ad9a36da9` |
+| Deployment | `appgdep_6aef1a57ee348191b56b45c98f242ae1` |
+| Deployment status | `succeeded`, assistant connector enabled, environment revision `2` |
+| Build | `workspace_v04_sites_1` |
+
+- Exact deployed source passed 163 local unit tests, production build, lint, type checks and whitespace checks. The identical reviewed tree passed 82 synthetic desktop and mobile browser tests and the caption research workflow. [Independent review](https://github.com/GSGrimoire/gs-pen/pull/45#pullrequestreview-5812037132) · [Unit and hosted checks](https://github.com/GSGrimoire/gs-pen/actions/runs/42286883343) · [Browser checks](https://github.com/GSGrimoire/gs-pen/actions/runs/42286883629) · [Caption research](https://github.com/GSGrimoire/gs-pen/actions/runs/42286883435). The GitHub connector returned no workflow runs on the merge commit.
+- Signed-in browser verified the version 0.4 Extract screen, reopened an existing TikTok extraction, confirmed that the default Transcript displayed without timestamps and Clip text showed a distinct view, and observed a plain-text download start. The existing assistant content-list operation succeeded.
+- Anonymous home, content and history requests returned 403. Synthetic forged identity returned 403. Service-only content and service with forged identity returned 403 with `AUTH_DENIED`. The service-only assistant endpoint returned 401. The retention endpoint returned 200 with `retentionPaused: true` and `expiredDeleted: false`. Access policy still allows only the owner, and the existing database binding and schema were preserved.
+- Issue #27 remains open for fresh TikTok and Facebook provider requests, subtitle file validation, manual-source write/reopen/delete, and a real second-account test. No production test records were created or deleted.
+
+---
+
 # Published version 12, 4 November 2026
 
 The existing owner-private GS Pen Site was updated successfully at **17:39:17 Europe/Copenhagen (UTC+01:00)** on 4 November 2026. URL: https://gs-pen-test-lab.goofyspook.chatgpt.site
