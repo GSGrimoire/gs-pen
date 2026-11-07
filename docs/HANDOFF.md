@@ -1,3 +1,19 @@
+# Pull request 45 review corrections, 6 November 2026
+
+The four findings from ChatGPT-C's independent review of 4fc2dcaf are addressed on claude/eager-hawking-x3j1z1. Plain transcripts preserve separated and uncertain repeats and merge only ordered, overlapping or touching identical cues. Unsaved recovery identifies an existing source and requires an explicit keep/clear choice before creating a brief. Facebook sign-in classification checks status and destination on both direct and share paths, and stream cancellation no longer blocks those responses. Source notes and keyboard tab navigation are restored.
+
+See docs/REVIEW_PEN_045_RESPONSE.md for the evidence and release gates. The corrected head needs independent re-review before merge and private publication. Issue #27 still tracks hosted acceptance.
+
+---
+
+# Current checkpoint, 5 November 2026
+
+Branch claude/eager-hawking-x3j1z1 (Claude): owner-requested UI clean-up after version 12. Transcript tab (plain text, no timestamps) is now the default; timed cues moved to a Clip text tab; the empty Whisper tab is removed; filler headings, notices and footer are removed. Facebook login redirects now report LOGIN_REQUIRED instead of a vague refusal. No change to owner checks, storage or what is fetched. Build label workspace_v04_sites_1. Not yet published: needs review, merge and a Site update by ChatGPT.
+
+Pen currently reads Facebook post previews and metadata. It has no Facebook caption reader. Some anonymous requests redirect to a Facebook sign-in page.
+
+---
+
 # Current checkpoint, 4 November 2026: version 12 deployed
 
 Owner-private version **12** is live at https://gs-pen-test-lab.goofyspook.chatgpt.site . Final GitHub source `20dec279b09b0b287fbf82b62cc9651715ebd3bb` and pushed Sites source `de46b2004881e7afc79785e5dacb6cbcc5b2b646` have the identical tree `05e19593aca8af9cfa83e79a230bb4876055e0c8`. All merged work through #37 and documentation #43 is included. See docs/DEPLOYMENT.md for the actual saved version, deployment and checksum receipt.

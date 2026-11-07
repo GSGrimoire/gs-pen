@@ -6,7 +6,7 @@ const choices = {
   stage: ["post_parse", "metadata_parse", "url_validate", "provider_identify", "auth_check", "request_start", "provider_page_fetch", "share_link_resolution", "caption_track_discovery", "caption_host_validation", "caption_fetch", "caption_parse", "result_render", "history_write", "diagnostics_write", "finished"],
   status: ["started", "succeeded", "failed", "unavailable", "skipped"],
   source: ["browser", "site", "retrieval_service", "local_backend"],
-  code: ["PARTIAL_RESULT", "CONTENT_NOT_FOUND", "OK", "STARTED", "INVALID_URL", "UNSUPPORTED_PLATFORM", "UNSUPPORTED_LINK_TYPE", "SHORT_LINK_UNRESOLVED", "SHORT_LINK_TARGET_REJECTED", "AUTH_DENIED", "NETWORK_ERROR", "PROVIDER_BLOCKED", "CAPTIONS_NOT_FOUND", "CAPTION_HOST_REJECTED", "CAPTION_PARSE_FAILED", "CORS_DENIED", "TIMEOUT", "AUDIO_UNAVAILABLE", "STORAGE_FAILED", "BACKEND_UNAVAILABLE", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "RATE_LIMITED", "RESPONSE_TOO_LARGE"],
+  code: ["PARTIAL_RESULT", "CONTENT_NOT_FOUND", "OK", "STARTED", "INVALID_URL", "UNSUPPORTED_PLATFORM", "UNSUPPORTED_LINK_TYPE", "SHORT_LINK_UNRESOLVED", "SHORT_LINK_TARGET_REJECTED", "AUTH_DENIED", "NETWORK_ERROR", "PROVIDER_BLOCKED", "LOGIN_REQUIRED", "CAPTIONS_NOT_FOUND", "CAPTION_HOST_REJECTED", "CAPTION_PARSE_FAILED", "CORS_DENIED", "TIMEOUT", "AUDIO_UNAVAILABLE", "STORAGE_FAILED", "BACKEND_UNAVAILABLE", "INTERNAL_ERROR", "NOT_IMPLEMENTED", "RATE_LIMITED", "RESPONSE_TOO_LARGE"],
   linkType: ["watch", "shorts", "short_link", "reel", "creator_video", "share", "video", "post", "unknown"],
   queryShape: ["none", "video_id_only", "additional_parameters", "unknown"],
   cdnFamily: ["tiktokcdn", "tiktokcdn_us", "tiktokcdn_eu", "tiktokv", "byteoversea", "ibytedtos", "tiktok", "unknown", "none"],

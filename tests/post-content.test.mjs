@@ -49,3 +49,49 @@ test('Diagnostic fields accept only availability booleans and never persist cont
  assert.equal(event.postTextFound,true);assert.ok(!JSON.stringify(event).includes('secret'));
  assert.equal(sanitizeDiagnostic({...event,postTextFound:'secret'}).postTextFound,undefined);
 });
+test('Facebook login redirect is reported as LOGIN_REQUIRED, other refusals stay PROVIDER_BLOCKED', async () => {
+ const story='https://www.facebook.com/story.php?story_fbid=1234567890&id=9876543210';
+ const login=new Response(null,{status:302,headers:{location:'https://www.facebook.com/login/?next=x'}});
+ let calls=0;
+ const r=await retrievePublicCaptions(story,{fetchImpl:async()=>{calls++;return login;}});
+ assert.equal(r.code,'LOGIN_REQUIRED');assert.equal(r.post.code,'LOGIN_REQUIRED');assert.equal(calls,1,'Pen never follows the login redirect');
+ const elsewhere=await retrievePublicCaptions(story,{fetchImpl:async()=>new Response(null,{status:302,headers:{location:'https://evil.example/login/'}})});
+ assert.equal(elsewhere.code,'PROVIDER_BLOCKED');
+ const tiktok=await retrievePublicCaptions('https://www.tiktok.com/@x/video/1234567890123',{fetchImpl:async()=>new Response(null,{status:302,headers:{location:'https://www.facebook.com/login/'}})});
+ assert.equal(tiktok.code,'PROVIDER_BLOCKED');
+});
+
+test('Facebook sign-in classification requires a recognized redirect to a safe login location',async()=>{
+ const url='https://www.facebook.com/reel/123456789012345';
+ for(const [status,location,expected] of [
+  [302,'/login.php?next=fixture','LOGIN_REQUIRED'],
+  [307,'https://m.facebook.com/checkpoint/','LOGIN_REQUIRED'],
+  [302,'http://www.facebook.com/login','PROVIDER_BLOCKED'],
+  [302,'javascript://www.facebook.com/login','PROVIDER_BLOCKED'],
+  [302,'https://www.facebook.com:8443/login','PROVIDER_BLOCKED'],
+  [302,'https://fixture@www.facebook.com/login','PROVIDER_BLOCKED'],
+  [302,'https://www.facebook.com/login.php.other','PROVIDER_BLOCKED'],
+  [302,'https://evil.test/login','PROVIDER_BLOCKED'],
+  [302,'https://www.tiktok.com/login','PROVIDER_BLOCKED'],
+  [302,'https://[','PROVIDER_BLOCKED'],
+  [403,'/login','PROVIDER_BLOCKED'],
+  [304,'/login','PROVIDER_BLOCKED']
+ ]){
+  let calls=0;
+  const result=await retrievePublicCaptions(url,{fetchImpl:async()=>{calls++;return new Response(null,{status,headers:{location}});}});
+  assert.equal(result.code,expected,location);
+  assert.equal(calls,1);
+ }
+});
+
+test('Unread response cleanup cannot stall caption retrieval or expose cancellation errors',{timeout:2000},async()=>{
+ const url='https://www.facebook.com/reel/123456789012345';
+ for(const cancel of [()=>new Promise(()=>{}),()=>Promise.reject(new Error('private cancellation detail'))]){
+  let cancelled=0;
+  const body=new ReadableStream({cancel(){cancelled++;return cancel();}});
+  const result=await retrievePublicCaptions(url,{fetchImpl:async()=>new Response(body,{status:302,headers:{location:'/login'}})});
+  assert.equal(result.code,'LOGIN_REQUIRED');
+  assert.equal(cancelled,1);
+  assert.ok(!JSON.stringify(result).includes('private cancellation detail'));
+ }
+});

@@ -41,14 +41,13 @@ test('Facebook 200 share page may offer a bounded explicit canonical video hint'
   assert.equal(login.code,'SHORT_LINK_UNRESOLVED');
 });
 
-test('Reject malicious, cross-provider, login, unsupported and credentialed redirect destinations',async()=>{
+test('Reject malicious, cross-provider, unsupported and credentialed redirect destinations',async()=>{
   for(const destination of [
     'http://www.facebook.com/reel/'+id,
     'https://facebook.com.evil.test/reel/'+id,
     'https://127.0.0.1/reel/'+id,
     'https://www.facebook.com:444/reel/'+id,
     'https://www.facebook.com@evil.test/reel/'+id,
-    'https://www.facebook.com/login',
     'https://www.facebook.com/share/unsupported/something/',
     'https://www.tiktok.com/@creator/video/1234567890123456789'
   ]){
@@ -112,4 +111,17 @@ test('No Facebook video output when provider refuses or share page is a generic 
   assert.equal(out.ok,false);
   assert.equal(out.code,'SHORT_LINK_UNRESOLVED');
   assert.equal(out.post.status,'unavailable');
+});
+
+test('Share redirects to Facebook sign-in stop before a second request',{timeout:2000},async()=>{
+ for(const location of ['/login/','https://m.facebook.com/checkpoint.php']){
+  let calls=0,cancelled=0;
+  const result=await resolveFacebookShareUrl(share,async()=>{
+   calls++;
+   return new Response(new ReadableStream({cancel(){cancelled++;return new Promise(()=>{});}}),{status:302,headers:{location}});
+  });
+  assert.equal(result.code,'LOGIN_REQUIRED');
+  assert.equal(calls,1);
+  assert.equal(cancelled,1);
+ }
 });

@@ -1,7 +1,7 @@
 // Owner-private workflow controls. Creative work is performed in the chosen assistant.
 import {creativePrompt} from './modules/content-workflow.mjs';
 export function initContentWorkspace(){
- const $=id=>document.getElementById(id);let job=null,sourceId=null,busy=false,pendingDelete=null,listVersion=0,jobs=[],nextCursor=null,listLoading=false;
+ const $=id=>document.getElementById(id);let job=null,sourceId=null,sourceUrl=null,sourceNeedsReview=false,busy=false,pendingDelete=null,listVersion=0,jobs=[],nextCursor=null,listLoading=false;
  const status=message=>{$('content-status').textContent=message;};
  async function request(path,options){
   const response=await fetch(path,{cache:'no-store',...options});let data;try{data=await response.json();}catch{throw Error('CONTENT_BACKEND_UNAVAILABLE');}
@@ -16,7 +16,10 @@ export function initContentWorkspace(){
   $('content-delete').disabled=!job||busy;
   const pasted=$('content-manual-source'),manualText=pasted.value.trim();
   pasted.disabled=!!sourceId;
-  $('content-source').textContent=sourceId?'A saved Pen extraction will be used. Clear source to use pasted text instead.':manualText?'Pasted source selected. This text is user-provided, not verified by Pen.':'Start from your idea. No source extraction selected.';
+  $('content-create').disabled=busy||sourceNeedsReview;
+  $('content-keep-source').hidden=!sourceNeedsReview;
+  $('content-keep-source').disabled=busy;
+  $('content-source').textContent=sourceId?'Selected saved Pen extraction: '+(sourceUrl||sourceId)+'.':manualText?'Pasted source selected. This text is user-provided, not verified by Pen.':'Start from your idea. No source extraction selected.';
   const total=Array.from(manualText).length,budget=Number($('content-budget').value),selected=Math.min(total,budget);
   $('content-source-count').textContent=sourceId?'Saved extraction selected; any pasted text is excluded.':total?selected+' of '+total+' pasted characters will be stored after Prepare brief'+(total>budget?'; the remaining text will not be stored.':'.'):'No pasted source text selected.';
   $('content-summary').textContent=job?job.brief.source.selectedCharacters+' source characters selected'+(job.brief.source.truncated?(job.brief.source.kind==='user_supplied_text'?' · Pasted source shortened; unselected text was not retained.':' · Source shortened; full extraction remains stored.'):'')+' · Creative work runs only in your chosen assistant.':'';
@@ -42,16 +45,16 @@ export function initContentWorkspace(){
  $('content-refresh').addEventListener('click',()=>void list());
  async function open(id){
   if(busy)return;busy=true;render();
-  try{const data=await request('/api/content/'+encodeURIComponent(id));job=data.job;sourceId=job.brief.source.extractionId;$('content-manual-source').value=job.brief.source.kind==='user_supplied_text'?job.brief.source.text:'';$('content-idea').value=job.brief.idea;$('content-constraints').value=job.brief.constraints;$('content-format').value=job.brief.format;$('content-budget').value=String(job.brief.source.characterBudget);$('content-response').value=job.draft?JSON.stringify(job.draft,null,2):'';status(job.brief.source.kind==='user_supplied_text'?'Saved job opened. This is the retained user-provided excerpt, not a Pen-verified transcript.':'Saved job opened. Draft preparation and validation use ordinary code.');}
+  try{const data=await request('/api/content/'+encodeURIComponent(id));job=data.job;sourceId=job.brief.source.extractionId;sourceUrl=job.brief.source.provenance?.sourceUrl??null;sourceNeedsReview=false;$('content-manual-source').value=job.brief.source.kind==='user_supplied_text'?job.brief.source.text:'';$('content-idea').value=job.brief.idea;$('content-constraints').value=job.brief.constraints;$('content-format').value=job.brief.format;$('content-budget').value=String(job.brief.source.characterBudget);$('content-response').value=job.draft?JSON.stringify(job.draft,null,2):'';status(job.brief.source.kind==='user_supplied_text'?'Saved job opened. This is the retained user-provided excerpt, not a Pen-verified transcript.':'Saved job opened. Draft preparation and validation use ordinary code.');}
   catch(e){status('Could not open content job. '+e.message);}
   finally{busy=false;render();}
  }
  $('content-form').addEventListener('submit',async event=>{
-  event.preventDefault();if(busy)return;busy=true;render();$('content-create').disabled=true;
+  event.preventDefault();if(busy||sourceNeedsReview)return;busy=true;render();
   try{const manualText=$('content-manual-source').value.trim();const input={idea:$('content-idea').value,constraints:$('content-constraints').value,format:$('content-format').value,sourceChars:Number($('content-budget').value),...(sourceId?{extractionId:sourceId}:manualText?{sourceText:manualText}:{})};
    const data=await request('/api/content',json(input));job=data.job;$('content-response').value=job.draft?JSON.stringify(job.draft,null,2):'';status(data.reused?'Identical brief reused. Existing creative work was preserved.':'Brief saved. Use one creative pass in your assistant, then save its structured response.');void list();
   }catch(e){status('Could not prepare the brief. '+e.message);}
-  finally{busy=false;$('content-create').disabled=false;render();}
+  finally{busy=false;render();}
  });
  $('content-copy-brief').addEventListener('click',async()=>{if(!job)return;try{await navigator.clipboard.writeText(creativePrompt(job.brief));status('Compact brief copied. Ask your assistant for the JSON response once.');}catch{status('Clipboard unavailable. Download the brief instead.');}});
  $('content-download-brief').addEventListener('click',()=>{if(job)download('gs-pen-creative-brief.txt',creativePrompt(job.brief),'text/plain;charset=utf-8');});
@@ -74,14 +77,33 @@ export function initContentWorkspace(){
  $('content-delete-dialog').addEventListener('close',async()=>{
   const id=pendingDelete;pendingDelete=null;
   if($('content-delete-dialog').returnValue!=='delete'||!id){busy=false;render();return;}
-  try{++listVersion;listLoading=false;await request('/api/content/'+encodeURIComponent(id),{method:'DELETE'});job=null;sourceId=null;jobs=jobs.filter(item=>item.id!==id);$('content-response').value='';$('content-idea').value='';$('content-constraints').value='';$('content-manual-source').value='';render();status('Content job deleted, including its brief, source excerpt and saved draft. The original extraction remains in Recent.');await list();}
+  try{++listVersion;listLoading=false;await request('/api/content/'+encodeURIComponent(id),{method:'DELETE'});job=null;sourceId=null;sourceUrl=null;sourceNeedsReview=false;jobs=jobs.filter(item=>item.id!==id);$('content-response').value='';$('content-idea').value='';$('content-constraints').value='';$('content-manual-source').value='';render();status('Content job deleted, including its brief, source excerpt and saved draft. The original extraction remains in Recent.');await list();}
   catch(e){status('Could not delete the content job. Your open content has been kept. '+e.message);}
   finally{busy=false;render();renderJobs();}
  });
- $('content-clear-source').addEventListener('click',()=>{if(busy)return;sourceId=null;job=null;$('content-manual-source').value='';$('content-response').value='';render();status('Source cleared. Your idea and creative constraints are unchanged.');});
+ $('content-clear-source').addEventListener('click',()=>{if(busy)return;sourceId=null;sourceUrl=null;sourceNeedsReview=false;job=null;$('content-manual-source').value='';$('content-response').value='';render();status('Source cleared. Your idea and creative constraints are unchanged.');});
+ $('content-keep-source').addEventListener('click',()=>{
+  if(busy||!sourceNeedsReview)return;
+  sourceNeedsReview=false;render();status('Existing source confirmed for the next brief.');
+ });
  $('content-manual-source').addEventListener('input',render);
  $('content-budget').addEventListener('change',render);
  window.addEventListener('hashchange',()=>{if(location.hash==='#create')void list();});
  render();if(location.hash==='#create')void list();
- return {useExtraction(id){if(busy)return;sourceId=id;job=null;$('content-response').value='';location.hash='create';render();status('Saved extraction selected. Add your idea or desired angle.');}};
+ return {
+  useExtraction(id,url){
+   if(busy)return;
+   sourceId=id;sourceUrl=url;sourceNeedsReview=false;job=null;
+   $('content-response').value='';location.hash='create';render();
+   status('Saved extraction selected. Add your idea or desired angle.');
+  },
+  openAfterUnsavedExtraction(){
+   if(busy)return;
+   sourceNeedsReview=!!sourceId||!!$('content-manual-source').value.trim();
+   location.hash='create';render();
+   status(sourceNeedsReview
+    ? 'This extraction was not saved. Keep or clear the existing source before preparing a brief.'
+    : 'This extraction was not saved. Paste source text or start from your idea.');
+  }
+ };
 }

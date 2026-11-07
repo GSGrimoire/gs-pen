@@ -2,10 +2,23 @@
 // validates every hop and discards the response body except a small 200-HTML
 // canonical hint. It does not fetch media, use credentials or follow redirects.
 import { classifyPublicVideoUrl } from '../src/url-classifier.mjs';
+import { discardBody } from './discard-body.mjs';
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const HOSTS = new Set(['www.facebook.com','facebook.com','m.facebook.com']);
 const MAX_HOPS = 3, HTML_LIMIT = 131072;
+
+export function isFacebookLoginRedirect(status,location,base) {
+  if(!REDIRECTS.has(status)||!location)return false;
+  try {
+    const target=new URL(location,base);
+    return target.protocol==='https:' && HOSTS.has(target.hostname) &&
+      !target.username && !target.password && !target.port &&
+      /^\/(?:login|checkpoint)(?:\.php)?(?:\/|$)/.test(target.pathname);
+  } catch {
+    return false;
+  }
+}
 
 export function canonicalFacebookContentUrl(input) {
   const v=classifyPublicVideoUrl(input);
@@ -58,7 +71,7 @@ async function canonicalHint(response,base) {
     while(true){
       const {value,done}=await reader.read();if(done)break;
       size+=value.length;
-      if(size>HTML_LIMIT){await reader.cancel();return null;}
+      if(size>HTML_LIMIT){discardBody(reader);return null;}
       chunks.push(value);
     }
   }finally{reader.releaseLock();}
@@ -100,10 +113,14 @@ export async function resolveFacebookShareUrl(source,fetchImpl=fetch) {
       let canonical;
       try{canonical=await canonicalHint(response,current);}
       catch{return resultError('NETWORK_ERROR',count,200);}
+      finally{controller.abort();}
       return canonical?{ok:true,url:canonical,redirectCount:count}:resultError('SHORT_LINK_UNRESOLVED',count,200);
     }
     const location=response.headers?.get('location');
-    try{await response.body?.cancel();}catch{}
+    discardBody(response.body);
+    controller.abort();
+    if(isFacebookLoginRedirect(response.status,location,current))
+      return resultError('LOGIN_REQUIRED',count+1,response.status);
     if(!REDIRECTS.has(response.status))
       return resultError('PROVIDER_BLOCKED',count,response.status);
     if(!location)return resultError('SHORT_LINK_UNRESOLVED',count+1,response.status);
