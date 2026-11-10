@@ -22,7 +22,7 @@ function authorizedKey(value,expected=DEVELOPMENT_KEY) {
   return timingSafeEqual(Buffer.from(value),Buffer.from(expected));
 }
 const files=new Map([
-  ["/","local-dist/index.html"],["/index.html","local-dist/index.html"],
+  ["/","local-dist/index.html"],["/index.html","local-dist/index.html"],["/favicon.svg","local-dist/favicon.svg"],
   ["/content-workflow.mjs","local-dist/content-workflow.mjs"],["/modules/content-workflow.mjs","local-dist/modules/content-workflow.mjs"],["/app.mjs","local-dist/app.mjs"],["/styles.css","local-dist/styles.css"],
   ["/modules/url-classifier.mjs","local-dist/modules/url-classifier.mjs"],
   ["/modules/diagnostics.mjs","local-dist/modules/diagnostics.mjs"],["/modules/extraction-export.mjs","local-dist/modules/extraction-export.mjs"],
@@ -110,7 +110,7 @@ export function createLocalTestServer({developmentKey=DEVELOPMENT_KEY}={}){
       try {
         const file=path.join(ROOT,files.get(route));
         const bytes=await readFile(file);
-        const type=route.endsWith(".css")?"text/css; charset=utf-8":route.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
+        const type=route.endsWith(".svg")?"image/svg+xml; charset=utf-8":route.endsWith(".css")?"text/css; charset=utf-8":route.endsWith(".mjs")?"text/javascript; charset=utf-8":"text/html; charset=utf-8";
         headers(res,200,type);res.end(bytes);
       } catch {reply(res,404,{code:"NOT_IMPLEMENTED"});}
       return;
