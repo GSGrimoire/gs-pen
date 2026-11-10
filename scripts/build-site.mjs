@@ -3,6 +3,7 @@ import path from "node:path";
 const root=process.cwd();
 await rm(path.join(root,"local-dist"),{recursive:true,force:true});
 await mkdir(path.join(root,"local-dist","modules"),{recursive:true});
+await copyFile(path.join(root,"public","favicon.svg"),path.join(root,"local-dist","favicon.svg"));
 for (const file of ["index.html","styles.css","app.mjs","content-workflow.mjs"])
   await copyFile(path.join(root,"web",file),path.join(root,"local-dist",file));
 for (const file of ["url-classifier.mjs","diagnostics.mjs","extraction-export.mjs","content-workflow.mjs","recovery-guidance.mjs"])
