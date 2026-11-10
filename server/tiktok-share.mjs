@@ -1,6 +1,7 @@
 // Resolve only TikTok's public share-link redirects. Never follow a response
 // automatically: each Location must be a supported TikTok video or share link.
 import { classifyPublicVideoUrl } from '../src/url-classifier.mjs';
+import { discardBody } from './discard-body.mjs';
 
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const MAX_HOPS = 3;
@@ -35,7 +36,7 @@ async function canonicalHint(response) {
     while(true){
       const {value,done}=await reader.read();if(done)break;
       size+=value.length;
-      if(size>131072){await reader.cancel();return null;}
+      if(size>131072){discardBody(reader);return null;}
       chunks.push(value);
     }
   }finally{reader.releaseLock();}
@@ -93,7 +94,8 @@ export async function resolveTikTokShareUrl(source, fetchImpl = fetch) {
         failure('SHORT_LINK_UNRESOLVED',redirects,200);
     }
     const location = response.headers?.get('location');
-    try { await response.body?.cancel(); } catch { /* no response body is needed */ }
+    discardBody(response.body);
+    controller.abort();
     if (!REDIRECTS.has(status)) {
       return failure('PROVIDER_BLOCKED', redirects, status);
     }
