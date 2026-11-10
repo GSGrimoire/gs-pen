@@ -30,6 +30,11 @@ async function stubCaptionResult(page, resultFor) {
 
 test('home page exposes private research status, actual backend and four separate tabs', async ({ page }) => {
   await openConnected(page);
+  await expect(page.locator('link[rel="icon"]')).toHaveAttribute('href','./favicon.svg');
+  const favicon=await page.request.get('/favicon.svg');
+  expect(favicon.status()).toBe(200);
+  expect(favicon.headers()['content-type']).toMatch(/^image\/svg\+xml/);
+  expect(await favicon.text()).toContain('handwritten GS finished by a fountain pen');
   await expect(page.getByRole('heading', { name: 'Extract', level: 1 })).toBeVisible();
   await expect(page.getByRole('tab')).toHaveCount(4);
   await expect(page.getByRole('tab', {name: 'Transcript'})).toHaveAttribute('aria-selected','true');
