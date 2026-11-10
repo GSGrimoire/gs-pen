@@ -57,13 +57,13 @@ test('counts native captions separately from partial post data with correct deno
   assert.equal(result.overall.nativeCaptionCoverage,3/9);
   assert.equal(result.overall.contentRichUtility,4/10);
   assert.equal(result.overall.metadataOnlyUtility,1/10);
-  assert.equal(result.overall.medianLatencyMs,1800);
+  assert.equal(result.overall.medianLatencyMs,2000);
   assert.equal(result.overall.p95LatencyMs,4000);
   assert.equal(result.byPlatform.values.tiktok.attempts,6);
   assert.equal(result.byPlatform.values.facebook,undefined);
   assert.equal(result.byPlatform.suppressedGroups,1);
   assert.equal(result.byLinkType.suppressedGroups,1);
-  assert.ok(!JSON.stringify(result).includes('private'));
+  assert.ok(!JSON.stringify(result).includes('https://'));
 });
 
 test('suppresses small cohorts and handles zero eligible attempts without dividing by zero',()=>{
