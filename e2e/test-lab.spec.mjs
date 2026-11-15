@@ -254,6 +254,32 @@ test('TikTok post and metadata tabs show independent results and safely render p
  const stored=await page.evaluate(()=>JSON.stringify(localStorage));expect(stored).not.toContain('Synthetic post');expect(stored).not.toContain(attack);
 });
 
+test('YouTube public details are visible without claiming a transcript or post text',async({page})=>{
+ await stubCaptionResult(page,traceId=>({
+  ok:false,status:'unavailable',code:'NOT_IMPLEMENTED',cues:[],captionTrackCount:0,
+  post:{status:'unavailable',code:'NOT_IMPLEMENTED',text:null,hashtags:[]},
+  metadata:{status:'succeeded',code:'OK',fields:{platform:'YouTube',videoId:'J---aiyznGQ',title:'Synthetic YouTube title',creator:'Fixture channel'},provenance:'YouTube public oEmbed metadata'},
+  events:[{traceId,schema:'gs-pen.diagnostic.v2',timestamp:new Date().toISOString(),platform:'youtube',stage:'metadata_parse',status:'succeeded',code:'OK',source:'site',build:'testlab_v1'}],
+  diagnosticsStored:true
+ }));
+ await openConnected(page);
+ await page.locator('#video-url').fill('https://www.youtube.com/shorts/J---aiyznGQ?feature=share');
+ await page.locator('#probe-button').click();
+ await expect(page.locator('#trace-status')).toHaveText('Video details retrieved; no transcript');
+ await expect(page.locator('#result-summary')).toContainText('Caption transcript: Not available');
+ await expect(page.locator('#result-summary')).toContainText('Post text: Not available');
+ await expect(page.locator('#result-summary')).toContainText('Details: Available');
+ await expect(page.locator('#tab-panel')).toContainText('Synthetic YouTube title');
+ await expect(page.locator('#tab-panel')).toContainText('Public YouTube embed metadata only');
+ await expect(page.locator('#recovery-guidance')).toContainText('YouTube embed metadata does not include captions');
+ await expect(page.locator('#export-subrip')).toBeDisabled();
+ await expect(page.locator('#export-json')).toBeEnabled();
+ await page.getByRole('tab',{name:'Transcript',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('No transcript');
+ await page.getByRole('tab',{name:'Post text',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('No post text');
+});
+
 test('Facebook reaches the backend and displays partial post information without claiming captions',async({page})=>{
  await stubCaptionResult(page,traceId=>({ok:false,code:'NOT_IMPLEMENTED',cues:[],post:{status:'succeeded',code:'OK',text:'Synthetic Facebook story #magic',hashtags:['#magic'],provenance:'Facebook public share title',completeness:'page_preview_may_be_truncated'},metadata:{status:'succeeded',code:'OK',fields:{platform:'Facebook',creator:'Synthetic Studio'},provenance:'Synthetic fixture'},events:mockEvents(traceId,'unavailable','NOT_IMPLEMENTED'),diagnosticsStored:true}));
  await openConnected(page);await page.locator('#video-url').fill('https://www.facebook.com/reel/123456789012345');await page.locator('#probe-button').click();
