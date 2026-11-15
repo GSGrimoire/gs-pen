@@ -89,7 +89,7 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
       let history=false;try{await env.DB.prepare('SELECT id FROM extractions LIMIT 1').first();history=true;}catch{}
       let contentWorkflowAvailable=false;try{await env.DB.prepare('SELECT id FROM content_jobs LIMIT 1').first();contentWorkflowAvailable=true;}catch{}
-      return json({contentWorkflowAvailable,build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
+      return json({contentWorkflowAvailable,build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook','youtube'],retentionDays:null,retentionPaused:true});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);
