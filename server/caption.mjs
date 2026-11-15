@@ -6,6 +6,7 @@ import { matchedTikTokItem, tiktokContent, facebookContent, unavailableContent }
 import { resolveTikTokShareUrl } from './tiktok-share.mjs';
 import { resolveFacebookShareUrl, canonicalFacebookContentUrl, isFacebookLoginRedirect } from './facebook-share.mjs';
 import { discardBody } from './discard-body.mjs';
+import { readYoutubeEmbedMetadata } from './youtube-metadata.mjs';
 
 const LIMIT_PAGE = 2_000_000, LIMIT_VTT = 256_000;
 const APPROVED_CDN = new Set(["tiktokcdn","tiktokcdn_us","tiktokcdn_eu","tiktokv","byteoversea","ibytedtos","tiktok"]);
@@ -97,11 +98,30 @@ export async function retrievePublicCaptions(rawUrl,{fetchImpl=fetch,traceId="re
   const verdict=classifyPublicVideoUrl(rawUrl);
   if(!verdict.ok){report("url_validate","failed","INVALID_URL"); return fail("INVALID_URL");}
   report("url_validate","succeeded","OK");
-  if(!['tiktok','facebook'].includes(verdict.platform)){
+  if(!['tiktok','facebook','youtube'].includes(verdict.platform)){
     report("provider_identify","unavailable","NOT_IMPLEMENTED");
     return fail("NOT_IMPLEMENTED","unavailable");
   }
   report("provider_identify","succeeded","OK");
+  if(verdict.platform==='youtube'){
+    // The public embed endpoint has metadata only. Its title and author are
+    // never substitutes for spoken words, a description or native captions.
+    report('provider_page_fetch','started','STARTED');
+    const youtube=await readYoutubeEmbedMetadata(verdict.url,{fetchImpl});
+    if(!youtube.ok){
+      report('provider_page_fetch','failed',youtube.code);
+      return fail(youtube.code,youtube.code==='CONTENT_NOT_FOUND'?'unavailable':'failed');
+    }
+    report('provider_page_fetch','succeeded','OK',{contentType:'json'});
+    content={
+      post:{status:'unavailable',code:'NOT_IMPLEMENTED',text:null,hashtags:[]},
+      metadata:{status:'succeeded',code:'OK',fields:youtube.fields,provenance:youtube.provenance}
+    };
+    contentParsed=true;
+    report('metadata_parse','succeeded','OK',{metadataFound:true});
+    report('caption_track_discovery','unavailable','NOT_IMPLEMENTED');
+    return fail('NOT_IMPLEMENTED','unavailable');
+  }
   let u=new URL(verdict.url);
   if (verdict.platform==='tiktok' && verdict.requiresRedirectResolution) {
     report('share_link_resolution','started','STARTED');
