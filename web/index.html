@@ -20,7 +20,7 @@
     <section id="extract-view" data-page="extract">
       <div class="page-heading compact"><h1>Extract</h1></div>
       <section id="workspace" class="work-grid"><div class="primary">
-        <section class="panel input-panel"><form id="probe-form"><label for="video-url">TikTok or Facebook link</label><div class="input-row"><input id="video-url" name="videoUrl" type="url" inputmode="url" placeholder="https://" autocomplete="off" spellcheck="false" required maxlength="2048"><button type="submit" id="probe-button">Extract</button></div></form><p id="extraction-status" role="status"></p>
+        <section class="panel input-panel"><form id="probe-form"><label for="video-url">YouTube, TikTok or Facebook link</label><div class="input-row"><input id="video-url" name="videoUrl" type="url" inputmode="url" placeholder="https://" autocomplete="off" spellcheck="false" required maxlength="2048"><button type="submit" id="probe-button">Extract</button></div></form><p id="extraction-status" role="status"></p>
           <p class="save-note"><span id="history-save-status" role="status"></span></p>
         </section>
         <section class="panel results-panel"><div class="panel-head"><h2>Result</h2></div>
@@ -37,7 +37,7 @@
         </section>
       </div></section>
     </section>
-    <section id="recent-view" data-page="recent" hidden><div class="page-heading compact"><h1>Recent</h1></div><section class="panel"><div class="recent-controls"><label for="history-search">Search loaded extractions<input id="history-search" type="search" placeholder="Filter loaded titles, creators, or platforms" maxlength="200"></label><label for="history-platform">Platform<select id="history-platform"><option value="all">All platforms</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option></select></label><button id="refresh-history" class="outline" type="button">Refresh</button></div><p id="history-status" role="status">Loading saved extractions…</p><div id="history-items" class="history-items"></div><button id="history-more" type="button" class="outline" hidden>Load older extractions</button></section></section>
+    <section id="recent-view" data-page="recent" hidden><div class="page-heading compact"><h1>Recent</h1></div><section class="panel"><div class="recent-controls"><label for="history-search">Search loaded extractions<input id="history-search" type="search" placeholder="Filter loaded titles, creators, or platforms" maxlength="200"></label><label for="history-platform">Platform<select id="history-platform"><option value="all">All platforms</option><option value="tiktok">TikTok</option><option value="facebook">Facebook</option><option value="youtube">YouTube</option></select></label><button id="refresh-history" class="outline" type="button">Refresh</button></div><p id="history-status" role="status">Loading saved extractions…</p><div id="history-items" class="history-items"></div><button id="history-more" type="button" class="outline" hidden>Load older extractions</button></section></section>
     <section id="create-view" data-page="create" hidden>
       <div class="page-heading compact"><h1>Create</h1></div>
       <div class="content-grid"><section class="panel"><h2>1. Prepare a compact brief</h2><p id="creative-cost-note" class="creative-cost-note">Pen makes no AI calls. You paste the brief into ChatGPT or Claude yourself, and that uses your own account.</p><form id="content-form">
