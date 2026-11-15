@@ -338,3 +338,28 @@ test('The assistant list contract exposes summaries and an optional bounded curs
  assert.deepEqual(JSON.parse((await call({})).content[0].text),{jobs:[],total:0,nextCursor:null,limit:50});
  const invalid=await call({cursor:42});assert.equal(invalid.isError,true);assert.equal(JSON.parse(invalid.content[0].text).code,'INVALID_PAGE_CURSOR');assert.equal((await call({ownerId:'other-owner'})).isError,true);
 });
+
+test('YouTube metadata-only extraction is owner-private and diagnostic-safe',async()=>{
+ const {env,sql}=setup(),videoId='J---aiyznGQ';
+ const source='https://youtu.be/'+videoId+'?si=sensitive_tracking';
+ const fetchImpl=async(url,options)=>{
+  assert.equal(new URL(url).searchParams.get('url'),'https://www.youtube.com/watch?v='+videoId);
+  assert.equal(options.redirect,'manual');
+  return new Response(JSON.stringify({type:'video',provider_name:'YouTube',title:'Private synthetic title',author_name:'Synthetic author'}));
+ };
+ const result=await(await handleSiteRequest(req('captions','POST',{traceId:data.traceId,url:source}),env,{fetchImpl})).json();
+ assert.equal(result.code,'NOT_IMPLEMENTED');
+ assert.equal(result.ok,false);
+ assert.equal(result.historyStatus,'saved');
+ assert.equal(result.metadata.status,'succeeded');
+ assert.equal(result.metadata.fields.videoId,videoId);
+ assert.deepEqual(result.cues,[]);
+ const summary=await(await handleSiteRequest(req('history'),env)).json();
+ assert.equal(summary.items[0].title,'Private synthetic title');
+ assert.equal(summary.items[0].platform,'youtube');
+ const storedLogs=JSON.stringify(sql.prepare('SELECT payload FROM diagnostic_events').all());
+ for(const value of [videoId,'sensitive_tracking','Private synthetic title','Synthetic author'])
+  assert.ok(!storedLogs.includes(value));
+ const forbidden=await handleSiteRequest(req('history','GET',undefined,'other@example.test'),env);
+ assert.equal(forbidden.status,403);
+});

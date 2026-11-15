@@ -43,7 +43,7 @@ test("local Test Lab serves UI, rejects arbitrary content, persists only sanitiz
   assert.ok(body.includes("www.tiktok.com"));
   const unsupported=await fetch(root+"/api/captions",{
     method:"POST",headers:{"Content-Type":"application/json"},
-    body:JSON.stringify({url:"https://www.youtube.com/watch?v=J---aiyznGQ",traceId:"server_test_002"})
+    body:JSON.stringify({url:"https://www.instagram.com/reel/C9abcdEFG12/",traceId:"server_test_002"})
   });
   const response=await unsupported.json();
   assert.equal(response.code,"NOT_IMPLEMENTED");

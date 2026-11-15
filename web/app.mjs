@@ -134,10 +134,10 @@ function renderTab(){
   if(state.tab==="metadata"){
     if(!result){panel.append(plainEmpty('Nothing extracted yet','Paste a link above.'));return;}
     if(result.metadata?.status!=='succeeded'){panel.append(plainEmpty('No details',explain(result.metadata?.code||result.code)));return;}
-    const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook'};
+    const labels={platform:'Platform',creator:'Creator',username:'Username',publishedAt:'Published',durationSeconds:'Duration (seconds)',width:'Width (pixels)',height:'Height (pixels)',language:'Language',views:'Views',likes:'Likes',comments:'Comments',shares:'Shares',saves:'Saves',title:'Title',engagementSummary:'Engagement shown by Facebook',videoId:'Video ID',channelUrl:'Channel link',thumbnailUrl:'Thumbnail link'};
     const list=node('dl',undefined,'detail-list');for(const [key,value] of Object.entries(result.metadata.fields))list.append(node('dt',labels[key]||key),node('dd',value));
     if(result.metadata.provenance)panel.append(node('p','Source: '+result.metadata.provenance,'output-note'));
-    panel.append(list,node('p','Counts are from when the link was extracted.','output-note'));return;
+    panel.append(list,node('p',result.metadata.fields.platform==='YouTube'?'Public YouTube embed metadata only. This does not contain a description, publication date, duration, statistics or transcript.':'Counts are from when the link was extracted.','output-note'));return;
   }
   if(!state.result){panel.append(plainEmpty("Nothing extracted yet","Paste a link above."));return;}
   if(!state.result.ok){panel.append(plainEmpty("No clip text",explain(state.result.code)));return;}
@@ -151,7 +151,7 @@ const errorText={
   CONTENT_NOT_FOUND:"The page had no content Pen could read.",
   AUTH_DENIED:"Sign in to the Site again.",
   RATE_LIMITED:"Too many requests. Wait a minute.",
-  INVALID_URL:"This is not a supported TikTok or Facebook link.",
+  INVALID_URL:"This is not a supported YouTube, TikTok or Facebook link.",
   NOT_IMPLEMENTED:"Pen cannot get captions from this platform or link type yet.",
   UNSUPPORTED_LINK_TYPE:"Pen does not support this kind of link.",
   SHORT_LINK_UNRESOLVED:"The share link did not lead to a public post.",
@@ -179,7 +179,7 @@ async function doProbe(event){
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
   if(!result.ok){$("history-save-status").textContent="No extraction saved. Check the video link.";state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
   if(!state.backend){$("history-save-status").textContent="No extraction saved. The backend is unavailable.";record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
-  if(!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
+  if(!['tiktok','facebook','youtube'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
@@ -194,7 +194,7 @@ async function doProbe(event){
     state.tab=outcome.ok?'transcript':partial?(outcome.post?.text?'post':'metadata'):state.tab;
     if(outcome.unpersistedCaptionHost)setContext(context,{"Rejected caption host (not stored)":outcome.unpersistedCaptionHost});
     if(outcome.ok){displayStatus("Captions retrieved","ok");setContext(context,{"Caption tracks":outcome.captionTrackCount,"Caption cues":outcome.cues.length});}
-    else if(partial)displayStatus('Post text retrieved; no transcript','ok');
+    else if(partial)displayStatus(outcome.post?.text?'Post text retrieved; no transcript':'Video details retrieved; no transcript','ok');
     else displayStatus(outcome.code==="CAPTIONS_NOT_FOUND"?"No track found":"Retrieval failed","error");
     if(!outcome.diagnosticsStored){state.storageFailed=true;$("storage-indicator").textContent="Storage failed; browser copy only";}
     record({...base,stage:"result_render",status:outcome.ok||partial?"succeeded":"failed",code:partial?'PARTIAL_RESULT':outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined,postTextFound:!!outcome.post?.text,metadataFound:outcome.metadata?.status==='succeeded'});

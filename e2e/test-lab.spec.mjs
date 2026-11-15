@@ -111,7 +111,7 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
 
 test('recognized but unavailable video platforms never claim transcript support', async ({ page }) => {
   await openConnected(page);
-  await page.locator('#video-url').fill('https://www.youtube.com/watch?v=J---aiyznGQ');
+  await page.locator('#video-url').fill('https://www.instagram.com/reel/C9abcdEFG12/');
   await page.locator('#probe-button').click();
   await expect(page.locator('#tab-panel')).toContainText('NOT_IMPLEMENTED');
   await expect(page.locator('#trace-status')).toHaveText('Not supported yet');
@@ -252,6 +252,32 @@ test('TikTok post and metadata tabs show independent results and safely render p
  await expect(page.locator('#tab-panel img')).toHaveCount(0);
  await page.getByRole('tab',{name:'Details',exact:true}).click();await expect(page.locator('#tab-panel')).toContainText(attack);await expect(page.locator('#tab-panel')).toContainText('Likes');
  const stored=await page.evaluate(()=>JSON.stringify(localStorage));expect(stored).not.toContain('Synthetic post');expect(stored).not.toContain(attack);
+});
+
+test('YouTube public details are visible without claiming a transcript or post text',async({page})=>{
+ await stubCaptionResult(page,traceId=>({
+  ok:false,status:'unavailable',code:'NOT_IMPLEMENTED',cues:[],captionTrackCount:0,
+  post:{status:'unavailable',code:'NOT_IMPLEMENTED',text:null,hashtags:[]},
+  metadata:{status:'succeeded',code:'OK',fields:{platform:'YouTube',videoId:'J---aiyznGQ',title:'Synthetic YouTube title',creator:'Fixture channel'},provenance:'YouTube public oEmbed metadata'},
+  events:[{traceId,schema:'gs-pen.diagnostic.v2',timestamp:new Date().toISOString(),platform:'youtube',stage:'metadata_parse',status:'succeeded',code:'OK',source:'site',build:'testlab_v1'}],
+  diagnosticsStored:true
+ }));
+ await openConnected(page);
+ await page.locator('#video-url').fill('https://www.youtube.com/shorts/J---aiyznGQ?feature=share');
+ await page.locator('#probe-button').click();
+ await expect(page.locator('#trace-status')).toHaveText('Video details retrieved; no transcript');
+ await expect(page.locator('#result-summary')).toContainText('Caption transcript: Not available');
+ await expect(page.locator('#result-summary')).toContainText('Post text: Not available');
+ await expect(page.locator('#result-summary')).toContainText('Details: Available');
+ await expect(page.locator('#tab-panel')).toContainText('Synthetic YouTube title');
+ await expect(page.locator('#tab-panel')).toContainText('Public YouTube embed metadata only');
+ await expect(page.locator('#recovery-guidance')).toContainText('YouTube embed metadata does not include captions');
+ await expect(page.locator('#export-subrip')).toBeDisabled();
+ await expect(page.locator('#export-json')).toBeEnabled();
+ await page.getByRole('tab',{name:'Transcript',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('No transcript');
+ await page.getByRole('tab',{name:'Post text',exact:true}).click();
+ await expect(page.locator('#tab-panel')).toContainText('No post text');
 });
 
 test('Facebook reaches the backend and displays partial post information without claiming captions',async({page})=>{

@@ -76,7 +76,7 @@ export function createLocalTestServer({developmentKey=DEVELOPMENT_KEY}={}){
     if(origin && origin!==((trustedForward?"https://":"http://")+host)){reply(res,403,{code:"AUTH_DENIED"});return;}
     const route=new URL(req.url||"/","http://"+host).pathname;
     if(req.method==="GET" && route==="/api/health"){
-      reply(res,200,{build:"testlab_v1",backend:CODESPACE_MODE?"codespaces_private":"local_only",ownerAuth:CODESPACE_MODE?"github_private_forward_plus_development_key":"not_available",authRequired:!!developmentKey,diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false});return;
+      reply(res,200,{build:"testlab_v1",backend:CODESPACE_MODE?"codespaces_private":"local_only",ownerAuth:CODESPACE_MODE?"github_private_forward_plus_development_key":"not_available",authRequired:!!developmentKey,diagnosticStorage:"local_file",captionAdapter:"tiktok_experimental",centralSiteStorage:false,publicContentAdapters:['tiktok','facebook','youtube']});return;
     }
     if(route.startsWith("/api/") && !authorizedKey(req.headers["x-gs-pen-dev-key"],developmentKey)) {reply(res,401,{code:"AUTH_DENIED"});return;}
     if(req.method==="GET" && route==="/api/diagnostics"){

@@ -1,7 +1,7 @@
 // Fixed recovery advice is display-only. Do not interpolate user URLs, provider content,
 // raw backend errors, or identifiers into messages or diagnostic events.
 const NEXT_STEP = Object.freeze({
-  INVALID_URL: 'Paste a full TikTok video link or a Facebook post or video link.',
+  INVALID_URL: 'Paste a YouTube watch or Shorts link, a TikTok video link, or a Facebook post or video link.',
   AUTH_DENIED: 'Sign in to the Site again.',
   RATE_LIMITED: 'Too many requests. Wait a minute, then try again.',
   NOT_IMPLEMENTED: 'Pen cannot get captions from this platform or link type yet.',
@@ -34,5 +34,8 @@ export function recoveryGuidance(result) {
         ? 'Only video details were found. '
         : '';
   const code = typeof result.code === 'string' ? result.code : '';
+  if (code === 'NOT_IMPLEMENTED' && result.metadata?.fields?.platform === 'YouTube') {
+    return availability + 'YouTube embed metadata does not include captions. An authorized caption or audio import is a separate planned workflow.';
+  }
   return availability + (Object.hasOwn(NEXT_STEP, code) ? NEXT_STEP[code] : FALLBACK);
 }
