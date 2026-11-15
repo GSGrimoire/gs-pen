@@ -111,7 +111,7 @@ test('blocked caption access has a truthful error and does not hide diagnostics'
 
 test('recognized but unavailable video platforms never claim transcript support', async ({ page }) => {
   await openConnected(page);
-  await page.locator('#video-url').fill('https://www.youtube.com/watch?v=J---aiyznGQ');
+  await page.locator('#video-url').fill('https://www.instagram.com/reel/C9abcdEFG12/');
   await page.locator('#probe-button').click();
   await expect(page.locator('#tab-panel')).toContainText('NOT_IMPLEMENTED');
   await expect(page.locator('#trace-status')).toHaveText('Not supported yet');
