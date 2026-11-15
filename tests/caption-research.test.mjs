@@ -41,7 +41,7 @@ test("blocked page is reported distinctly from a captionless page",async()=>{
 });
 test("unsupported platforms cannot trigger external HTTP requests",async()=>{
   let sent=0;
-  const result=await retrievePublicCaptions("https://www.youtube.com/watch?v=J---aiyznGQ",{fetchImpl:async()=>{sent++;}});
+  const result=await retrievePublicCaptions("https://www.instagram.com/reel/C9abcdEFG12/",{fetchImpl:async()=>{sent++;}});
   assert.equal(result.code,"NOT_IMPLEMENTED");
   assert.equal(sent,0);
 });
