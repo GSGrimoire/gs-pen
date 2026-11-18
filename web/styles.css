@@ -95,3 +95,4 @@
 .transcript-output p{margin:0 0 12px}.transcript-output p:last-child{margin-bottom:0}
 
 #content-source{overflow-wrap:anywhere}
+img.mark{display:block;width:40px;height:40px;flex:none;letter-spacing:0}@media(max-width:680px){img.mark{width:34px;height:34px}}

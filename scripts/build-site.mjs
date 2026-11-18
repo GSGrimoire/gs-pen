@@ -7,4 +7,6 @@ for (const file of ["index.html","styles.css","app.mjs","content-workflow.mjs"])
   await copyFile(path.join(root,"web",file),path.join(root,"local-dist",file));
 for (const file of ["url-classifier.mjs","diagnostics.mjs","extraction-export.mjs","content-workflow.mjs","recovery-guidance.mjs"])
   await copyFile(path.join(root,"src",file),path.join(root,"local-dist","modules",file));
+for (const file of ["favicon.ico","favicon-16.png","favicon-32.png","apple-touch-icon.png","brand-logo.png"])
+  await copyFile(path.join(root,"public",file),path.join(root,"local-dist",file));
 process.stdout.write("Built self-contained static preview in local-dist/\n");
