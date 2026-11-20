@@ -67,10 +67,27 @@ test('Site caption resolver returns native timed cues; stores only technical eve
  for(const word of ['@creator','1234567890123456789','signature','Private synthetic caption','secret=value'])assert.ok(!raw.includes(word),word);
  assert.ok(response.events.every(e=>e.source==='site'&&e.transport==='site_backend'));
 });
-test('Provider failures are categorized; diagnostic database outage never blocks caption response',async()=>{
+test('Caption budget storage failure denies provider calls before any external request',async()=>{
  const {env}=setup();env.DB={prepare(){throw Error('private database exception');}};
- const response=await (await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>new Response('',{status:403})})).json();
- assert.equal(response.code,'PROVIDER_BLOCKED');assert.equal(response.diagnosticsStored,false);assert.ok(!JSON.stringify(response).includes('private database'));
+ let providerCalls=0;
+ const response=await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>{providerCalls++;return new Response('',{status:403});}});
+ assert.equal(response.status,503);
+ const result=await response.json();
+ assert.equal(result.code,'STORAGE_FAILED');
+ assert.equal(result.ok,false);
+ assert.equal(result.diagnosticsStored,false);
+ assert.equal(providerCalls,0);
+ assert.ok(!JSON.stringify(result).includes('private database'));
+});
+test('Provider failure result survives diagnostic persistence failure after budget approval',async()=>{
+ const {env}=setup(), original=env.DB;
+ env.DB={prepare: query=>original.prepare(query),async batch(){throw Error('private database exception');}};
+ const response=await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>new Response('',{status:403})});
+ assert.equal(response.status,200);
+ const result=await response.json();
+ assert.equal(result.code,'PROVIDER_BLOCKED');
+ assert.equal(result.diagnosticsStored,false);
+ assert.ok(!JSON.stringify(result).includes('private database'));
 });
 test('Durable request budget restricts repeated provider calls',async()=>{
  const {env}=setup();let count=0;const fetchImpl=async()=>{count++;return new Response('',{status:403});};

@@ -137,8 +137,11 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       const event=sanitizedSiteEvent(data,{traceId,source:'browser',now});
       await storeEvents(env.DB,[event],now);return json({saved:true,storage:'site_database'});
     }
-    let allowance={allowed:true,firstDenied:false};
-    try{allowance=await budget(env.DB,now);}catch{/* logging database failure must not block caption retrieval */}
+    // Budget accounting is a security and cost boundary, not optional telemetry.
+    // If the database cannot record the attempt, do not call external providers.
+    let allowance;
+    try{allowance=await budget(env.DB,now);}
+    catch{return json({ok:false,code:'STORAGE_FAILED',cues:[],traceId,diagnosticsStored:false},503);}
     if(!allowance.allowed){
       // One sanitized rate-limit event per budget window. Do not permit
       // a flood of rejected requests to fill the owner's diagnostic store.
