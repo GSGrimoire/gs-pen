@@ -19,7 +19,7 @@ async function increment(db,ownerId,now,kind,platform,outcome,code){
  await db.prepare(`INSERT INTO monthly_reliability (owner_id,month,kind,platform,outcome,code,count,last_at)
  VALUES (?,?,?,?,?,?,1,?) ON CONFLICT(owner_id,month,kind,platform,outcome,code) DO UPDATE SET
  count=monthly_reliability.count+1,last_at=max(monthly_reliability.last_at,excluded.last_at)`)
- .bind(ownerId,monthOf(now),kind,platform,outcome,safeCode(code),now).run();
+ .bind(ownerId,monthOf(now),kind,platform,outcome,safeCode(code),kind==='maintenance'?now:monthStart(now)).run();
 }
 // Recognized, budget-approved user requests only. Start and completion counts are separate.
 export async function recordUserMetric(db,ownerId,raw,result,now){

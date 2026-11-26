@@ -64,7 +64,7 @@ test('migration 0004 preserves previous records and snapshot lineage',()=>{
  for(const f of readdirSync(dir).filter(f=>/^000[0-3].*\.sql$/.test(f)).sort())sql.exec(readFileSync(new URL(f,dir),'utf8'));
  sql.exec("INSERT INTO failed_link_attempts (id,case_id,owner_id,source_url,platform,created_at,status,code,trace_id,build) VALUES ('id','id','owner','https://facebook.com/share/r/Fixture123','facebook',1,'failed','LOGIN_REQUIRED','trace','fixture')");
  const before=sql.prepare('SELECT * FROM failed_link_attempts').get();sql.exec(readFileSync(new URL('0004_monthly_reliability.sql',dir),'utf8'));
- assert.deepEqual(sql.prepare('SELECT * FROM failed_link_attempts').get(),{...before,research_month:''});
+ assert.deepEqual({...sql.prepare('SELECT * FROM failed_link_attempts').get()},{...before,research_month:''});
  const old=JSON.parse(readFileSync(new URL('meta/0003_snapshot.json',dir),'utf8')),next=JSON.parse(readFileSync(new URL('meta/0004_snapshot.json',dir),'utf8'));
  assert.equal(next.prevId,old.id);for(const key of Object.keys(old.tables).filter(k=>k!=='failed_link_attempts'))assert.deepEqual(next.tables[key],old.tables[key]);
  assert.deepEqual(sql.prepare("PRAGMA table_info('monthly_reliability')").all().map(x=>x.name),Object.keys(next.tables.monthly_reliability.columns));
