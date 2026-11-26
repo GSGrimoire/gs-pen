@@ -67,10 +67,27 @@ test('Site caption resolver returns native timed cues; stores only technical eve
  for(const word of ['@creator','1234567890123456789','signature','Private synthetic caption','secret=value'])assert.ok(!raw.includes(word),word);
  assert.ok(response.events.every(e=>e.source==='site'&&e.transport==='site_backend'));
 });
-test('Provider failures are categorized; diagnostic database outage never blocks caption response',async()=>{
+test('Caption budget storage failure denies provider calls before any external request',async()=>{
  const {env}=setup();env.DB={prepare(){throw Error('private database exception');}};
- const response=await (await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>new Response('',{status:403})})).json();
- assert.equal(response.code,'PROVIDER_BLOCKED');assert.equal(response.diagnosticsStored,false);assert.ok(!JSON.stringify(response).includes('private database'));
+ let providerCalls=0;
+ const response=await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>{providerCalls++;return new Response('',{status:403});}});
+ assert.equal(response.status,503);
+ const result=await response.json();
+ assert.equal(result.code,'STORAGE_FAILED');
+ assert.equal(result.ok,false);
+ assert.equal(result.diagnosticsStored,false);
+ assert.equal(providerCalls,0);
+ assert.ok(!JSON.stringify(result).includes('private database'));
+});
+test('Provider failure result survives diagnostic persistence failure after budget approval',async()=>{
+ const {env}=setup(), original=env.DB;
+ env.DB={prepare: query=>original.prepare(query),async batch(){throw Error('private database exception');}};
+ const response=await handleSiteRequest(req('captions','POST',{url:'https://www.tiktok.com/@creator/video/1234567890123456789'}),env,{fetchImpl:async()=>new Response('',{status:403})});
+ assert.equal(response.status,200);
+ const result=await response.json();
+ assert.equal(result.code,'PROVIDER_BLOCKED');
+ assert.equal(result.diagnosticsStored,false);
+ assert.ok(!JSON.stringify(result).includes('private database'));
 });
 test('Durable request budget restricts repeated provider calls',async()=>{
  const {env}=setup();let count=0;const fetchImpl=async()=>{count++;return new Response('',{status:403});};
@@ -339,19 +356,46 @@ test('The assistant list contract exposes summaries and an optional bounded curs
  const invalid=await call({cursor:42});assert.equal(invalid.isError,true);assert.equal(JSON.parse(invalid.content[0].text).code,'INVALID_PAGE_CURSOR');assert.equal((await call({ownerId:'other-owner'})).isError,true);
 });
 
-test('failed-link endpoints preserve owner guard, explicit export confirmation and diagnostic separation',async()=>{
+test('registry endpoints and assistant reads enforce owner isolation and disable all remote export',async()=>{
  const {env,sql}=setup();const source='https://www.facebook.com/share/r/Fixture123/?tracking=secret';
  const out=await (await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl:async()=>new Response(null,{status:403})})).json();
  assert.equal(out.failedLinkStatus,'saved');
- const rows=(await (await handleSiteRequest(req('failed-links'),env)).json()).items;
- assert.equal(rows.length,1);assert.equal(rows[0].sourceUrl,'https://www.facebook.com/share/r/Fixture123');
- const id=rows[0].id;
- assert.equal((await handleSiteRequest(req('failed-links','GET',undefined,null),env)).status,403);
- assert.equal((await handleSiteRequest(req('failed-links/'+id,'GET',undefined,'other@example.test'),env)).status,403);
- assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:true},undefined,{origin:'https://evil.test'}),env)).status,403);
- assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:false}),env)).status,400);
- assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:true}),env)).status,503);
+ const rows=(await (await handleSiteRequest(req('failed-links'),env)).json()).items;assert.equal(rows.length,1);assert.equal(rows[0].sourceUrl,'https://www.facebook.com/share/r/Fixture123');
+ const {id,version}=rows[0];
+ for(const identity of [null,'other@example.test'])for(const [p,m,b] of [['failed-links','GET'],['failed-links/'+id,'GET'],['failed-links/'+id,'DELETE',{version}],['failed-links/'+id+'/export','POST',{confirm:true}]]){
+  assert.equal((await handleSiteRequest(req(p,m,b,identity),env)).status,403);
+ }
+ assert.equal((await handleSiteRequest(req('failed-links'),{...env,GS_PEN_OWNER_ID:'wrong'})).status,403);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE',{version},undefined,{origin:'https://evil.test'}),env)).status,403);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE',{version},undefined,{'sec-fetch-site':'cross-site'}),env)).status,403);
+ for(const body of [undefined,null,[],{}, {version:'1'}, {version,extra:true}])assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE',body),env)).status,400);
+ for(const extras of [{},{origin:'https://pen.test'},{origin:'https://evil.test'},{'sec-fetch-site':'same-site'}]){
+  let calls=0;const res=await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:true},undefined,extras),{...env,GS_PEN_RESEARCH_TOKEN:'unused-test-secret',GS_PEN_RESEARCH_EXPORT_ENABLED:'true'},{fetchImpl:async()=>{calls++;throw Error('unexpected external request');}});
+  assert.equal(res.status,403);assert.equal(calls,0);
+ }
+ const mcp=async(name,args,identity='owner@example.test',extras={})=>handleSiteRequest(new Request('https://pen.test/mcp',req('ignored','POST',{jsonrpc:'2.0',id:1,method:'tools/call',params:{name,arguments:args}},identity,extras)),env);
+ const read=await (await mcp('list_failed_links',{})).json();assert.equal(JSON.parse(read.result.content[0].text).items[0].id,id);
+ const attempts=await(await mcp('list_failed_link_attempts',{id})).json();assert.equal(JSON.parse(attempts.result.content[0].text).items.length,1);
+ assert.equal((await mcp('list_failed_links',{},null)).status,403);
+ assert.equal((await mcp('list_failed_links',{},undefined,{origin:'https://evil.test'})).status,403);
+ for(const name of ['export_failed_link','delete_failed_link','retry_failed_link'])assert.equal((await(await mcp(name,{id})).json()).result.isError,true);
+ for(const cursor of ['','-1','9007199254740992','garbage', "1'); DROP TABLE failed_link_attempts;--"]){assert.equal((await handleSiteRequest(req('failed-links?cursor='+encodeURIComponent(cursor)),env)).status,400);}
+ const health=await(await handleSiteRequest(req('health'),env)).json();assert.equal(health.failedLinksAvailable,true);assert.equal(health.researchRemoteExportAvailable,false);
+ const list=await handleSiteRequest(req('failed-links'),env);assert.equal(list.headers.get('cache-control'),'private, no-store');assert.equal(list.headers.get('access-control-allow-origin'),null);
  assert.ok(!JSON.stringify(sql.prepare('SELECT * FROM diagnostic_events').all()).includes('Fixture123'));
- assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE'),env)).status,200);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE',{version}),env)).status,200);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE',{version}),env)).status,409);
  assert.equal((await (await handleSiteRequest(req('failed-links'),env)).json()).items.length,0);
+});
+test('registry outage is independent of provider budget and diagnostics, retry fails closed if budget unavailable',async()=>{
+ const {env}=setup(),original=env.DB;
+ env.DB={prepare(query){if(query.includes('failed_link_attempts'))throw Error('private registry failure');return original.prepare(query);},batch:s=>original.batch(s)};
+ const source='https://www.facebook.com/share/r/Fixture123/';
+ let calls=0;const fetchImpl=async()=>{calls++;return new Response(null,{status:403});};
+ const response=await(await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl})).json();
+ assert.ok(calls>0);assert.equal(response.failedLinkStatus,'storage_failed');assert.equal(response.diagnosticsStored,true);
+ assert.equal((await(await handleSiteRequest(req('health'),env)).json()).failedLinksAvailable,false);
+ const first=calls;env.DB={prepare(query){if(query.includes('request_budget'))throw Error('budget unavailable');return original.prepare(query);},batch:s=>original.batch(s)};
+ const retry=await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl});
+ assert.equal(retry.status,503);assert.equal((await retry.json()).failedLinkStatus,'not_attempted');assert.equal(calls,first);
 });

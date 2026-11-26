@@ -683,3 +683,35 @@ test('Output tabs support arrows, Home and End with a single tab stop',async({pa
  await expect(transcript).toBeFocused();
  await expect(page.locator('#tab-panel')).toHaveAttribute('aria-labelledby','tab-transcript');
 });
+
+
+test('Failed Links hosted workspace: private download confirmation, retry, and versioned delete',async({page})=>{
+ const id='00000000-0000-4000-8000-000000000001',attemptId='00000000-0000-4000-8000-000000000002',url='https://facebook.com/share/r/'+'FixtureLong'.repeat(45);
+ let version=2,deleted=false,attempted=false,deleteCalls=0,remoteCalls=0;
+ const attempt=()=>({id:attemptId,caseId:id,seq:version,sourceUrl:url,platform:'facebook',createdAt:2,status:attempted?'resolved':'failed',code:attempted?'OK':'LOGIN_REQUIRED',traceId:id,build:'fixture'});
+ await page.route('**/api/health',r=>r.fulfill({json:{backend:'sites_private',centralSiteStorage:true,historyAvailable:true,failedLinksAvailable:true,researchRemoteExportAvailable:false}}));
+ await page.route('**/api/history',r=>r.fulfill({json:{items:[],total:0,nextCursor:null}}));
+ await page.route('**/api/failed-links**',async r=>{
+  const path=new URL(r.request().url()).pathname;
+  if(path.endsWith('/export')){remoteCalls++;return r.fulfill({status:403,json:{code:'RESEARCH_EXPORT_DISABLED'}});}
+  if(r.request().method()==='DELETE'){deleteCalls++;expect(r.request().postDataJSON()).toEqual({version});deleted=true;return r.fulfill({json:{deleted:true}});}
+  if(path.endsWith('/'+id))return r.fulfill({json:{items:[attempt()],nextCursor:null}});
+  return r.fulfill({json:{items:deleted?[]:[{...attempt(),id,latestAttemptId:attemptId,version,firstAt:1,attempts:attempted?2:1,failures:1}],nextCursor:null}});
+ });
+ await page.route('**/api/captions',r=>{expect(r.request().postDataJSON().url).toBe(url);attempted=true;version++;return r.fulfill({json:{ok:true,code:'OK',cues:[{start:'00:00:01.000',end:'00:00:02.000',text:'Fixture caption'}],captionTrackCount:1,diagnosticsStored:true,historyStatus:'saved',failedLinkStatus:'saved'}});});
+ await page.goto('/#failed-links');await expect(page.locator('#failed-items')).toContainText(url);await expect(page.locator('#failed-status')).toContainText('Private registry loaded');
+ expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
+ await page.getByRole('button',{name:'Attempts',exact:true}).click();await expect(page.locator('#failed-attempts')).toContainText(url);
+ page.once('dialog',async d=>{expect(d.message()).toContain(url);expect(d.message()).toContain(attemptId);await d.dismiss();});
+ await page.getByRole('button',{name:'Download research file'}).click();expect(remoteCalls).toBe(0);
+ page.once('dialog',d=>d.accept());const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Download research file'}).click()]);
+ expect(download.suggestedFilename()).toBe(attemptId+'.json');const data=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));expect(data.sourceUrl).toBe(url);expect(data.id).toBe(attemptId);expect(remoteCalls).toBe(0);
+ await page.getByRole('button',{name:'Retry',exact:true}).click();await expect(page.locator('#history-save-status')).toContainText('Existing Failed Links case resolved');
+ await chooseView(page,'Failed Links');await expect(page.locator('#failed-items')).toContainText('resolved');
+ page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Delete',exact:true}).click();expect(deleteCalls).toBe(0);
+ page.once('dialog',d=>d.accept());await page.getByRole('button',{name:'Delete',exact:true}).click();await expect(page.locator('#failed-status')).toContainText('No failed links');expect(deleteCalls).toBe(1);
+ expect(await page.evaluate(()=>localStorage.getItem('gs-pen-testlab-diag-v2')||'')).not.toContain('FixtureLong');expect(remoteCalls).toBe(0);
+});
+test('Failed Links local preview is explicitly Site-only',async({page})=>{
+ await openConnected(page);await chooseView(page,'Failed Links');await expect(page.locator('#failed-status')).toContainText('hosted Site only');
+});

@@ -1,5 +1,5 @@
 # 26 November 2026: failed-link registry candidate (#61)
-ChatGPT-1 | Implementer. Full independent review required: new owner-private URL storage and external GitHub credential/write boundary. Branch chatgpt/pen-failed-link-registry, base 90830575245bd042981d217646b631d237a6bea9. Do not merge or publish before review and tests. See docs/FAILED_LINK_REGISTRY.md. Coordinate open budget security fix and other overlapping changes; do not revert them. No live deployment or secret setup performed in this session.
+ChatGPT-1 | Implementer. Independent review of b03128a required changes. Corrected candidate integrates #59 fail-closed quota, removes credentialed GitHub writes entirely (explicit local download/manual private import only), uses stable case generation and atomic versioned deletion, expands coverage. Branch chatgpt/pen-failed-link-registry, base 90830575245bd042981d217646b631d237a6bea9. Full independent re-review and passing checks required before merge or publish. See docs/FAILED_LINK_REGISTRY.md for exact limitations, deployment and separate remote transfer gate. No live deployment or secret setup.
 
 # Pull request 45 review corrections, 6 November 2026
 

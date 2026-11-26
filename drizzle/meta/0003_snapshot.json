@@ -235,10 +235,24 @@
     "failed_link_attempts": {
       "name": "failed_link_attempts",
       "columns": {
+        "seq": {
+          "name": "seq",
+          "type": "integer",
+          "primaryKey": true,
+          "notNull": true,
+          "autoincrement": true
+        },
         "id": {
           "name": "id",
           "type": "text",
-          "primaryKey": true,
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
+        "case_id": {
+          "name": "case_id",
+          "type": "text",
+          "primaryKey": false,
           "notNull": true,
           "autoincrement": false
         },
@@ -300,13 +314,28 @@
         }
       },
       "indexes": {
-        "failed_link_owner_source_time": {
-          "name": "failed_link_owner_source_time",
+        "failed_link_attempt_id": {
+          "name": "failed_link_attempt_id",
+          "columns": [
+            "id"
+          ],
+          "isUnique": true
+        },
+        "failed_link_owner_source_seq": {
+          "name": "failed_link_owner_source_seq",
           "columns": [
             "owner_id",
             "source_url",
-            "created_at",
-            "id"
+            "seq"
+          ],
+          "isUnique": false
+        },
+        "failed_link_owner_case_seq": {
+          "name": "failed_link_owner_case_seq",
+          "columns": [
+            "owner_id",
+            "case_id",
+            "seq"
           ],
           "isUnique": false
         }
