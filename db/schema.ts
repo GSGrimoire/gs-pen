@@ -29,3 +29,9 @@ export const contentJobs = sqliteTable('content_jobs', {
   updatedAt: integer('updated_at').notNull(),
   payload: text('payload').notNull(),
 }, t => [uniqueIndex('content_owner_input').on(t.ownerId,t.inputHash), index('content_owner_updated').on(t.ownerId,t.updatedAt)]);
+
+export const failedLinkAttempts = sqliteTable('failed_link_attempts', {
+ id: text('id').primaryKey(), ownerId: text('owner_id').notNull(), sourceUrl: text('source_url').notNull(),
+ platform: text('platform').notNull(), createdAt: integer('created_at').notNull(), status: text('status').notNull(),
+ code: text('code').notNull(), traceId: text('trace_id').notNull(), build: text('build').notNull(),
+}, t => [index('failed_link_owner_source_time').on(t.ownerId,t.sourceUrl,t.createdAt,t.id)]);

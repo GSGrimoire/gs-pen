@@ -3,7 +3,8 @@ import {contentAction,contentMcp,readContentJson,readContentJob,pageContentJobs,
 import { sanitizeDiagnostic,diagnosticLinkContext } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,pageExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v04_sites_1';
+import {recordFailedLink,pageFailedLinks,pageFailedAttempts,deleteFailedLink,exportFailedAttempt} from './failed-links.mjs';
+export const BUILD = 'workspace_v04_sites_2';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -74,6 +75,19 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       return json({code:'CONTENT_NOT_FOUND'},404);
     }
 
+    if(path==='/api/failed-links' && request.method==='GET')return json(await pageFailedLinks(env.DB,ownerId,new URL(request.url).searchParams.get('cursor')));
+    if(path.startsWith('/api/failed-links/')){
+      const [id,action,...extra]=path.slice('/api/failed-links/'.length).split('/');
+      if(extra.length||!UUID.test(id))return json({code:'NOT_FOUND'},404);
+      if(request.method==='GET'&&!action)return json(await pageFailedAttempts(env.DB,ownerId,id,new URL(request.url).searchParams.get('cursor')));
+      if(request.method==='DELETE'&&!action)return json(await deleteFailedLink(env.DB,ownerId,id));
+      if(request.method==='POST'&&action==='export'){
+        const input=await boundedJson(request);
+        if(!input||Object.keys(input).length!==1||input.confirm!==true)return json({code:'RESEARCH_CONFIRM_REQUIRED'},400);
+        return json(await exportFailedAttempt(env,ownerId,id,{fetchImpl}));
+      }
+      return json({code:'NOT_IMPLEMENTED'},405);
+    }
     if(path==='/api/history' && request.method==='GET')return json({...await pageExtractions(env.DB,ownerId,new URL(request.url).searchParams.get('cursor')),retentionDays:null,retentionPaused:true});
     if(path.startsWith('/api/history/')){
       const id=path.slice('/api/history/'.length);
@@ -160,6 +174,8 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     let stored=false;try{await storeEvents(env.DB,events,now);stored=true;}catch{}
     let historyId=null,historyStatus='not_saved';
     try{historyId=await saveExtraction(env.DB,ownerId,data.url,result,now);historyStatus=historyId?'saved':'empty';}catch{historyStatus='failed';}
-    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus});
+    let failedLinkStatus='not_eligible';
+    try{failedLinkStatus=await recordFailedLink(env.DB,ownerId,data.url,result,{traceId,build:BUILD,now:Date.now()});}catch{failedLinkStatus='storage_failed';}
+    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus,failedLinkStatus});
   } catch(e) {return json({code:e instanceof ContentError?e.code:'STORAGE_FAILED'},e instanceof ContentError?e.status:503);}
 }

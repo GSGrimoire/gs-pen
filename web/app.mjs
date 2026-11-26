@@ -5,7 +5,7 @@ import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mj
 import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip,plainTranscript} from "./modules/extraction-export.mjs";
 import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v04_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const BUILD="workspace_v04_sites_2", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"transcript",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
@@ -179,7 +179,7 @@ async function doProbe(event){
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
   if(!result.ok){$("history-save-status").textContent="No extraction saved. Check the video link.";state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
   if(!state.backend){$("history-save-status").textContent="No extraction saved. The backend is unavailable.";record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
-  if(!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
+  if(!state.site&&!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
@@ -189,6 +189,8 @@ async function doProbe(event){
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;state.sourceUrl=input;
     $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
+    if(outcome.failedLinkStatus==='saved'&&!outcome.ok)$("history-save-status").textContent+=" Recorded in Failed Links.";
+    if(outcome.failedLinkStatus==='storage_failed')$("history-save-status").textContent+=" Failed Links storage unavailable.";
     if(state.site)void refreshHistory();
     const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
     state.tab=outcome.ok?'transcript':partial?(outcome.post?.text?'post':'metadata'):state.tab;
@@ -352,14 +354,60 @@ function initWorkspaceRail(){
  render();
 }
 
+let failedCursor=null,failedSeq=0,attemptSeq=0;
+function failedButton(label,fn){const b=node('button',label,'outline');b.type='button';b.addEventListener('click',fn);return b;}
+async function failedRequest(path,method='GET',body){
+ const response=await fetch('/api/failed-links'+path,{method,headers:authHeaders(body!==undefined),cache:'no-store',...(body!==undefined?{body:JSON.stringify(body)}:{})});
+ const data=await response.json();if(!response.ok)throw Error(typeof data.code==='string'?data.code:'REQUEST_FAILED');return data;
+}
+async function showFailedLinks(older=false){
+ const seq=++failedSeq;attemptSeq++;const list=$('failed-items'),status=$('failed-status'),more=$('failed-more');
+ $('failed-attempts').replaceChildren();more.disabled=true;
+ if(!older){list.replaceChildren();failedCursor=null;}status.textContent='Loading private registry…';
+ try{
+  const data=await failedRequest(failedCursor?'?cursor='+encodeURIComponent(failedCursor):'');
+  if(seq!==failedSeq)return;
+  for(const item of data.items){
+   const card=node('article',undefined,'history-card');
+   const info=node('div');info.append(node('strong',item.platform+' · '+item.status+' · '+item.code),node('p',item.sourceUrl),node('small',item.attempts+' attempts / '+item.failures+' failed or partial · '+new Date(item.createdAt).toLocaleString()));
+   const controls=node('div',undefined,'actions');
+   controls.append(failedButton('Retry',()=>{if(state.busy)return;location.hash='extract';$('video-url').value=item.sourceUrl;$('probe-form').requestSubmit();}),
+    failedButton('Attempts',()=>void showFailedAttempts(item.id)),
+    failedButton('Delete',async()=>{if(!confirm('Delete all registry attempts for this link? Existing research exports and Recent entries remain.'))return;try{await failedRequest('/'+item.id,'DELETE');await showFailedLinks();}catch{status.textContent='Registry deletion failed.';}}));
+   card.append(info,controls);list.append(card);
+  }
+  failedCursor=data.nextCursor;more.hidden=!failedCursor;status.textContent=list.children.length?'Private registry loaded.':'No failed links recorded.';
+ }catch{if(seq===failedSeq)status.textContent='Private registry unavailable.';}finally{if(seq===failedSeq)more.disabled=false;}
+}
+async function showFailedAttempts(id,cursor=null){
+ const seq=++attemptSeq,box=$('failed-attempts');if(!cursor)box.replaceChildren(node('h2','Attempt history'));
+ try{
+  const data=await failedRequest('/'+id+(cursor?'?cursor='+encodeURIComponent(cursor):''));
+  if(seq!==attemptSeq)return;
+  for(const item of data.items){
+   const row=node('div');row.append(node('p',new Date(item.createdAt).toLocaleString()+' · '+item.status+' · '+item.code+' · '+item.build+' · '+item.traceId));
+   const exportButton=failedButton('Export attempt to private research',async()=>{
+    if(!confirm('Export this replayable link and technical result to the private research repository? Git history retains copies.'))return;
+    exportButton.disabled=true;
+    try{const out=await failedRequest('/'+item.id+'/export','POST',{confirm:true});$('failed-status').textContent=out.reused?'Already exported.':'Exported to private research.';}
+    catch(e){$('failed-status').textContent='Export not confirmed: '+e.message+'. Check the private repository before retrying.';}
+    finally{exportButton.disabled=false;}
+   });row.append(exportButton);box.append(row);
+  }
+  if(data.nextCursor){const b=failedButton('Load older attempts',()=>{b.remove();void showFailedAttempts(id,data.nextCursor);});box.append(b);}
+ }catch{if(seq===attemptSeq)box.append(node('p','Attempt history unavailable.'));}
+}
+$('failed-refresh').addEventListener('click',()=>void showFailedLinks());
+$('failed-more').addEventListener('click',()=>void showFailedLinks(true));
 initWorkspaceRail();restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkContext(""));navigate();void checkBackend();
 
 
 function navigate(){
-  const view=['extract','recent','create','diagnostics'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
+  const view=['extract','recent','create','diagnostics','failed-links'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
   document.querySelectorAll('[data-page]').forEach(p=>p.hidden=p.dataset.page!==view);
   document.querySelectorAll('[data-view]').forEach(a=>{const active=a.dataset.view===view;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  $('view-label').textContent=view[0].toUpperCase()+view.slice(1);
+  $('view-label').textContent=view==='failed-links'?'Failed Links':view[0].toUpperCase()+view.slice(1);
+  if(view==='failed-links')void showFailedLinks();else {failedSeq++;attemptSeq++;}
   if(view==='recent')void refreshHistory();
 }
 function drawHistory(){

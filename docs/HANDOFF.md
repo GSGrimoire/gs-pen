@@ -1,3 +1,6 @@
+# 26 November 2026: failed-link registry candidate (#61)
+ChatGPT-1 | Implementer. Full independent review required: new owner-private URL storage and external GitHub credential/write boundary. Branch chatgpt/pen-failed-link-registry, base 90830575245bd042981d217646b631d237a6bea9. Do not merge or publish before review and tests. See docs/FAILED_LINK_REGISTRY.md. Coordinate open budget security fix and other overlapping changes; do not revert them. No live deployment or secret setup performed in this session.
+
 # Pull request 45 review corrections, 6 November 2026
 
 The four findings from ChatGPT-C's independent review of 4fc2dcaf are addressed on claude/eager-hawking-x3j1z1. Plain transcripts preserve separated and uncertain repeats and merge only ordered, overlapping or touching identical cues. Unsaved recovery identifies an existing source and requires an explicit keep/clear choice before creating a brief. Facebook sign-in classification checks status and destination on both direct and share paths, and stream cancellation no longer blocks those responses. Source notes and keyboard tab navigation are restored.
