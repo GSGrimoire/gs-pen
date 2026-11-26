@@ -5,7 +5,7 @@ import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mj
 import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip,plainTranscript} from "./modules/extraction-export.mjs";
 import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v04_sites_3", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const BUILD="workspace_v04_sites_4", KEY="gs-pen-testlab-diag-v2", MAX=1000;
 const state={backend:false,healthChecked:false,failedLinksAvailable:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"transcript",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
@@ -190,6 +190,7 @@ async function doProbe(event){
     state.result=outcome;state.sourceUrl=input;
     $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
     if(outcome.failedLinkStatus==='saved')$("history-save-status").textContent+=outcome.ok?" Existing Failed Links case resolved.":" Recorded in Failed Links.";
+    if(outcome.reliabilityStored===false)$("history-save-status").textContent+=" Reliability statistics not confirmed.";
     if(outcome.failedLinkStatus==='storage_failed')$("history-save-status").textContent+=" Failed Links storage unavailable.";
     if(!outcome.ok&&outcome.failedLinkStatus==='not_eligible')$("history-save-status").textContent+=" Link not eligible for registry.";
     if(state.site&&outcome.failedLinkStatus===undefined&&!outcome.ok)$("history-save-status").textContent+=" Registry capture not confirmed.";
@@ -358,6 +359,22 @@ function initWorkspaceRail(){
 }
 
 let failedCursor=null,failedSeq=0,attemptSeq=0;
+async function showReliability(seq){
+ const report=$('reliability-report');report.replaceChildren(node('p','Loading monthly reliability…'));
+ try{
+  const response=await fetch('/api/reliability',{headers:authHeaders(),cache:'no-store'});if(!response.ok)throw Error('unavailable');const data=await response.json();if(seq!==failedSeq)return;
+  report.replaceChildren(node('p',data.lastMaintenanceAt?'Last automatic maintenance: '+new Date(data.lastMaintenanceAt).toLocaleString():'No automatic maintenance recorded yet.'));
+  if(!data.months.length)report.append(node('p','No reliability statistics yet.'));
+  for(const month of data.months){
+   const card=node('article',undefined,'history-card failed-case');card.append(node('h3',month.month+' (UTC)'));
+   for(const kind of ['user','diagnostic']){
+    const rows=month[kind],started=rows.filter(x=>x.outcome==='started').reduce((n,x)=>n+x.count,0),completed=rows.filter(x=>x.outcome!=='started').reduce((n,x)=>n+x.count,0),failed=rows.filter(x=>['failed','partial'].includes(x.outcome)).reduce((n,x)=>n+x.count,0);
+    card.append(node('p',(kind==='user'?'User extractions':'Automatic rechecks')+': '+(completed?(100*failed/completed).toFixed(1)+'% without captions ('+failed+'/'+completed+')':'no completed attempts')+'; '+started+' starts; '+Math.max(0,started-completed)+' incomplete.'));
+    for(const row of rows.filter(x=>x.outcome!=='started'))card.append(node('p',row.platform+' · '+row.outcome+' · '+row.code+': '+row.count));
+   }report.append(card);
+  }
+ }catch{if(seq===failedSeq)report.replaceChildren(node('p','Reliability report unavailable.'));}
+}
 function failedButton(label,fn){const b=node('button',label,'outline');b.type='button';b.addEventListener('click',fn);return b;}
 async function failedRequest(path,method='GET',body){
  const response=await fetch('/api/failed-links'+path,{method,headers:authHeaders(body!==undefined),cache:'no-store',...(body!==undefined?{body:JSON.stringify(body)}:{})});
@@ -368,8 +385,9 @@ async function showFailedLinks(older=false){
  $('failed-attempts').replaceChildren();more.disabled=true;
  if(!older){list.replaceChildren();failedCursor=null;more.hidden=true;}
  if(!state.healthChecked){status.textContent='Checking private backend…';return;}
- if(!state.site){status.textContent='Failed Links is available on the owner-private hosted Site only.';return;}
+ if(!state.site){status.textContent='Failed Links is available on the owner-private hosted Site only.';$('reliability-report').replaceChildren();return;}
  status.textContent='Loading private registry…';
+ void showReliability(seq);
  try{
   const data=await failedRequest(failedCursor?'?cursor='+encodeURIComponent(failedCursor):'');
   if(seq!==failedSeq)return;
@@ -379,7 +397,7 @@ async function showFailedLinks(older=false){
    const controls=node('div',undefined,'actions');
    const retry=failedButton('Retry',()=>{if(state.busy)return;location.hash='extract';$('video-url').value=item.sourceUrl;$('probe-form').requestSubmit();});retry.dataset.failedRetry='true';retry.disabled=state.busy;
    controls.append(retry,failedButton('Attempts',()=>void showFailedAttempts(item)),
-    failedButton('Delete',async()=>{if(!confirm('Delete all '+item.attempts+' recorded attempts for '+item.sourceUrl+'? Downloaded research files, Git copies and Recent remain.'))return;try{await failedRequest('/'+item.id,'DELETE',{version:item.version});await showFailedLinks();}catch(e){status.textContent=e.message==='FAILED_LINK_CHANGED_OR_MISSING'?'Case changed or was deleted. Refresh before confirming again.':'Registry deletion failed.';}}));
+    failedButton('Delete',async()=>{if(!confirm('Delete all '+item.attempts+' recorded attempts for '+item.sourceUrl+'? Saved extractions in Recent and previous aggregate statistics remain.'))return;try{await failedRequest('/'+item.id,'DELETE',{version:item.version});await showFailedLinks();}catch(e){status.textContent=e.message==='FAILED_LINK_CHANGED_OR_MISSING'?'Case changed or was deleted. Refresh before confirming again.':'Registry deletion unconfirmed. Refresh before retrying.';}}));
    card.append(info,controls);list.append(card);
   }
   failedCursor=data.nextCursor;more.hidden=!failedCursor;status.textContent=list.children.length?'Private registry loaded. Refresh for new cases or updated outcomes.':'No failed links recorded.';
@@ -395,12 +413,7 @@ async function showFailedAttempts(item,cursor=null,continuation=null){
   if(continuation)continuation.remove();
   for(const attempt of data.items){
    const row=node('div',undefined,'failed-attempt');row.append(node('p',new Date(attempt.createdAt).toLocaleString()+' · '+attempt.status+' · '+attempt.code+' · '+attempt.build+' · '+attempt.traceId));
-   const download=failedButton('Download research file',()=>{
-    const record={schema:'gs-pen.research.attempt.v1',id:attempt.id,sourceUrl:attempt.sourceUrl,platform:attempt.platform,createdAt:attempt.createdAt,status:attempt.status,code:attempt.code,traceId:attempt.traceId,build:attempt.build};
-    if(!confirm('Download confidential research record for '+record.sourceUrl+'\nAttempt '+record.id+' · '+record.status+' · '+record.code+'\nDestination: local file only. Import manually to private GSGrimoire/gs-pen-research after checking visibility. Git and local copies persist after registry deletion.'))return;
-    downloadOutput(record.id+'.json',JSON.stringify(record,null,2)+'\n','application/json');
-    status.textContent='Research download requested. No GitHub transfer was made.';
-   });row.append(download);box.append(row);
+   box.append(row);
   }
   if(data.nextCursor){const b=failedButton('Load older attempts',()=>void showFailedAttempts(item,data.nextCursor,b));box.append(b);}
   status.textContent=data.items.length?'Attempt history loaded.':'No more attempts. Refresh to see current cases.';

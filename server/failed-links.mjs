@@ -37,24 +37,25 @@ export async function recordFailedLink(db,ownerId,raw,result,{traceId,build,now=
  return row?'saved':'not_eligible';
 }
 const attemptFields='id,case_id AS caseId,seq,source_url AS sourceUrl,platform,created_at AS createdAt,status,code,trace_id AS traceId,build';
-export async function pageFailedLinks(db,ownerId,cursor){
+export async function pageFailedLinks(db,ownerId,cursor,cutoff=null){
  const before=cursorValue(cursor);
  // Case creation order is immutable until deletion, so later retries do not move cases across pages.
  const {results}=await db.prepare(`WITH cases AS (SELECT case_id,min(seq) AS firstSeq,max(seq) AS version,count(*) AS attempts,
- sum(CASE WHEN status!='resolved' THEN 1 ELSE 0 END) AS failures FROM failed_link_attempts WHERE owner_id=? GROUP BY case_id)
+ sum(CASE WHEN status!='resolved' THEN 1 ELSE 0 END) AS failures FROM failed_link_attempts WHERE owner_id=? GROUP BY case_id ${cutoff!==null?'HAVING min(created_at)>?':''})
  SELECT a.case_id AS id,a.id AS latestAttemptId,c.firstSeq,c.version,c.attempts,c.failures,f.created_at AS firstAt,
  a.source_url AS sourceUrl,a.platform,a.created_at AS createdAt,a.status,a.code,a.trace_id AS traceId,a.build
  FROM cases c JOIN failed_link_attempts a ON a.seq=c.version JOIN failed_link_attempts f ON f.seq=c.firstSeq
  WHERE a.owner_id=? AND f.owner_id=? ${before!==null?'AND c.firstSeq<?':''} ORDER BY c.firstSeq DESC LIMIT 51`)
- .bind(ownerId,ownerId,ownerId,...(before!==null?[before]:[])).all();
+ .bind(ownerId,...(cutoff!==null?[cutoff]:[]),ownerId,ownerId,...(before!==null?[before]:[])).all();
  const items=results.slice(0,PAGE_SIZE),last=items.at(-1);
  return {items,nextCursor:results.length>PAGE_SIZE?String(last.firstSeq):null};
 }
-export async function pageFailedAttempts(db,ownerId,id,cursor){
+export async function pageFailedAttempts(db,ownerId,id,cursor,cutoff=null){
  checkId(id);const before=cursorValue(cursor);
  // Each page is one read. A deleted generation cannot resolve to a replacement case.
  const {results}=await db.prepare(`SELECT ${attemptFields} FROM failed_link_attempts WHERE owner_id=? AND case_id=?
- ${before!==null?'AND seq<?':''} ORDER BY seq DESC LIMIT 51`).bind(ownerId,id,...(before!==null?[before]:[])).all();
+ ${cutoff!==null?'AND (SELECT min(created_at) FROM failed_link_attempts WHERE owner_id=? AND case_id=?)>?':''}
+ ${before!==null?'AND seq<?':''} ORDER BY seq DESC LIMIT 51`).bind(ownerId,id,...(cutoff!==null?[ownerId,id,cutoff]:[]),...(before!==null?[before]:[])).all();
  if(!results.length&&!before)throw new ContentError('FAILED_LINK_NOT_FOUND',404);
  const items=results.slice(0,PAGE_SIZE),last=items.at(-1);
  return {items,nextCursor:results.length>PAGE_SIZE?String(last.seq):null};

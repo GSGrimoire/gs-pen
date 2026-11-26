@@ -63,6 +63,7 @@ export default defineConfig(async ({ command }) => {
           ...localBindingConfig,
           // Use only the minimized diagnostic database. Do not retain raw request headers.
           observability: { enabled: false },
+          triggers: { crons: ["*/15 * * * *"] },
           ...(command === "serve"
             ? {
                 services: [

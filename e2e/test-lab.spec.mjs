@@ -685,12 +685,13 @@ test('Output tabs support arrows, Home and End with a single tab stop',async({pa
 });
 
 
-test('Failed Links hosted workspace: private download confirmation, retry, and versioned delete',async({page})=>{
+test('Failed Links hosted workspace: aggregate report, no research download, retry, and versioned delete',async({page})=>{
  const id='00000000-0000-4000-8000-000000000001',attemptId='00000000-0000-4000-8000-000000000002',url='https://facebook.com/share/r/'+'FixtureLong'.repeat(45);
  let version=2,deleted=false,attempted=false,deleteCalls=0,remoteCalls=0;
  const attempt=()=>({id:attemptId,caseId:id,seq:version,sourceUrl:url,platform:'facebook',createdAt:2,status:attempted?'resolved':'failed',code:attempted?'OK':'LOGIN_REQUIRED',traceId:id,build:'fixture'});
  await page.route('**/api/health',r=>r.fulfill({json:{backend:'sites_private',centralSiteStorage:true,historyAvailable:true,failedLinksAvailable:true,researchRemoteExportAvailable:false}}));
  await page.route('**/api/history',r=>r.fulfill({json:{items:[],total:0,nextCursor:null}}));
+ await page.route('**/api/reliability',r=>r.fulfill({json:{retentionDays:180,lastMaintenanceAt:1,months:[{month:'2026-11',user:[{platform:'facebook',outcome:'started',code:'STARTED',count:2},{platform:'facebook',outcome:'failed',code:'LOGIN_REQUIRED',count:1},{platform:'facebook',outcome:'resolved',code:'OK',count:1}],diagnostic:[]}]}}));
  await page.route('**/api/failed-links**',async r=>{
   const path=new URL(r.request().url()).pathname;
   if(path.endsWith('/export')){remoteCalls++;return r.fulfill({status:403,json:{code:'RESEARCH_EXPORT_DISABLED'}});}
@@ -702,10 +703,8 @@ test('Failed Links hosted workspace: private download confirmation, retry, and v
  await page.goto('/#failed-links');await expect(page.locator('#failed-items')).toContainText(url);await expect(page.locator('#failed-status')).toContainText('Private registry loaded');
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth+1)).toBe(true);
  await page.getByRole('button',{name:'Attempts',exact:true}).click();await expect(page.locator('#failed-attempts')).toContainText(url);
- page.once('dialog',async d=>{expect(d.message()).toContain(url);expect(d.message()).toContain(attemptId);await d.dismiss();});
- await page.getByRole('button',{name:'Download research file'}).click();expect(remoteCalls).toBe(0);
- page.once('dialog',d=>d.accept());const [download]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Download research file'}).click()]);
- expect(download.suggestedFilename()).toBe(attemptId+'.json');const data=JSON.parse(await (await import('node:fs/promises')).readFile(await download.path(),'utf8'));expect(data.sourceUrl).toBe(url);expect(data.id).toBe(attemptId);expect(remoteCalls).toBe(0);
+ await expect(page.getByRole('button',{name:'Download research file'})).toHaveCount(0);
+ await expect(page.locator('#reliability-report')).toContainText('50.0% without captions');expect(remoteCalls).toBe(0);
  await page.getByRole('button',{name:'Retry',exact:true}).click();await expect(page.locator('#history-save-status')).toContainText('Existing Failed Links case resolved');
  await chooseView(page,'Failed Links');await expect(page.locator('#failed-items')).toContainText('resolved');
  page.once('dialog',d=>d.dismiss());await page.getByRole('button',{name:'Delete',exact:true}).click();expect(deleteCalls).toBe(0);

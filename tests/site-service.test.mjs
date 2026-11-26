@@ -282,7 +282,7 @@ test('Content source ownership and request bounds cannot be bypassed with client
 test('The authenticated assistant interface exposes bounded workflow tools without publishing or model calls',async()=>{
  const {env}=setup();const mcp=(method,params,identity='owner@example.test')=>{const r=req('ignored','POST',{jsonrpc:'2.0',id:1,method,params},identity);return handleSiteRequest(new Request('https://pen.test/mcp',r),env);};
  assert.equal((await mcp('tools/list',{},null)).status,403);
- const listed=await(await mcp('tools/list',{})).json();assert.equal(listed.result.tools.length,7);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).length===2);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).every(t=>t.annotations.readOnlyHint===true));assert.ok(listed.result.tools.every(t=>!t.name.includes('publish')));
+ const listed=await(await mcp('tools/list',{})).json();assert.equal(listed.result.tools.length,8);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).length===2);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).every(t=>t.annotations.readOnlyHint===true));assert.ok(listed.result.tools.every(t=>!t.name.includes('publish')));
  const created=await(await mcp('tools/call',{name:'create_content_job',arguments:{idea:'A compact creative job'}})).json();const job=JSON.parse(created.result.content[0].text);assert.ok(job.prompt);assert.equal(job.brief,undefined);
  const brief=await(await mcp('tools/call',{name:'get_content_brief',arguments:{id:job.jobId}})).json();const compact=JSON.parse(brief.result.content[0].text);assert.equal(compact.budget.serverModelCalls,0);assert.ok(compact.prompt.includes('quoted data'));
  const save=await(await mcp('tools/call',{name:'save_content_draft',arguments:{id:job.jobId,inputHash:job.inputHash,version:job.version,draft:{title:'An item',message:'An original item for your next adventure.'}}})).json();const receipt=JSON.parse(save.result.content[0].text);assert.equal(receipt.status,'draft_ready');assert.equal(receipt.prompt,undefined);assert.equal(receipt.brief,undefined);assert.equal(receipt.draft,undefined);
@@ -398,4 +398,15 @@ test('registry outage is independent of provider budget and diagnostics, retry f
  const first=calls;env.DB={prepare(query){if(query.includes('request_budget'))throw Error('budget unavailable');return original.prepare(query);},batch:s=>original.batch(s)};
  const retry=await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl});
  assert.equal(retry.status,503);assert.equal((await retry.json()).failedLinkStatus,'not_attempted');assert.equal(calls,first);
+});
+
+test('monthly reliability endpoint is owner-only, aggregate only, and scheduled execution has no HTTP route',async()=>{
+ const {env}=setup();const source='https://facebook.com/share/r/FixtureResearchOnly';
+ await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl:async()=>new Response(null,{status:403})});
+ const res=await handleSiteRequest(req('reliability'),env);assert.equal(res.status,200);const report=await res.json();
+ assert.equal(report.months[0].user.filter(x=>x.outcome==='started')[0].count,1);
+ assert.ok(!JSON.stringify(report).includes('FixtureResearchOnly'));
+ assert.equal((await handleSiteRequest(req('reliability','GET',undefined,null),env)).status,403);
+ assert.equal((await handleSiteRequest(req('reliability','GET',undefined,'other@example.test'),env)).status,403);
+ assert.equal((await handleSiteRequest(req('reliability/run','POST',{}),env)).status,404);
 });
