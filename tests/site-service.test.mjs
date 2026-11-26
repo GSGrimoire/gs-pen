@@ -265,7 +265,7 @@ test('Content source ownership and request bounds cannot be bypassed with client
 test('The authenticated assistant interface exposes bounded workflow tools without publishing or model calls',async()=>{
  const {env}=setup();const mcp=(method,params,identity='owner@example.test')=>{const r=req('ignored','POST',{jsonrpc:'2.0',id:1,method,params},identity);return handleSiteRequest(new Request('https://pen.test/mcp',r),env);};
  assert.equal((await mcp('tools/list',{},null)).status,403);
- const listed=await(await mcp('tools/list',{})).json();assert.equal(listed.result.tools.length,5);assert.ok(listed.result.tools.every(t=>!t.name.includes('publish')));
+ const listed=await(await mcp('tools/list',{})).json();assert.equal(listed.result.tools.length,7);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).length===2);assert.ok(listed.result.tools.filter(t=>t.name.startsWith('list_failed_link')).every(t=>t.annotations.readOnlyHint===true));assert.ok(listed.result.tools.every(t=>!t.name.includes('publish')));
  const created=await(await mcp('tools/call',{name:'create_content_job',arguments:{idea:'A compact creative job'}})).json();const job=JSON.parse(created.result.content[0].text);assert.ok(job.prompt);assert.equal(job.brief,undefined);
  const brief=await(await mcp('tools/call',{name:'get_content_brief',arguments:{id:job.jobId}})).json();const compact=JSON.parse(brief.result.content[0].text);assert.equal(compact.budget.serverModelCalls,0);assert.ok(compact.prompt.includes('quoted data'));
  const save=await(await mcp('tools/call',{name:'save_content_draft',arguments:{id:job.jobId,inputHash:job.inputHash,version:job.version,draft:{title:'An item',message:'An original item for your next adventure.'}}})).json();const receipt=JSON.parse(save.result.content[0].text);assert.equal(receipt.status,'draft_ready');assert.equal(receipt.prompt,undefined);assert.equal(receipt.brief,undefined);assert.equal(receipt.draft,undefined);
@@ -337,4 +337,21 @@ test('The assistant list contract exposes summaries and an optional bounded curs
  const {env}=setup();const call=async args=>{const r=req('ignored','POST',{jsonrpc:'2.0',id:1,method:'tools/call',params:{name:'list_content_jobs',arguments:args}});return(await(await handleSiteRequest(new Request('https://pen.test/mcp',r),env)).json()).result;};
  assert.deepEqual(JSON.parse((await call({})).content[0].text),{jobs:[],total:0,nextCursor:null,limit:50});
  const invalid=await call({cursor:42});assert.equal(invalid.isError,true);assert.equal(JSON.parse(invalid.content[0].text).code,'INVALID_PAGE_CURSOR');assert.equal((await call({ownerId:'other-owner'})).isError,true);
+});
+
+test('failed-link endpoints preserve owner guard, explicit export confirmation and diagnostic separation',async()=>{
+ const {env,sql}=setup();const source='https://www.facebook.com/share/r/Fixture123/?tracking=secret';
+ const out=await (await handleSiteRequest(req('captions','POST',{url:source}),env,{fetchImpl:async()=>new Response(null,{status:403})})).json();
+ assert.equal(out.failedLinkStatus,'saved');
+ const rows=(await (await handleSiteRequest(req('failed-links'),env)).json()).items;
+ assert.equal(rows.length,1);assert.equal(rows[0].sourceUrl,'https://www.facebook.com/share/r/Fixture123');
+ const id=rows[0].id;
+ assert.equal((await handleSiteRequest(req('failed-links','GET',undefined,null),env)).status,403);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'GET',undefined,'other@example.test'),env)).status,403);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:true},undefined,{origin:'https://evil.test'}),env)).status,403);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:false}),env)).status,400);
+ assert.equal((await handleSiteRequest(req('failed-links/'+id+'/export','POST',{confirm:true}),env)).status,503);
+ assert.ok(!JSON.stringify(sql.prepare('SELECT * FROM diagnostic_events').all()).includes('Fixture123'));
+ assert.equal((await handleSiteRequest(req('failed-links/'+id,'DELETE'),env)).status,200);
+ assert.equal((await (await handleSiteRequest(req('failed-links'),env)).json()).items.length,0);
 });
