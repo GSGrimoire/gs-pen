@@ -3,7 +3,10 @@ import {contentAction,contentMcp,readContentJson,readContentJob,pageContentJobs,
 import { sanitizeDiagnostic,diagnosticLinkContext } from '../src/diagnostics.mjs';
 import { retrievePublicCaptions } from './caption.mjs';
 import { expireHistory,saveExtraction,pageExtractions,readExtraction,deleteExtraction } from './history.mjs';
-export const BUILD = 'workspace_v04_sites_1';
+import {recordFailedLink,pageFailedLinks,pageFailedAttempts,deleteFailedLink} from './failed-links.mjs';
+import {budget} from './request-budget.mjs';
+import {expireResearch,readReliability,recordUserMetric,RESEARCH_RETENTION_DAYS,RESEARCH_RETENTION_MS} from './reliability.mjs';
+export const BUILD = 'workspace_v04_sites_4';
 export const RETENTION_MS = 30 * 86400000;
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/;
 export function securityHeaders(type = 'application/json; charset=utf-8') {
@@ -32,16 +35,12 @@ async function boundedJson(request) {
   if(!request.headers.get('content-type')?.startsWith('application/json'))throw Error('invalid');
   if(!request.body)throw Error('invalid');
   const reader=request.body.getReader();let size=0;const chunks=[];
-  try {while(true){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>4096){await reader.cancel();throw Error('invalid');}chunks.push(value);}}
+  try {while(true){const {value,done}=await reader.read();if(done)break;size+=value.length;if(size>4096){void reader.cancel().catch(()=>{});throw Error('invalid');}chunks.push(value);}}
   finally{reader.releaseLock();}
   const bytes=new Uint8Array(size);let offset=0;for(const c of chunks){bytes.set(c,offset);offset+=c.length;}
   return JSON.parse(new TextDecoder().decode(bytes));
 }
-async function budget(db, now) {
-  const window=Math.floor(now/60000);
-  const r=await db.prepare('INSERT INTO request_budget (scope,window,used) VALUES (?, ?, 1) ON CONFLICT(scope) DO UPDATE SET window=excluded.window, used=CASE WHEN request_budget.window=excluded.window THEN request_budget.used+1 ELSE 1 END RETURNING used').bind('captions',window).first();
-  return {allowed:r.used<=10,firstDenied:r.used===11};
-}
+
 export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.now()}={}) {
   const path=new URL(request.url).pathname;
   // Keep the old service route harmless if a previously scheduled caller runs.
@@ -74,6 +73,21 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       return json({code:'CONTENT_NOT_FOUND'},404);
     }
 
+    if(path==='/api/reliability' && request.method==='GET')return json(await readReliability(env.DB,ownerId,now));
+    if(path==='/api/failed-links' && request.method==='GET')return json(await pageFailedLinks(env.DB,ownerId,new URL(request.url).searchParams.get('cursor'),now-RESEARCH_RETENTION_MS));
+    if(path.startsWith('/api/failed-links/')){
+      const [id,action,...extra]=path.slice('/api/failed-links/'.length).split('/');
+      if(extra.length||!UUID.test(id)||action==='')return json({code:'NOT_FOUND'},404);
+      if(request.method==='GET'&&action===undefined)return json(await pageFailedAttempts(env.DB,ownerId,id,new URL(request.url).searchParams.get('cursor'),now-RESEARCH_RETENTION_MS));
+      if(request.method==='DELETE'&&action===undefined){
+        let input;try{input=await boundedJson(request);}catch{return json({code:'INVALID_FAILED_LINK_VERSION'},400);}
+        if(!input||typeof input!=='object'||Array.isArray(input)||Object.keys(input).length!==1||!Object.hasOwn(input,'version'))return json({code:'INVALID_FAILED_LINK_VERSION'},400);
+        return json(await deleteFailedLink(env.DB,ownerId,id,input.version));
+      }
+      // No remote write implementation or credential exists in this release.
+      if(request.method==='POST'&&action==='export')return json({code:'RESEARCH_EXPORT_DISABLED'},403);
+      return json({code:'NOT_IMPLEMENTED'},405);
+    }
     if(path==='/api/history' && request.method==='GET')return json({...await pageExtractions(env.DB,ownerId,new URL(request.url).searchParams.get('cursor')),retentionDays:null,retentionPaused:true});
     if(path.startsWith('/api/history/')){
       const id=path.slice('/api/history/'.length);
@@ -89,7 +103,8 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
       let storage=false;try{await expireEvents(env.DB,now);await env.DB.prepare('SELECT count(*) AS count FROM diagnostic_events').first();storage=true;}catch{}
       let history=false;try{await env.DB.prepare('SELECT id FROM extractions LIMIT 1').first();history=true;}catch{}
       let contentWorkflowAvailable=false;try{await env.DB.prepare('SELECT id FROM content_jobs LIMIT 1').first();contentWorkflowAvailable=true;}catch{}
-      return json({contentWorkflowAvailable,build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
+      let failedLinksAvailable=false;try{await env.DB.prepare('SELECT seq FROM failed_link_attempts LIMIT 1').first();failedLinksAvailable=true;}catch{}
+      return json({failedLinksAvailable,researchRemoteExportAvailable:false,researchRetentionDays:RESEARCH_RETENTION_DAYS,contentWorkflowAvailable,build:BUILD,backend:'sites_private',ownerAuth:'dispatch_and_server_allowlist',authRequired:false,diagnosticStorage:storage?'site_database':'unavailable',centralSiteStorage:storage,historyAvailable:history,captionAdapter:'tiktok_experimental',publicContentAdapters:['tiktok','facebook'],retentionDays:null,retentionPaused:true});
     }
     if(path==='/api/diagnostics' && request.method==='GET') {
       await expireEvents(env.DB,now);
@@ -131,14 +146,17 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     if(request.method!=='POST' || !['/api/diagnostics','/api/captions'].includes(path))return json({code:'NOT_IMPLEMENTED'},404);
     let data;try{data=await boundedJson(request);}catch{return json({code:'INVALID_URL'},400);}
     if(!data || typeof data!=='object' || Array.isArray(data))return json({code:'INVALID_URL'},400);
-    const traceId=UUID.test(data.traceId||'')?data.traceId:crypto.randomUUID();
+    const traceId=typeof data.traceId==='string'&&UUID.test(data.traceId)?data.traceId:crypto.randomUUID();
     if(path==='/api/diagnostics') {
       // Never accept free-text trace/build/source values from the browser.
       const event=sanitizedSiteEvent(data,{traceId,source:'browser',now});
       await storeEvents(env.DB,[event],now);return json({saved:true,storage:'site_database'});
     }
-    let allowance={allowed:true,firstDenied:false};
-    try{allowance=await budget(env.DB,now);}catch{/* logging database failure must not block caption retrieval */}
+    // Budget accounting is a security and cost boundary, not optional telemetry.
+    // If the database cannot record the attempt, do not call external providers.
+    let allowance;
+    try{allowance=await budget(env.DB,now);}
+    catch{return json({ok:false,code:'STORAGE_FAILED',cues:[],traceId,diagnosticsStored:false,failedLinkStatus:'not_attempted'},503);}
     if(!allowance.allowed){
       // One sanitized rate-limit event per budget window. Do not permit
       // a flood of rejected requests to fill the owner's diagnostic store.
@@ -150,9 +168,10 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
           diagnosticsStored=true;
         }catch{/* telemetry must not become an alternate failure mode */}
       }
-      return json({ok:false,code:'RATE_LIMITED',cues:[],traceId,diagnosticsStored},429);
+      return json({ok:false,code:'RATE_LIMITED',cues:[],traceId,diagnosticsStored,failedLinkStatus:'not_attempted'},429);
     }
     if(typeof data.url!=='string' || data.url.length>2048)return json({code:'INVALID_URL'},400);
+    let metricsStarted=false;try{await recordUserMetric(env.DB,ownerId,data.url,null,now);metricsStarted=true;}catch{}
     const events=[];
     let result;
     try{result=await retrievePublicCaptions(data.url,{traceId,build:BUILD,fetchImpl,onEvent:e=>events.push(sanitizedSiteEvent(e,{traceId,now:Date.now()}))});}
@@ -160,6 +179,9 @@ export async function handleSiteRequest(request, env, {fetchImpl=fetch,now=Date.
     let stored=false;try{await storeEvents(env.DB,events,now);stored=true;}catch{}
     let historyId=null,historyStatus='not_saved';
     try{historyId=await saveExtraction(env.DB,ownerId,data.url,result,now);historyStatus=historyId?'saved':'empty';}catch{historyStatus='failed';}
-    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus});
+    let metricsCompleted=false;try{if(metricsStarted){await recordUserMetric(env.DB,ownerId,data.url,result,now);metricsCompleted=true;}}catch{}
+    let failedLinkStatus='not_eligible';
+    try{const completedAt=Date.now();await expireResearch(env.DB,ownerId,completedAt);failedLinkStatus=await recordFailedLink(env.DB,ownerId,data.url,result,{traceId,build:BUILD,now:completedAt});}catch{failedLinkStatus='storage_failed';}
+    return json({...result,traceId,events,diagnosticsStored:stored,diagnosticsStorage:stored?'site_database':'unavailable',historyId,historyStatus,failedLinkStatus,reliabilityStored:metricsStarted&&metricsCompleted});
   } catch(e) {return json({code:e instanceof ContentError?e.code:'STORAGE_FAILED'},e instanceof ContentError?e.status:503);}
 }

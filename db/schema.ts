@@ -29,3 +29,16 @@ export const contentJobs = sqliteTable('content_jobs', {
   updatedAt: integer('updated_at').notNull(),
   payload: text('payload').notNull(),
 }, t => [uniqueIndex('content_owner_input').on(t.ownerId,t.inputHash), index('content_owner_updated').on(t.ownerId,t.updatedAt)]);
+
+export const failedLinkAttempts = sqliteTable('failed_link_attempts', {
+ seq: integer('seq').primaryKey({autoIncrement:true}), id: text('id').notNull(), caseId: text('case_id').notNull(),
+ ownerId: text('owner_id').notNull(), sourceUrl: text('source_url').notNull(), platform: text('platform').notNull(),
+ createdAt: integer('created_at').notNull(), status: text('status').notNull(), code: text('code').notNull(),
+ traceId: text('trace_id').notNull(), build: text('build').notNull(), researchMonth: text('research_month').notNull().default(''),
+}, t => [uniqueIndex('failed_link_attempt_id').on(t.id),index('failed_link_owner_source_seq').on(t.ownerId,t.sourceUrl,t.seq),index('failed_link_owner_case_seq').on(t.ownerId,t.caseId,t.seq)]);
+
+export const monthlyReliability = sqliteTable('monthly_reliability', {
+ ownerId: text('owner_id').notNull(), month: text('month').notNull(), kind: text('kind').notNull(),
+ platform: text('platform').notNull(), outcome: text('outcome').notNull(), code: text('code').notNull(),
+ count: integer('count').notNull(), lastAt: integer('last_at').notNull(),
+}, t => [uniqueIndex('monthly_reliability_bucket').on(t.ownerId,t.month,t.kind,t.platform,t.outcome,t.code)]);

@@ -95,3 +95,6 @@
 .transcript-output p{margin:0 0 12px}.transcript-output p:last-child{margin-bottom:0}
 
 #content-source{overflow-wrap:anywhere}
+
+/* Confidential registry links must wrap even for long valid share tokens. */
+.failed-case{display:block;min-width:0;margin-bottom:10px}.failed-case>div,.failed-attempt{min-width:0}.failed-source,.failed-attempt{overflow-wrap:anywhere;word-break:break-word}.failed-case .actions{flex-wrap:wrap;margin-top:8px}.failed-attempt{border-top:1px solid var(--stroke);padding:10px 0}

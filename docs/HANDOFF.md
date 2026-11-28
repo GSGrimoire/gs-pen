@@ -1,3 +1,9 @@
+# 27 November 2026: owner-approved automatic reliability research (#61/#62)
+No research downloads or remote GitHub synchronization. 180-day research generation cap, bounded UTC monthly rechecks, separate permanent aggregates, report UI and read-only assistant tool. Full independent review and verified managed scheduler required; no deployment. See docs/FAILED_LINK_REGISTRY.md.
+
+# 26 November 2026: failed-link registry candidate (#61)
+ChatGPT-1 | Implementer. Independent review of b03128a required changes. Corrected candidate integrates #59 fail-closed quota, removes credentialed GitHub writes entirely (explicit local download/manual private import only), uses stable case generation and atomic versioned deletion, expands coverage. Branch chatgpt/pen-failed-link-registry, base 90830575245bd042981d217646b631d237a6bea9. Full independent re-review and passing checks required before merge or publish. See docs/FAILED_LINK_REGISTRY.md for exact limitations, deployment and separate remote transfer gate. No live deployment or secret setup.
+
 # Pull request 45 review corrections, 6 November 2026
 
 The four findings from ChatGPT-C's independent review of 4fc2dcaf are addressed on claude/eager-hawking-x3j1z1. Plain transcripts preserve separated and uncertain repeats and merge only ordered, overlapping or touching identical cues. Unsaved recovery identifies an existing source and requires an explicit keep/clear choice before creating a brief. Facebook sign-in classification checks status and destination on both direct and share paths, and stream cancellation no longer blocks those responses. Source notes and keyboard tab navigation are restored.

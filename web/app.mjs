@@ -5,8 +5,8 @@ import {diagnosticLinkContext,sanitizeDiagnostic} from "./modules/diagnostics.mj
 import {exportRecord,exportText,tabText,assistantHandoff,exportSubRip,plainTranscript} from "./modules/extraction-export.mjs";
 import {recoveryGuidance} from "./modules/recovery-guidance.mjs";
 const $=id=>document.getElementById(id);
-const BUILD="workspace_v04_sites_1", KEY="gs-pen-testlab-diag-v2", MAX=1000;
-const state={backend:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"transcript",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
+const BUILD="workspace_v04_sites_4", KEY="gs-pen-testlab-diag-v2", MAX=1000;
+const state={backend:false,healthChecked:false,failedLinksAvailable:false,serverCount:null,serverEvents:[],events:[],trace:[],result:null,tab:"transcript",currentTrace:null,busy:false,authRequired:false,accessKey:"",site:false,storageFailed:false,history:[],historyTotal:null,historyCursor:null,historyLoading:false,historySeq:0,historyAvailable:false,sourceUrl:"",pendingDelete:null,openSeq:0};
 function authHeaders(json=false){const h={};if(json)h["Content-Type"]="application/json";if(state.accessKey)h["X-GS-Pen-Dev-Key"]=state.accessKey;return h;}
 function browserFamily(){const u=navigator.userAgent;return /Firefox\//.test(u)?"firefox":/Edg\/|Chrome\/|Chromium\//.test(u)?"chromium":/Safari\//.test(u)?"safari":"other";}
 function deviceClass(){const u=navigator.userAgent;return /iPad|Tablet/.test(u)?"tablet":/Mobile|Android|iPhone/.test(u)?"mobile":"desktop";}
@@ -167,7 +167,7 @@ const errorText={
   INTERNAL_ERROR:"Something went wrong in Pen."
 };
 function explain(code){return (errorText[code]||"Nothing was found.")+" (Code: "+code+")";}
-function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Extracting…":"Extract";}
+function setBusy(flag){state.busy=flag;$("probe-button").disabled=flag;$("probe-button").textContent=flag?"Extracting…":"Extract";document.querySelectorAll("[data-failed-retry]").forEach(b=>b.disabled=flag);}
 async function doProbe(event){
   event.preventDefault();if(state.busy)return;state.openSeq++;
   const input=$("video-url").value.trim(),context=diagnosticLinkContext(input);
@@ -179,28 +179,33 @@ async function doProbe(event){
   record({...base,stage:"url_validate",status:result.ok?"succeeded":"failed",code:result.ok?"OK":"INVALID_URL",durationMs:0});
   if(!result.ok){$("history-save-status").textContent="No extraction saved. Check the video link.";state.result={ok:false,code:"INVALID_URL"};displayStatus("Invalid link","error");renderTab();setBusy(false);return;}
   if(!state.backend){$("history-save-status").textContent="No extraction saved. The backend is unavailable.";record({...base,stage:"request_start",status:"unavailable",code:"BACKEND_UNAVAILABLE"});state.result={ok:false,code:"BACKEND_UNAVAILABLE"};displayStatus("Backend offline","error");renderTab();setBusy(false);return;}
-  if(!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
+  if(!state.site&&!['tiktok','facebook'].includes(result.platform)){$("history-save-status").textContent="No extraction saved. This platform is not supported yet.";record({...base,stage:"provider_identify",status:"unavailable",code:"NOT_IMPLEMENTED"});state.result={ok:false,code:"NOT_IMPLEMENTED"};displayStatus("Not supported yet");renderTab();setBusy(false);return;}
   record({...base,stage:"request_start",status:"started",code:"STARTED"});
   const controller=new AbortController();const timer=setTimeout(()=>controller.abort(),35000);const started=performance.now();
   try{
     const response=await fetch("/api/captions",{method:"POST",headers:authHeaders(true),body:JSON.stringify({url:input,traceId:state.currentTrace}),signal:controller.signal});
-    if(!response.ok){$("history-save-status").textContent="No extraction saved. The request was rejected.";const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
+    if(!response.ok){const problem=await response.json();const code=problem.code||"BACKEND_UNAVAILABLE";$("history-save-status").textContent=problem.failedLinkStatus==='not_attempted'?"Request rejected before provider retrieval; no registry attempt.":"Request rejected; registry capture not confirmed.";state.result={ok:false,code};displayStatus("Request rejected","error");record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});return;}
     const outcome=await response.json();
     for(const serverEvent of Array.isArray(outcome.events)?outcome.events:[])record(serverEvent,{sync:false});
     state.result=outcome;state.sourceUrl=input;
     $("history-save-status").textContent=outcome.historyStatus==='saved'?'Saved to Recent.':outcome.historyStatus==='failed'?'Could not save to Recent. Copy or export this result before leaving.':state.site?'No available content to save.':'Private history is available on the hosted Site.';
+    if(outcome.failedLinkStatus==='saved')$("history-save-status").textContent+=outcome.ok?" Existing Failed Links case resolved.":" Recorded in Failed Links.";
+    if(outcome.reliabilityStored===false)$("history-save-status").textContent+=" Reliability statistics not confirmed.";
+    if(outcome.failedLinkStatus==='storage_failed')$("history-save-status").textContent+=" Failed Links storage unavailable.";
+    if(!outcome.ok&&outcome.failedLinkStatus==='not_eligible')$("history-save-status").textContent+=" Link not eligible for registry.";
+    if(state.site&&outcome.failedLinkStatus===undefined&&!outcome.ok)$("history-save-status").textContent+=" Registry capture not confirmed.";
     if(state.site)void refreshHistory();
     const partial=!outcome.ok&&(!!outcome.post?.text||outcome.metadata?.status==='succeeded');
     state.tab=outcome.ok?'transcript':partial?(outcome.post?.text?'post':'metadata'):state.tab;
     if(outcome.unpersistedCaptionHost)setContext(context,{"Rejected caption host (not stored)":outcome.unpersistedCaptionHost});
     if(outcome.ok){displayStatus("Captions retrieved","ok");setContext(context,{"Caption tracks":outcome.captionTrackCount,"Caption cues":outcome.cues.length});}
-    else if(partial)displayStatus('Post text retrieved; no transcript','ok');
+    else if(partial)displayStatus(outcome.post?.text?'Post text retrieved; no transcript':'Metadata retrieved; no transcript','ok');
     else displayStatus(outcome.code==="CAPTIONS_NOT_FOUND"?"No track found":"Retrieval failed","error");
     if(!outcome.diagnosticsStored){state.storageFailed=true;$("storage-indicator").textContent="Storage failed; browser copy only";}
     record({...base,stage:"result_render",status:outcome.ok||partial?"succeeded":"failed",code:partial?'PARTIAL_RESULT':outcome.code||"INTERNAL_ERROR",durationMs:Math.round(performance.now()-started),captionCueCount:outcome.ok?outcome.cues.length:undefined,postTextFound:!!outcome.post?.text,metadataFound:outcome.metadata?.status==='succeeded'});
   }catch(e){
     const code=e?.name==="AbortError"?"TIMEOUT":"BACKEND_UNAVAILABLE";
-    $("history-save-status").textContent="No extraction saved. The request could not finish.";state.result={ok:false,code};displayStatus("Connection failed","error");
+    $("history-save-status").textContent=state.site?"Connection interrupted. Server completion and registry capture are unknown; refresh Failed Links before retrying.":"The request could not finish; storage not confirmed.";state.result={ok:false,code};displayStatus("Connection failed","error");
     record({...base,stage:"request_start",status:"failed",code,durationMs:Math.round(performance.now()-started)});
   }finally{clearTimeout(timer);renderTab();setBusy(false);void refreshServerCount();}
 }
@@ -236,7 +241,8 @@ async function checkBackend(){
     if(!response.ok)throw Error("bad_status");
     const data=await response.json();
     if(!["local_only","codespaces_private","sites_private"].includes(data.backend))throw Error("unrecognized_backend");
-    state.site=data.backend==="sites_private";state.historyAvailable=!!data.historyAvailable;void refreshHistory();
+    state.site=data.backend==="sites_private";state.healthChecked=true;state.failedLinksAvailable=data.failedLinksAvailable===true;state.historyAvailable=!!data.historyAvailable;void refreshHistory();
+    if(location.hash==='#failed-links')void showFailedLinks();
     if(state.site){state.backend=true;$("backend-badge").textContent="Owner-private Site backend";$("storage-indicator").textContent=data.centralSiteStorage?"Site database connected":"Site database unavailable";state.storageFailed=!data.centralSiteStorage;await refreshServerCount();return;}
     state.authRequired=!!data.authRequired;
     if(state.authRequired){
@@ -249,7 +255,7 @@ async function checkBackend(){
     state.backend=true;$("backend-badge").textContent="Local probe connected";$("backend-badge").className="pill";
     $("storage-indicator").textContent=state.site?"Site database connected":"Local file connected";await refreshServerCount();
   }catch{
-    state.backend=false;$("backend-badge").textContent="Retrieval backend offline";$("backend-badge").className="pill error";
+    state.backend=false;state.healthChecked=true;if(location.hash==='#failed-links')void showFailedLinks();$("backend-badge").textContent="Retrieval backend offline";$("backend-badge").className="pill error";
     $("storage-indicator").textContent="Browser only";
   }
 }
@@ -352,14 +358,78 @@ function initWorkspaceRail(){
  render();
 }
 
+let failedCursor=null,failedSeq=0,attemptSeq=0;
+async function showReliability(seq){
+ const report=$('reliability-report');report.replaceChildren(node('p','Loading monthly reliability…'));
+ try{
+  const response=await fetch('/api/reliability',{headers:authHeaders(),cache:'no-store'});if(!response.ok)throw Error('unavailable');const data=await response.json();if(seq!==failedSeq)return;
+  report.replaceChildren(node('p',data.lastMaintenanceAt?'Last automatic maintenance: '+new Date(data.lastMaintenanceAt).toLocaleString():'No automatic maintenance recorded yet.'));
+  if(!data.months.length)report.append(node('p','No reliability statistics yet.'));
+  for(const month of data.months){
+   const card=node('article',undefined,'history-card failed-case');card.append(node('h3',month.month+' (UTC)'));
+   for(const kind of ['user','diagnostic']){
+    const rows=month[kind],started=rows.filter(x=>x.outcome==='started').reduce((n,x)=>n+x.count,0),completed=rows.filter(x=>x.outcome!=='started').reduce((n,x)=>n+x.count,0),failed=rows.filter(x=>['failed','partial'].includes(x.outcome)).reduce((n,x)=>n+x.count,0);
+    card.append(node('p',(kind==='user'?'User extractions':'Automatic rechecks')+': '+(completed?(100*failed/completed).toFixed(1)+'% without captions ('+failed+'/'+completed+')':'no completed attempts')+'; '+started+' starts; '+Math.max(0,started-completed)+' incomplete.'));
+    for(const row of rows.filter(x=>x.outcome!=='started'))card.append(node('p',row.platform+' · '+row.outcome+' · '+row.code+': '+row.count));
+   }report.append(card);
+  }
+ }catch{if(seq===failedSeq)report.replaceChildren(node('p','Reliability report unavailable.'));}
+}
+function failedButton(label,fn){const b=node('button',label,'outline');b.type='button';b.addEventListener('click',fn);return b;}
+async function failedRequest(path,method='GET',body){
+ const response=await fetch('/api/failed-links'+path,{method,headers:authHeaders(body!==undefined),cache:'no-store',...(body!==undefined?{body:JSON.stringify(body)}:{})});
+ const data=await response.json();if(!response.ok)throw Error(typeof data.code==='string'?data.code:'REQUEST_FAILED');return data;
+}
+async function showFailedLinks(older=false){
+ const seq=++failedSeq;attemptSeq++;const list=$('failed-items'),status=$('failed-status'),more=$('failed-more');
+ $('failed-attempts').replaceChildren();more.disabled=true;
+ if(!older){list.replaceChildren();failedCursor=null;more.hidden=true;}
+ if(!state.healthChecked){status.textContent='Checking private backend…';return;}
+ if(!state.site){status.textContent='Failed Links is available on the owner-private hosted Site only.';$('reliability-report').replaceChildren();return;}
+ status.textContent='Loading private registry…';
+ void showReliability(seq);
+ try{
+  const data=await failedRequest(failedCursor?'?cursor='+encodeURIComponent(failedCursor):'');
+  if(seq!==failedSeq)return;
+  for(const item of data.items){
+   const card=node('article',undefined,'history-card failed-case');
+   const info=node('div');info.append(node('strong',item.platform+' · '+item.status+' · '+item.code),node('p',item.sourceUrl,'failed-source'),node('small',item.attempts+' attempts / '+item.failures+' failed or partial · First '+new Date(item.firstAt).toLocaleString()+' · Latest '+new Date(item.createdAt).toLocaleString()));
+   const controls=node('div',undefined,'actions');
+   const retry=failedButton('Retry',()=>{if(state.busy)return;location.hash='extract';$('video-url').value=item.sourceUrl;$('probe-form').requestSubmit();});retry.dataset.failedRetry='true';retry.disabled=state.busy;
+   controls.append(retry,failedButton('Attempts',()=>void showFailedAttempts(item)),
+    failedButton('Delete',async()=>{if(!confirm('Delete all '+item.attempts+' recorded attempts for '+item.sourceUrl+'? Saved extractions in Recent and previous aggregate statistics remain.'))return;try{await failedRequest('/'+item.id,'DELETE',{version:item.version});await showFailedLinks();}catch(e){status.textContent=e.message==='FAILED_LINK_CHANGED_OR_MISSING'?'Case changed or was deleted. Refresh before confirming again.':'Registry deletion unconfirmed. Refresh before retrying.';}}));
+   card.append(info,controls);list.append(card);
+  }
+  failedCursor=data.nextCursor;more.hidden=!failedCursor;status.textContent=list.children.length?'Private registry loaded. Refresh for new cases or updated outcomes.':'No failed links recorded.';
+ }catch{if(seq===failedSeq)status.textContent=older?'Could not load older cases. Retry or refresh.':'Private registry unavailable.';}finally{if(seq===failedSeq)more.disabled=false;}
+}
+async function showFailedAttempts(item,cursor=null,continuation=null){
+ const seq=++attemptSeq,box=$('failed-attempts'),status=$('failed-status');
+ if(!cursor)box.replaceChildren(node('h2','Attempt history'),node('p',item.sourceUrl,'failed-source'));
+ if(continuation)continuation.disabled=true;
+ try{
+  const data=await failedRequest('/'+item.id+(cursor?'?cursor='+encodeURIComponent(cursor):''));
+  if(seq!==attemptSeq)return;
+  if(continuation)continuation.remove();
+  for(const attempt of data.items){
+   const row=node('div',undefined,'failed-attempt');row.append(node('p',new Date(attempt.createdAt).toLocaleString()+' · '+attempt.status+' · '+attempt.code+' · '+attempt.build+' · '+attempt.traceId));
+   box.append(row);
+  }
+  if(data.nextCursor){const b=failedButton('Load older attempts',()=>void showFailedAttempts(item,data.nextCursor,b));box.append(b);}
+  status.textContent=data.items.length?'Attempt history loaded.':'No more attempts. Refresh to see current cases.';
+ }catch{if(seq===attemptSeq){status.textContent='Attempt history unavailable. Retry or refresh.';if(continuation)continuation.disabled=false;}}
+}
+$('failed-refresh').addEventListener('click',()=>void showFailedLinks());
+$('failed-more').addEventListener('click',()=>void showFailedLinks(true));
 initWorkspaceRail();restoreLocal();drawEvents();renderTab();drawTrace();setContext(diagnosticLinkContext(""));navigate();void checkBackend();
 
 
 function navigate(){
-  const view=['extract','recent','create','diagnostics'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
+  const view=['extract','recent','create','diagnostics','failed-links'].includes(location.hash.slice(1))?location.hash.slice(1):'extract';
   document.querySelectorAll('[data-page]').forEach(p=>p.hidden=p.dataset.page!==view);
   document.querySelectorAll('[data-view]').forEach(a=>{const active=a.dataset.view===view;a.classList.toggle('active',active);if(active)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current');});
-  $('view-label').textContent=view[0].toUpperCase()+view.slice(1);
+  $('view-label').textContent=view==='failed-links'?'Failed Links':view[0].toUpperCase()+view.slice(1);
+  if(view==='failed-links')void showFailedLinks();else {failedSeq++;attemptSeq++;}
   if(view==='recent')void refreshHistory();
 }
 function drawHistory(){

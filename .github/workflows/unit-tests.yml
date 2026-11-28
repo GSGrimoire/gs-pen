@@ -35,3 +35,8 @@ jobs:
         run: npm run lint
       - name: Type check
         run: pnpm exec tsc --noEmit
+
+      - name: Verify generated database migration matches committed schema
+        run: |
+          npm run db:generate
+          test -z "$(git status --porcelain -- drizzle)"

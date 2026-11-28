@@ -68,3 +68,6 @@ PEN-105 release completed on 25 October 2026. Native mobile app delivery and rea
 - Caption rate-budget database errors currently fail open. Assess a separate fix without blocking extraction diagnostics or restoring record deletion.
 - The loopback diagnostic file is rewritten in full and unbounded. Assess append/storage strategy separately from hosted storage.
 - Consider accepting additional assistant notifications with 202; no protocol expansion was needed for C1.
+
+## Owner-approved reliability research revision (27 November 2026)
+- #62 automatic collection, monthly rechecks and aggregate reports, no manual research downloads or Git transfer. 180-day generation cap during low traffic; shorten by reviewed owner decision. Require independent review, migration generation, actual hosted scheduler and retention verification. #59 fail-closed budget incorporated; reconcile merge order.
