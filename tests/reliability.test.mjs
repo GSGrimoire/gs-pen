@@ -69,3 +69,17 @@ test('migration 0004 preserves previous records and snapshot lineage',()=>{
  assert.equal(next.prevId,old.id);for(const key of Object.keys(old.tables).filter(k=>k!=='failed_link_attempts'))assert.deepEqual(next.tables[key],old.tables[key]);
  assert.deepEqual(sql.prepare("PRAGMA table_info('monthly_reliability')").all().map(x=>x.name),Object.keys(next.tables.monthly_reliability.columns));
 });
+
+test('corrupted stored research links fail closed before any scheduled retrieval',async()=>{
+ const {db,env,sql}=setup();
+ await capture(db);
+ sql.prepare('UPDATE failed_link_attempts SET source_url=? WHERE owner_id=?')
+  .run('https://untrusted.example/private',owner);
+ let calls=0;
+ const result=await runResearchTick(env,{now,retrieve:async()=>{calls++;return success;}});
+ assert.equal(result.status,'invalid_stored_link');
+ assert.equal(calls,0);
+ assert.equal(sql.prepare("SELECT count(*) AS n FROM monthly_reliability WHERE kind='diagnostic'").get().n,0);
+ assert.equal(sql.prepare('SELECT research_month FROM failed_link_attempts WHERE owner_id=?').get(owner).research_month,'2026-11');
+ assert.equal((await pageFailedLinks(db,owner)).items.length,1);
+});
